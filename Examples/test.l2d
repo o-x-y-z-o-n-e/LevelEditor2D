@@ -1,0 +1,38 @@
+<world name="test_world" tile_width="16" tile_height="16">
+  <tilesets>
+    <tileset id="tileset1" texture_file="tileset1.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+  </tilesets>
+  <scenes>
+    <scene id="test_scene_0" world_x="0" world_y="0" tile_count_x="4" tile_count_y="4">
+      <tilesets>
+        <tileset slot="1" id="tileset1"/>
+      </tilesets>
+	  <groups>
+	    <group id="ground" color="0.7,0.9,0.8,1"/>
+	  </groups>
+      <layers>
+        <layer name="Layer Name Test" group="ground">
+          <tilemap>
+            {0:1},{0:0},{0:0},{0:0},
+            {0:0},{1:1},{0:0},{0:0},
+            {0:0},{0:0},{0:0},{0:0},
+            {0:0},{0:0},{0:0},{0:0},
+          </tilemap>
+          <entities>
+		    <entity type="test" label="Test" x="32" y="12" width="16" height="16"/>
+          </entities>
+        </layer>
+		<layer name="Layer Name Test 2" group="ground">
+          <tilemap>
+            {0:1},{0:0},{0:0},{0:0},
+            {0:0},{1:1},{0:0},{0:0},
+            {0:0},{0:0},{0:0},{0:0},
+            {0:0},{0:0},{0:0},{0:0},
+          </tilemap>
+          <entities>
+          </entities>
+        </layer>
+      </layers>
+    </scene>
+  </scenes>
+</world>
