@@ -21,35 +21,31 @@ public static class Program {
 	public static CanvasPanel CanvasPanel => canvasPanel;
 	public static LayersPanel LayersPanel => layersPanel;
 	public static ObjectsPanel ObjectsPanel => objectsPanel;
-	public static PropertiesPanel PropertiesPanel => propertiesPanel;
 	public static ScenesPanel ScenesPanel => scenesPanel;
 	public static TilePickerPanel TilePickerPanel => tilePickerPanel;
 	public static TilesetsPanel TilesetsPanel => tilesetsPanel;
+	
+	public static Scene SelectedScene {
+		get => selectedScene;
+		set => SetSelectedScene(value);
+	}
+	
+	public static Layer SelectedLayer {
+		get => selectedLayer;
+		set => SetSelectedLayer(value);
+	}
+	
+	public static EntityDefinition SelectedEntity {
+		get => selectedEntity;
+		set => SetSelectedEntity(value);
+	}
+	
+	public static Tileset SelectedTileset {
+		get => selectedTileset;
+		set => SetSelectedTileset(value);
+	}
 
-	// public static object? Selected {
-	// 	get => selected;
-	// 	set => selected = value;
-	// }
-	
-	public static Scene ActiveScene {
-		get => activeScene;
-		set {
-			if(activeScene != null) activeScene.LastActiveLayer = activeLayer;
-			activeScene = value;
-			if(activeScene != null) {
-				if(activeScene.LastActiveLayer != null) {
-					activeLayer = activeScene.LastActiveLayer;
-				} else if(activeScene.Layers.Count > 0) {
-					activeLayer = activeScene.Layers[0];
-				}
-			}
-		}
-	}
-	
-	public static Layer ActiveLayer {
-		get => activeLayer;
-		set => activeLayer = value;
-	}
+	public static GL GL => gl;
 
 	public static File File => file;
 
@@ -58,14 +54,15 @@ public static class Program {
 	private static CanvasPanel canvasPanel;
 	private static LayersPanel layersPanel;
 	private static ObjectsPanel objectsPanel;
-	private static PropertiesPanel propertiesPanel;
 	private static ScenesPanel scenesPanel;
 	private static TilePickerPanel tilePickerPanel;
 	private static TilesetsPanel tilesetsPanel;
 
 	private static File file;
-	private static Scene activeScene;
-	private static Layer activeLayer;
+	private static Scene selectedScene;
+	private static Layer selectedLayer;
+	private static EntityDefinition selectedEntity;
+	private static Tileset selectedTileset;
 
 	private static IWindow window;
 	private static ImGuiController controller;
@@ -73,13 +70,17 @@ public static class Program {
 	private static IInputContext input;
 	private static bool requestClose;
 	
+	static bool test = false;
+	
 	public static void Main(string[] args) {
 		WindowOptions options = WindowOptions.Default with {
 			WindowState = WindowState.Maximized,
 			Title = "L2D"
 		};
 		window = Window.Create(options);
-		
+		window.VSync = false;
+		window.FramesPerSecond = 0;
+		window.UpdatesPerSecond = 0;
 		window.Load += Load;
 		window.Render += Render;
 		window.Closing += Closing;
@@ -99,7 +100,6 @@ public static class Program {
 		canvasPanel = new CanvasPanel();
 		layersPanel = new LayersPanel();
 		objectsPanel = new ObjectsPanel();
-		propertiesPanel = new PropertiesPanel();
 		scenesPanel = new ScenesPanel();
 		tilePickerPanel = new TilePickerPanel();
 		tilesetsPanel = new TilesetsPanel();
@@ -123,13 +123,19 @@ public static class Program {
 		
 		menuBar.Execute();
 		
-		canvasPanel.Execute();
+		ImGui.ShowDemoWindow();
+		
+		tilesetsPanel.Execute();
+		scenesPanel.Execute();
 		layersPanel.Execute();
 		objectsPanel.Execute();
-		propertiesPanel.Execute();
-		scenesPanel.Execute();
 		tilePickerPanel.Execute();
-		tilesetsPanel.Execute();
+		canvasPanel.Execute();
+		
+		if(!test) {
+			test = true;
+			ImGui.SetWindowFocus("Tilesets");
+		}
 
 		controller.Render();
 
@@ -148,12 +154,32 @@ public static class Program {
 		requestClose = true;
 	}
 
-	// public static T GetSelectedAs<T>() where T : class {
-	// 	return selected as T;
-	// }
-	// 
-	// public static bool IsSelectedAs<T>() where T : class {
-	// 	return selected != null && selected is T;
-	// }
+	public static void SetSelectedScene(Scene scene) {
+		selectedScene = scene;
+		if(scene != null) {
+			if(scene.LastActiveLayer != null) {
+				SetSelectedLayer(scene.LastActiveLayer);
+			} else if(scene.Layers.Count > 0) {
+				SetSelectedLayer(scene.Layers[0]);
+			}
+		} else {
+			SetSelectedLayer(null);
+		}
+	}
 	
+	public static void SetSelectedLayer(Layer layer) {
+		if(selectedScene == null || (layer != null && !selectedScene.HasLayer(layer))) return;
+		selectedLayer = layer;
+		selectedScene.LastActiveLayer = layer;
+		SetSelectedEntity(null);
+	}
+	
+	public static void SetSelectedEntity(EntityDefinition entity) {
+		
+	}
+	
+	public static void SetSelectedTileset(Tileset tileset) {
+		selectedTileset = tileset;
+	}
+
 }

@@ -11,3 +11,6 @@ riderModule.iml
 *.user
 
 imgui.ini
+global.json
+
+*.DS_Store

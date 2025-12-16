@@ -20,7 +20,7 @@ public class File {
 		try {
 			stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
 			XDocument document = XDocument.Load(stream);
-			Parse(document, path);
+			Parse(document);
 			stream.Close();
 			return true;
 		} catch(Exception e) {
@@ -32,9 +32,9 @@ public class File {
 		}
 	}
 
-	private void Parse(XDocument doc, string dir) {
-		world = new World();
-		world.Parse(doc.Root, dir);
+	private void Parse(XDocument doc) {
+		world = new World(this);
+		world.Parse(doc.Root);
 	}
 
 	public bool Write() {
@@ -42,37 +42,12 @@ public class File {
 		return false;
 	}
 
-	public static int ParseAsInt(XAttribute? attr, int defaultValue = 0) {
-		if(attr == null) return defaultValue;
-		if(int.TryParse(attr.Value, out int value)) {
-			return value;
-		} else {
-			return defaultValue;
-		}
+	public string GetAbsolutePath(string localPath) {
+		return Path.GetFullPath(localPath, Path.GetFullPath(Path.GetDirectoryName(path)));
 	}
 	
-	public static float ParseAsFloat(XAttribute? attr, float defaultValue = 0) {
-		if(attr == null) return defaultValue;
-		if(float.TryParse(attr.Value, out float value)) {
-			return value;
-		} else {
-			return defaultValue;
-		}
-	}
-	
-	public static bool ParseAsBool(XAttribute? attr, bool defaultValue = false) {
-		if(attr == null) return defaultValue;
-		string str = attr.Value.ToLower();
-		if(defaultValue) {
-			if(str == "false" || str == "0") {
-				return false;
-			}
-		} else {
-			if(str == "true" || str == "1") {
-				return true;
-			}
-		}
-		return defaultValue;
+	public string GetRelativePath(string fullPath) {
+		return Path.GetRelativePath(Path.GetDirectoryName(path), fullPath);
 	}
 	
 }

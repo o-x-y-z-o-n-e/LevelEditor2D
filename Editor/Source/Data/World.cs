@@ -22,13 +22,18 @@ public class World {
 	public int TilesetCount => tilesets.Count;
 	public int SceneCount => scenes.Count;
 
+	public IEnumerable<Tileset> Tilesets => tilesets;
+
+	private File file;
 	private string name;
 	private int tileWidth;
 	private int tileHeight;
 	private List<Tileset> tilesets;
 	private List<Scene> scenes;
 
-	internal World() {
+	internal World(File file) {
+		this.file = file;
+		
 		name = "New World";
 		tileWidth = 16;
 		tileHeight = 16;
@@ -37,25 +42,27 @@ public class World {
 	}
 	
 	public Tileset GetTileset(int index) {
+		if(index < 0 || index >= tilesets.Count) return null;
 		return tilesets[index];
 	}
 
 	public Scene GetScene(int index) {
+		if(index < 0 || index >= scenes.Count) return null;
 		return scenes[index];
 	}
 
-	internal void Parse(XElement worldElement, string dir) {
+	internal void Parse(XElement worldElement) {
 		name = worldElement.Attribute("name").Value;
-		tileWidth = File.ParseAsInt(worldElement.Attribute("tile_width"), 16);
-		tileHeight = File.ParseAsInt(worldElement.Attribute("tile_height"), 16);
+		tileWidth = worldElement.Attribute("tile_width").ParseAsInt(16);
+		tileHeight = worldElement.Attribute("tile_height").ParseAsInt(16);
 		foreach(var tilesetElement in worldElement.Element("tilesets").Elements("tileset")) {
-			Tileset tileset = new Tileset();
-			tileset.Parse(tilesetElement, dir);
+			Tileset tileset = new Tileset(file);
+			tileset.Parse(tilesetElement);
 			tilesets.Add(tileset);
 		}
 		foreach(var sceneElement in worldElement.Element("scenes").Elements("scene")) {
-			Scene scene = new Scene();
-			scene.Parse(sceneElement, dir);
+			Scene scene = new Scene(file);
+			scene.Parse(file, sceneElement);
 			scenes.Add(scene);
 		}
 	}

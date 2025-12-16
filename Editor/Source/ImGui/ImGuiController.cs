@@ -704,8 +704,8 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
 
             _fontTexture = new Texture(_gl, width, height, pixels);
             _fontTexture.Bind();
-            _fontTexture.SetMagFilter(TextureMagFilter.Linear);
-            _fontTexture.SetMinFilter(TextureMinFilter.Linear);
+            _fontTexture.SetMagFilter(TextureMagFilter.Nearest);
+            _fontTexture.SetMinFilter(TextureMinFilter.Nearest);
 
             // Store our identifier
             io.Fonts.SetTexID((IntPtr) _fontTexture.GlTexture);
@@ -804,7 +804,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             s.TabBorderSize = 1.0f;
 	        s.PopupRounding = 3.0f;
 	        s.PopupBorderSize = 1.0f;
-	        s.ScrollbarRounding = 5.0f;
+	        s.ScrollbarRounding = 3.0f;
 	        s.WindowPadding = new(10, 10);
 	        s.FramePadding = new(6, 4);
 	        s.ItemSpacing = new(8, 6);

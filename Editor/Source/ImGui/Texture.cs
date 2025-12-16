@@ -55,6 +55,9 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             
             SetWrap(TextureCoordinate.S, TextureWrapMode.Repeat);
             SetWrap(TextureCoordinate.T, TextureWrapMode.Repeat);
+            
+            SetMinFilter(TextureMinFilter.Nearest);
+            SetMagFilter(TextureMagFilter.Nearest);
 
             _gl.TexParameterI(GLEnum.Texture2D, TextureParameterName.TextureMaxLevel, MipmapLevels - 1);
         }

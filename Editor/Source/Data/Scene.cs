@@ -5,34 +5,40 @@ namespace L2D;
 
 public class Scene {
 
+	public World World => file.World;
+
 	public string ID {
 		get => id;
 		set => id = value;
 	}
+
 	public int WorldX {
 		get => worldX;
 		set => worldX = value;
 	}
-	
+
 	public int WorldY {
 		get => worldY;
 		set => worldY = value;
 	}
-	
+
 	public int TileCountX {
 		get => tileCountX;
 		set => tileCountX = value;
 	}
-	
+
 	public int TileCountY {
 		get => tileCountY;
 		set => tileCountY = value;
 	}
 
+	public int LayerCount => layers.Count;
+
 	public List<Layer> Layers => layers;
 
 	public Layer LastActiveLayer;
 
+	private File file;
 	private string id;
 	private int worldX;
 	private int worldY;
@@ -42,7 +48,8 @@ public class Scene {
 	private List<LayerGroup> groups;
 	private List<Layer> layers;
 
-	internal Scene() {
+	internal Scene(File file) {
+		this.file = file;
 		id = "new_scene";
 		worldX = 0;
 		worldY = 0;
@@ -53,32 +60,78 @@ public class Scene {
 		layers = new();
 	}
 
-	internal void Parse(XElement sceneElement, string dir) {
+	internal void Parse(File file, XElement sceneElement) {
 		id = sceneElement.Attribute("id").Value;
-		worldX = File.ParseAsInt(sceneElement.Attribute("world_x"));
-		worldY = File.ParseAsInt(sceneElement.Attribute("world_y"));
-		tileCountX = File.ParseAsInt(sceneElement.Attribute("tile_count_x"));
-		tileCountY = File.ParseAsInt(sceneElement.Attribute("tile_count_y"));
-		
+		worldX = sceneElement.Attribute("world_x").ParseAsInt();
+		worldY = sceneElement.Attribute("world_y").ParseAsInt();
+		tileCountX = sceneElement.Attribute("tile_count_x").ParseAsInt();
+		tileCountY = sceneElement.Attribute("tile_count_y").ParseAsInt();
+
 		foreach(var tilesetElement in sceneElement.Element("tilesets").Elements("tileset")) {
 			// TilesetSlot tilesetSlot = new TilesetSlot();
 			// tilesetSlot.Parse(tilesetElement, dir);
 			// tilesetSlots.Add(tilesetSlot);
 		}
-		
+
 		foreach(var groupElement in sceneElement.Element("groups").Elements("group")) {
 			// LayerGroup group = new LayerGroup();
 			// groups.Add(group);
 		}
-		
+
 		foreach(var layerElement in sceneElement.Element("layers").Elements("layer")) {
-			Layer layer = new Layer();
-			layer.Parse(layerElement, dir);
+			Layer layer = new Layer(this);
+			layer.Parse(layerElement);
 			layers.Add(layer);
 		}
-		
+
+	}
+
+	public Layer AddLayer() {
+		Layer layer = new Layer(this);
+		int n = layers.Count + 1;
+		bool looking = true;
+		while(looking) {
+			layer.Name = $"new_layer_{n}";
+			looking = false;
+			foreach(var l in layers) {
+				if(l.Name == layer.Name) {
+					looking = true;
+					break;
+				}
+			}
+			n++;
+		}
+		layers.Add(layer);
+		return layer;
 	}
 	
+	public Layer GetLayer(int index) {
+		return layers[index];
+	}
+
+	public void SwapLayers(int index1, int index2) {
+		if(index1 < 0 || index1 >= layers.Count || index2 < 0 || index2 >= layers.Count) return;
+		var t = layers[index1];
+		layers[index1] = layers[index2];
+		layers[index2] = t;
+	}
+	
+	public void SwapLayers(Layer layer1, Layer layer2) {
+		SwapLayers(layers.IndexOf(layer1), layers.IndexOf(layer2));
+	}
+
+	public void DeleteLayer(int index) {
+		layers.RemoveAt(index);
+	}
+	
+	public void DeleteLayer(Layer layer) {
+		layers.Remove(layer);
+	}
+
+	public bool HasLayer(Layer layer) {
+		return layers.Contains(layer);
+	}
+
 }
 
 public class TilesetSlot {

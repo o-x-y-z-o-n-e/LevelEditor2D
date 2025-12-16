@@ -1,17 +1,25 @@
 <world name="test_world" tile_width="16" tile_height="16">
   <tilesets>
-    <tileset id="tileset1" texture_file="tileset1.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-01" group="caves" texture_file="caves_cliff_edges.png"				px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-02" group="caves" texture_file="caves_dirt_floor.png"				px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-03" group="caves" texture_file="caves_object_details.png"			px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-04" group="caves" texture_file="caves_path_details.png"			px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-05" group="caves" texture_file="caves_stone_floor.png"				px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-06" group="caves" texture_file="caves_walls.png"					px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-07" group="caves" texture_file="caves_walls_alternative.png"		px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-08" group="caves" texture_file="caves_water_channels.png"			px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-09" group="caves" texture_file="caves_water_channels_stone.png"	px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
   </tilesets>
   <scenes>
-    <scene id="test_scene_0" world_x="0" world_y="0" tile_count_x="4" tile_count_y="4">
+    <scene id="test_scene_0" world_x="0" world_y="0" tile_count_x="32" tile_count_y="32">
       <tilesets>
         <tileset slot="1" id="tileset1"/>
       </tilesets>
 	  <groups>
-	    <group id="ground" color="0.7,0.9,0.8,1"/>
+	    <group id="ground" color="20,200,30"/>
 	  </groups>
       <layers>
-        <layer name="Layer Name Test" group="ground">
+        <layer name="Layer Name Test" group="ground" visible="true">
           <tilemap>
             {0:1},{0:0},{0:0},{0:0},
             {0:0},{1:1},{0:0},{0:0},
