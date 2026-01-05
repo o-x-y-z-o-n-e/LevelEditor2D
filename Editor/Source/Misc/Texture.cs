@@ -49,8 +49,8 @@ public class Texture {
 				new ReadOnlySpan<byte>(image.Data)
 			);
 			
-			Program.GL.TextureParameter(texture.handle, GLEnum.TextureMinFilter, (int)GLEnum.Nearest);
-			Program.GL.TextureParameter(texture.handle, GLEnum.TextureMagFilter, (int)GLEnum.Nearest);
+			Program.GL.TexParameterI(GLEnum.Texture2D, GLEnum.TextureMinFilter, (int)GLEnum.Nearest);
+			Program.GL.TexParameterI(GLEnum.Texture2D, GLEnum.TextureMagFilter, (int)GLEnum.Nearest);
 			
 			Program.GL.BindTexture(TextureTarget.Texture2D, 0);
 			
