@@ -110,7 +110,10 @@ public static class Program {
 			}
 		}
 
-		if(file != null) file.Read();
+		if(file != null) {
+			file.Read();
+			SetSelectedScene(file?.World?.GetScene(0));
+		}
 	}
 
 	private static void Render(double deltaTime) {

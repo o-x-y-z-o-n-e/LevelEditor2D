@@ -234,26 +234,26 @@ public class TilesetsPanel : Panel {
 		Vector2 areaPos = ImGui.GetCursorScreenPos();
 		Vector2 areaSize = ImGui.GetContentRegionAvail();
 
-		Vector2 previewArea = new Vector2(areaSize.X, areaSize.X); // square, based on width available
-		
+		ImGui.SetNextWindowSizeConstraints(new(1, 1), new(areaSize.X, areaSize.Y - 100));
 		ImGui.BeginChild(
 			"tileset-preview",
-			previewArea,
-			ImGuiChildFlags.AlwaysUseWindowPadding,
+			new(areaSize.X, areaSize.X), // square, based on width available
+			ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY,
 			ImGuiWindowFlags.AlwaysHorizontalScrollbar | ImGuiWindowFlags.AlwaysVerticalScrollbar
 		);
+		Vector2 region = ImGui.GetContentRegionAvail();
 		Vector2 p0 = areaPos;
-		Vector2 p1 = p0 + previewArea - new Vector2(16);
-		drawList.AddRectFilled(areaPos, p1, Utilities.GetPackedColor(50, 50, 50, 255)); // background
-		drawList.AddRect(p0, p1, Utilities.GetPackedColor(180, 180, 180, 255)); // border
+		Vector2 p1 = p0 + region;
+		// drawList.AddRectFilled(areaPos, p1, Utilities.GetPackedColor(50, 50, 50, 255)); // background
+		// drawList.AddRect(p0, p1, Utilities.GetPackedColor(180, 180, 180, 255)); // border
 		if(tileset != null) {
 			Texture texSource = tileset.GetTexture();
 			Vector2 border = new(4,4);
 			if(texSource != null) {
 				Vector2 size = new Vector2(texSource.Width, texSource.Height) * previewScale;
-				ImGui.PushClipRect(p0 + new Vector2(1), p1 - new Vector2(1), true);
+				//ImGui.PushClipRect(p0 + new Vector2(1), p1 - new Vector2(1), true);
 				ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1,1,1,1));
-				ImGui.PopClipRect();
+				//ImGui.PopClipRect();
 			}
 		} else {
 			ImGui.Text("No tileset selected...");

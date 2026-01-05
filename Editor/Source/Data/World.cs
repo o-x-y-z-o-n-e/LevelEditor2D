@@ -62,7 +62,7 @@ public class World {
 		}
 		foreach(var sceneElement in worldElement.Element("scenes").Elements("scene")) {
 			Scene scene = new Scene(file);
-			scene.Parse(file, sceneElement);
+			scene.Parse(sceneElement);
 			scenes.Add(scene);
 		}
 	}

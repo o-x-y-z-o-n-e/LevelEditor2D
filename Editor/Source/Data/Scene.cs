@@ -35,6 +35,8 @@ public class Scene {
 	public int LayerCount => layers.Count;
 
 	public List<Layer> Layers => layers;
+	
+	public List<TilesetLink> Tilesets => tilesets;
 
 	public Layer LastActiveLayer;
 
@@ -44,7 +46,7 @@ public class Scene {
 	private int worldY;
 	private int tileCountX;
 	private int tileCountY;
-	private List<TilesetSlot> tilesetSlots;
+	private List<TilesetLink> tilesets;
 	private List<LayerGroup> groups;
 	private List<Layer> layers;
 
@@ -55,12 +57,12 @@ public class Scene {
 		worldY = 0;
 		tileCountX = 64;
 		tileCountY = 64;
-		tilesetSlots = new();
+		tilesets = new();
 		groups = new();
 		layers = new();
 	}
 
-	internal void Parse(File file, XElement sceneElement) {
+	internal void Parse(XElement sceneElement) {
 		id = sceneElement.Attribute("id").Value;
 		worldX = sceneElement.Attribute("world_x").ParseAsInt();
 		worldY = sceneElement.Attribute("world_y").ParseAsInt();
@@ -68,9 +70,9 @@ public class Scene {
 		tileCountY = sceneElement.Attribute("tile_count_y").ParseAsInt();
 
 		foreach(var tilesetElement in sceneElement.Element("tilesets").Elements("tileset")) {
-			// TilesetSlot tilesetSlot = new TilesetSlot();
-			// tilesetSlot.Parse(tilesetElement, dir);
-			// tilesetSlots.Add(tilesetSlot);
+			TilesetLink tileset = new TilesetLink(file);
+			tilesets.Add(tileset);
+			tileset.Parse(tilesetElement);
 		}
 
 		foreach(var groupElement in sceneElement.Element("groups").Elements("group")) {
@@ -134,16 +136,36 @@ public class Scene {
 
 }
 
-public class TilesetSlot {
+public class TilesetLink {
+
+	public int Slot {
+		get => slot;
+		set => slot = value;
+	}
+	
+	public Tileset Tileset {
+		get => tileset;
+		set => tileset = value;
+	}
+
+	private File file;
 	private int slot;
 	private Tileset tileset;
-	internal TilesetSlot() {
+	
+	internal TilesetLink(File file) {
+		this.file = file;
 		slot = 1;
 		tileset = null;
 	}
-	internal TilesetSlot(int slot, Tileset tileset) {
-		this.slot = slot;
-		this.tileset = tileset;
+
+	internal void Parse(XElement sceneElement) {
+		slot = sceneElement.Attribute("slot").ParseAsInt();
+		string id = sceneElement.Attribute("id").Value;
+		foreach(var tileset in file.World.Tilesets) {
+			if(tileset.ID == id) {
+				this.tileset = tileset;
+			}
+		}
 	}
 }
 
