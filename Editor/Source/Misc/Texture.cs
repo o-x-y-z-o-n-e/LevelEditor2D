@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using Silk.NET.OpenGL;
-using StbiSharp;
+using StbImageSharp;
 
 namespace L2D;
 
@@ -30,11 +30,9 @@ public class Texture {
 	public static Texture Load(string filePath) {
 		try {
 			byte[] raw = System.IO.File.ReadAllBytes(filePath);
-
-			var image = Stbi.LoadFromMemory(raw, 4);
 			
+			ImageResult image = ImageResult.FromMemory(raw, ColorComponents.RedGreenBlueAlpha);
 			
-
 			Texture texture = new Texture(image.Width, image.Height);
 			
 			Program.GL.BindTexture(TextureTarget.Texture2D, texture.handle);
@@ -48,7 +46,7 @@ public class Texture {
 				0,
 				PixelFormat.Rgba,
 				PixelType.UnsignedByte,
-				image.Data
+				new ReadOnlySpan<byte>(image.Data)
 			);
 			
 			Program.GL.TextureParameter(texture.handle, GLEnum.TextureMinFilter, (int)GLEnum.Nearest);
