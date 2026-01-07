@@ -18,6 +18,8 @@ public class TilePickerPanel : Panel {
 		int scale = 4;
 
 		Scene scene = Program.SelectedScene;
+
+		int maxTilesetSlots = scene.World.MaxTilesetSlots;
 		
 		ImGui.PushID(scene.ID);
 		
@@ -55,15 +57,32 @@ public class TilePickerPanel : Panel {
 			} else if(expandAll) {
 				ImGui.SetNextItemOpen(true);
 			}
+
+			bool open = ImGui.CollapsingHeader(label, ImGuiTreeNodeFlags.DefaultOpen);
 			
-			if(ImGui.CollapsingHeader(label, ImGuiTreeNodeFlags.DefaultOpen)) {
+			ImGui.OpenPopupOnItemClick("menu", ImGuiPopupFlags.MouseButtonRight);
+			if(ImGui.BeginPopup("menu")) {
+				if(ImGui.MenuItem("Move Up")) {
+					// TODO
+				}
+				if(ImGui.MenuItem("Move Down")) {
+					// TODO
+				}
+				if(ImGui.MenuItem("Remove")) {
+					// TODO
+				}
+				ImGui.EndPopup();
+			}
+			
+			if(open) {
 				string tilesetLabel = "<Select Tileset>";
 				if(link.Tileset != null) {
 					tilesetLabel = link.Tileset.ID;
 				}
 
 				if(ImGui.BeginCombo("Slot", $"{link.Slot}", ImGuiComboFlags.None)) {
-					for(int s = 0; s < 16; s++) {
+					bool atLeastOneOption = false;
+					for(int s = 1; s <= maxTilesetSlots; s++) {
 						bool match = false;
 						foreach(var t in scene.Tilesets) {
 							if(t.Slot == s) {
@@ -72,9 +91,13 @@ public class TilePickerPanel : Panel {
 							}
 						}
 						if(match) continue;
+						atLeastOneOption = true;
 						if(ImGui.Selectable($"Slot: {s}")) {
 							link.Slot = s;
 						}
+					}
+					if(!atLeastOneOption) {
+						ImGui.Text("No more slots available");
 					}
 					ImGui.EndCombo();
 				}
@@ -112,16 +135,33 @@ public class TilePickerPanel : Panel {
 					ImGui.Text("No tileset selected...");
 				}
 				ImGui.EndChild(); // tileset-picker
+				ImGui.Separator();
+				ImGui.Spacing();
 			}
-			ImGui.Separator();
-			ImGui.Spacing();
-			ImGui.Spacing();
+			
 			ImGui.PopID(); // i
 		}
-		
-		ImGui.Button("Add", new Vector2(region.X / 2, 0));
-		ImGui.SameLine();
-		ImGui.Button("Remove", new Vector2(region.X / 2, 0));
+
+		int nextSlotAvailable = 1;
+		while(nextSlotAvailable <= maxTilesetSlots) {
+			bool match = false;
+			foreach(var t in scene.Tilesets) {
+				if(t.Slot == nextSlotAvailable) {
+					match = true;
+					break;
+				}
+			}
+			if(match) {
+				nextSlotAvailable++;
+			} else {
+				break;
+			}
+		}
+		ImGui.BeginDisabled(nextSlotAvailable > maxTilesetSlots);
+		if(ImGui.Button("Add", new Vector2(region.X, 0))) {
+			scene.Tilesets.Add(new TilesetLink(scene.File, nextSlotAvailable, null));
+		}
+		ImGui.EndDisabled();
 		
 		ImGui.EndChild(); // tileset-list
 		

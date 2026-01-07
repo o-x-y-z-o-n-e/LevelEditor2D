@@ -86,7 +86,9 @@ public class CanvasPanel : Panel {
 			ImGui.EndPopup();
 		}
 		
-		drawList.PushClipRect(canvas_p0, canvas_p1, true);
+		drawList.PushClipRect(canvas_p0 + new Vector2(1), canvas_p1 - new Vector2(1), true);
+
+		DrawWorldBorder(world, drawList, origin, scale);
 		
 		for(int i = 0; i < world.SceneCount; i++) {
 			DrawScene(world.GetScene(i), drawList, origin, scale);
@@ -112,14 +114,69 @@ public class CanvasPanel : Panel {
 		drawList.PopClipRect();
 	}
 
+	private void DrawWorldBorder(World world, ImDrawListPtr drawList, Vector2 origin, Vector2 scale) {
+		if(world.SceneCount == 0) return;
+		int minX = int.MaxValue;
+		int minY = int.MaxValue;
+		int maxX = int.MinValue;
+		int maxY = int.MinValue;
+		for(int i = 0; i < world.SceneCount; i++) {
+			Scene scene = world.GetScene(i);
+			if(scene.WorldX < minX) minX = scene.WorldX;
+			if(scene.WorldY < minY) minY = scene.WorldY;
+			if(scene.WorldX+scene.TileCountX > maxX) maxX = scene.WorldX + scene.TileCountX;
+			if(scene.WorldY+scene.TileCountY > maxY) maxY = scene.WorldY + scene.TileCountY;
+		}
+		
+		minX--;
+		minY--;
+		maxX++;
+		maxY++;
+
+		Vector2[] points = {
+			origin + scale * new Vector2(minX, minY),
+			origin + scale * new Vector2(maxX, minY),
+			origin + scale * new Vector2(minX, maxY),
+			origin + scale * new Vector2(maxX, maxY)
+		};
+
+		uint boundryLineColor = Color.FromArgb(255, 180, 180, 180).GetPackedValue();
+		int lineSize = 1;
+		int halfLineSize = lineSize / 2;
+		drawList.AddLine(
+			points[0] + new Vector2(0, halfLineSize),
+			points[1] + new Vector2(0, halfLineSize),
+			boundryLineColor,
+			lineSize
+		);
+		drawList.AddLine(
+			points[0] + new Vector2(halfLineSize, 0),
+			points[2] + new Vector2(halfLineSize, 0),
+			boundryLineColor,
+			lineSize
+		);
+		drawList.AddLine(
+			points[3] + new Vector2(-halfLineSize, 0),
+			points[1] + new Vector2(-halfLineSize, 0),
+			boundryLineColor,
+			lineSize
+		);
+		drawList.AddLine(
+			points[3] + new Vector2(0, -halfLineSize),
+			points[2] + new Vector2(0, -halfLineSize),
+			boundryLineColor,
+			lineSize
+		);
+	}
+
 	private void DrawScene(Scene scene, ImDrawListPtr drawList, Vector2 origin, Vector2 scale) {
 		Vector2 scenePos = scale * new Vector2(scene.WorldX, scene.WorldY);
 		
 		Vector2[] points = {
-			origin + scale * new Vector2(scene.WorldX,scene.WorldY),
-			origin + scale * new Vector2(scene.WorldX+scene.TileCountX,scene.WorldY),
-			origin + scale * new Vector2(scene.WorldX,scene.WorldY+scene.TileCountY),
-			origin + scale * new Vector2(scene.WorldX+scene.TileCountX,scene.WorldY+scene.TileCountY)
+			origin + scale * new Vector2(scene.WorldX, scene.WorldY),
+			origin + scale * new Vector2(scene.WorldX+scene.TileCountX, scene.WorldY),
+			origin + scale * new Vector2(scene.WorldX, scene.WorldY+scene.TileCountY),
+			origin + scale * new Vector2(scene.WorldX+scene.TileCountX, scene.WorldY+scene.TileCountY)
 		};
 		
 		// ID label
@@ -134,7 +191,7 @@ public class CanvasPanel : Panel {
 			if(!scene.Layers[i].Visible || !scene.Layers[i].HasTilemap) continue;
 			scene.Layers[i].Tilemap.Draw();
 			uint tex = scene.Layers[i].Tilemap.GetFrameBufferTexture();
-			drawList.AddImage((nint)tex, points[0], points[3]);
+			drawList.AddImage((nint)tex, points[0], points[3], new(0,1), new(1,0));
 		}
 		
 		// Boundry lines

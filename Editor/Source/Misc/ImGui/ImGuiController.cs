@@ -84,6 +84,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             onConfigureIO?.Invoke();
 
             io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+            io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
             io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
 
             CreateDeviceResources();

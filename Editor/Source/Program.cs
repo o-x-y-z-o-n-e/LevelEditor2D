@@ -45,9 +45,13 @@ public static class Program {
 		set => SetSelectedTileset(value);
 	}
 
+	public static Vector2D<int> FramebufferSize => window.FramebufferSize;
+    
 	public static GL GL => gl;
 
 	public static File File => file;
+
+	public static IInputContext Input => input;
 
 	private static MenuBar menuBar;
 	
@@ -135,10 +139,10 @@ public static class Program {
 		tilePickerPanel.Execute();
 		canvasPanel.Execute();
 		
-		if(!test) {
-			test = true;
-			ImGui.SetWindowFocus("Tilesets");
-		}
+		// if(!test) {
+		// 	test = true;
+		// 	ImGui.SetWindowFocus("Tilesets");
+		// }
 
 		controller.Render();
 

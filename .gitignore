@@ -9,6 +9,7 @@ riderModule.iml
 .vscode/
 
 *.user
+*.cap
 
 imgui.ini
 global.json

@@ -11,12 +11,12 @@
     <tileset id="caves-09" group="caves" texture_file="caves_water_channels_stone.png"		px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
   </tilesets>
   <scenes>
-    <scene id="test_scene_0" world_x="0" world_y="0" tile_count_x="32" tile_count_y="32">
+    <scene id="test_scene_0" world_x="0" world_y="0" tile_count_x="16" tile_count_y="16">
       <tilesets>
-        <tileset slot="1" id="caves-03"/>
-		<tileset slot="2" id="caves-07"/>
-		<tileset slot="3" id="caves-01"/>
-		<tileset slot="4" id="caves-02"/>
+        <link slot="1" id="caves-03"/>
+		<link slot="2" id="caves-07"/>
+		<link slot="3" id="caves-01"/>
+		<link slot="4" id="caves-02"/>
       </tilesets>
 	  <groups>
 	    <group id="ground" color="20,200,30"/>
@@ -24,26 +24,48 @@
       <layers>
         <layer name="Layer Name Test" group="ground" visible="true">
           <tilemap>
-            {0:1},{0:0},{0:0},{0:0},
-            {0:0},{1:1},{0:0},{0:0},
-            {0:0},{0:0},{0:0},{0:0},
-            {0:0},{0:0},{0:0},{0:0},
+            0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            2:2,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,2:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+			0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            2:2,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,2:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+			0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            2:2,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,2:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+			0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            2:2,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,2:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,0:1,1:1,0:1,0:1,
           </tilemap>
           <entities>
 		    <entity type="test" label="Test" x="32" y="12" width="16" height="16"/>
           </entities>
         </layer>
-		<layer name="Layer Name Test 2" group="ground">
-          <tilemap>
-            {0:1},{0:0},{0:0},{0:0},
-            {0:0},{1:1},{0:0},{0:0},
-            {0:0},{0:0},{0:0},{0:0},
-            {0:0},{0:0},{0:0},{0:0},
-          </tilemap>
-          <entities>
-          </entities>
-        </layer>
       </layers>
     </scene>
+	<scene id="test_scene_1" world_x="18" world_y="2" tile_count_x="4" tile_count_y="4">
+	  <tilesets>
+        <link slot="1" id="caves-05"/>
+      </tilesets>
+	  <groups>
+	    <group id="ground" color="20,200,30"/>
+	  </groups>
+      <layers>
+        <layer name="Layer Name Test" group="ground" visible="true">
+          <tilemap>
+            0:1,1:1,0:1,0:1,
+            2:1,1:1,0:1,0:1,
+            0:1,0:1,0:1,0:1,
+            0:1,0:1,0:1,2:1,
+          </tilemap>
+          <entities>
+		  </entities>
+        </layer>
+      </layers>
+	</scene>
   </scenes>
 </world>

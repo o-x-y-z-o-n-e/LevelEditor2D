@@ -1,5 +1,8 @@
-﻿using System.Xml.Linq;
+﻿using System.Buffers;
+using System.Xml.Linq;
 using Silk.NET.Maths;
+using Silk.NET.OpenGL;
+using StbImageSharp;
 
 namespace L2D; 
 
@@ -57,6 +60,15 @@ public class Tileset {
 	private Vector2D<int> offset;
 	private Vector2D<int> spacing;
 	private Vector2D<int> size;
+
+	private uint textureArrayHandle;
+	private uint textureTileCountX;
+	private uint textureTileCountY;
+	
+	public uint TextureArrayHandle => textureArrayHandle;
+	public uint TextureTileCountX  => textureTileCountX;
+	public uint TextureTileCountY  => textureTileCountY;
+	
 
 	internal Tileset(File file) {
 		this.file = file;
@@ -129,6 +141,85 @@ public class Tileset {
 		if(textureSource != null) {
 			textureSource.Dispose();
 		}
-		textureSource = Texture.Load(file.GetAbsolutePath(textureFilePath));
+
+		GL gl = Program.GL;
+
+		string path = file.GetAbsolutePath(textureFilePath);
+		
+		textureSource = Texture.Load(path);
+		
+		// temp
+		try {
+			byte[] raw = System.IO.File.ReadAllBytes(path);
+
+			ImageResult image = ImageResult.FromMemory(raw, ColorComponents.RedGreenBlueAlpha);
+
+			int tileCountX = image.Width / size.X;
+			int tileCountY = image.Height / size.Y;
+			int tileCount = tileCountX * tileCountY;
+			
+			// int tileComps = 4;
+			// int tileSize = size.X * size.Y * tileComps;
+			// byte[] reorganized = new byte[image.Data.Length];
+			// for(int i = 0; i < tileCount; i++) {
+			// 	for(int py = 0; py < size.Y; py++) {
+			// 		for(int px = 0; px < size.X; px++) {
+			// 			int dst = 0;
+			// 			int src = 0;
+			// 			
+			// 			dst = (i * tileSize) + ((px + size.X * py) * tileComps);
+			// 			int tx = i % tileCountX;
+			// 			int ty = i / tileCountX;
+            //             
+			// 			src = ()
+			// 			
+			// 			// copy single pixel (all component offsets)
+			// 			for(int c = 0; c < tileComps; c++) {
+			// 				reorganized[dst+c] = image.Data[src+c];
+			// 			}
+			// 		}
+			// 	}
+			// }
+
+			if(textureArrayHandle != 0) {
+				gl.DeleteTexture(textureArrayHandle);
+			}
+
+			textureArrayHandle = gl.GenTexture();
+
+			gl.BindTexture(TextureTarget.Texture2DArray, textureArrayHandle);
+			
+			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureMinFilter, (int)GLEnum.Nearest);
+			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureMagFilter, (int)GLEnum.Nearest);
+			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureWrapS, (int)GLEnum.ClampToEdge);
+			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureWrapT, (int)GLEnum.ClampToEdge);
+			
+			gl.TexStorage3D(TextureTarget.Texture2DArray, 1, GLEnum.Rgba8, (uint)size.X, (uint)size.Y, (uint)tileCount);
+			
+			var readOnlyData = new ReadOnlySpan<byte>(image.Data);
+			
+			gl.PixelStore(GLEnum.UnpackRowLength, image.Width);
+			for(int y = 0; y < tileCountY; y++) {
+				for(int x = 0; x < tileCountX; x++) {
+					int ox = x * size.X;
+					int oy = y * size.Y;
+					int tile = y * tileCountX + x;
+					
+					gl.PixelStore(GLEnum.UnpackSkipPixels, ox);
+					gl.PixelStore(GLEnum.UnpackSkipRows, oy);
+					
+					gl.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, tile, (uint)size.X, (uint)size.Y, 1, GLEnum.Rgba, GLEnum.UnsignedByte, readOnlyData);
+				}
+			}
+			
+			// gl.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, 0, (uint)size.X, (uint)size.Y, (uint)tileCount, GLEnum.Rgba8, GLEnum.UnsignedByte, readOnlyData);
+			
+			gl.BindTexture(TextureTarget.Texture2DArray, 0);
+			
+			gl.PixelStore(GLEnum.UnpackRowLength, 0);
+			gl.PixelStore(GLEnum.UnpackSkipPixels, 0);
+			gl.PixelStore(GLEnum.UnpackSkipRows, 0);
+			
+		} catch { }
 	}
 }

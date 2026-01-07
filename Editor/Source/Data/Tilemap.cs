@@ -1,9 +1,12 @@
-﻿using System.Xml.Linq;
+﻿using System.Numerics;
+using System.Xml.Linq;
 using Silk.NET.OpenGL;
 
 namespace L2D;
 
 public class Tilemap : IDisposable {
+
+	private const uint MAX_TILESETS = 16; 
 	
 	public Layer Layer => layer;
 
@@ -23,6 +26,9 @@ public class Tilemap : IDisposable {
 	private uint frameBufferTextureHandle;
 	
 	private static uint shaderProgramHandle;
+	private static int shaderTileSizeUniform;
+	private static int shaderScreenMatrixUniform;
+	private static int[] shaderTextureUniforms;
 	
 	internal Tilemap(Layer layer) {
 		this.layer = layer;
@@ -36,12 +42,13 @@ public class Tilemap : IDisposable {
 	internal void Parse(XElement tilemapElement) {
 		Resize();
 		string[] items = tilemapElement.Value.Split(',');
-		for(int i = 0; i < items.Length; i++) {
+		for(int i = 0; i < items.Length && i < grid.Length; i++) {
 			int tile = 0;
 			int tileset = 0;
 			string[] parts = items[i].Split(':');
 			if(parts.Length > 0) int.TryParse(parts[0].Trim(), out tile);
 			if(parts.Length > 1) int.TryParse(parts[1].Trim(), out tileset);
+			
 			grid[i % width, i / width] = new(tile, tileset);
 		}
 	}
@@ -96,6 +103,14 @@ public class Tilemap : IDisposable {
 		
 		gl.DeleteShader(vert);
 		gl.DeleteShader(frag);
+		
+		shaderTileSizeUniform = gl.GetUniformLocation(shaderProgramHandle, "TileSize");
+		shaderScreenMatrixUniform = gl.GetUniformLocation(shaderProgramHandle, "ScreenMatrix");
+
+		shaderTextureUniforms = new int[MAX_TILESETS];
+		for(int i = 0; i < MAX_TILESETS; i++) {
+			shaderTextureUniforms[i] = gl.GetUniformLocation(shaderProgramHandle, $"Tilesets[{i}]");
+		}
 		
 		Console.WriteLine("Tilemap shaders compiled");
 	}
@@ -153,11 +168,11 @@ public class Tilemap : IDisposable {
 
 		if(tileBuffer == null || tileBuffer.Length != count) {
 			tileBuffer = new float[count];
-			gl.BufferData(GLEnum.ArrayBuffer, (uint)(sizeof(float) * count), null, GLEnum.StaticDraw);
+			gl.BufferData(GLEnum.ArrayBuffer, (nuint)(sizeof(float) * count), null, GLEnum.StaticDraw);
 		}
 
-		for(int x = 0; x < width; x++) {
-			for(int y = 0; y < height; y++) {
+		for(int y = 0; y < height; y++) {
+			for(int x = 0; x < width; x++) {
 				int i = x + y * width;
 				tileBuffer[i * 4 + 0] = x;
 				tileBuffer[i * 4 + 1] = y;
@@ -166,8 +181,8 @@ public class Tilemap : IDisposable {
 			}
 		}
 
-		fixed(void* raw = grid) {
-			gl.BufferSubData(GLEnum.ArrayBuffer, 0, (uint)(sizeof(float) * count), raw);
+		fixed(void* raw = tileBuffer) {
+			gl.BufferSubData(GLEnum.ArrayBuffer, 0, (nuint)(sizeof(float) * count), raw);
 		}
 		
 		gl.BindBuffer(GLEnum.ArrayBuffer, 0);
@@ -186,7 +201,7 @@ public class Tilemap : IDisposable {
 		if(vertexArrayHandle == 0) {
 			vertexArrayHandle = gl.GenVertexArray();
 		}
-		
+
 		gl.BindVertexArray(vertexArrayHandle);
 			
 		gl.BindBuffer(GLEnum.ArrayBuffer, vertexBufferHandle);
@@ -196,40 +211,58 @@ public class Tilemap : IDisposable {
 		gl.BindBuffer(GLEnum.ArrayBuffer, tileBufferHandle);
 		gl.EnableVertexAttribArray(1);
 		gl.VertexAttribPointer(1, 2, GLEnum.Float, false, sizeof(float) * 4, (void*)(0));
+		
 		gl.EnableVertexAttribArray(2);
 		gl.VertexAttribPointer(2, 2, GLEnum.Float, false, sizeof(float) * 4, (void*)(2 * sizeof(float)));
+		
 		gl.BindBuffer(GLEnum.ArrayBuffer, 0);
-			
+		
 		gl.VertexAttribDivisor(1, 1);
 		gl.VertexAttribDivisor(2, 1);
 		
 		gl.BindVertexArray(0);
 	}
 
-	public void Draw() {
+	public unsafe void Draw() {
 		CreateShaders();
 		CreateFrameBuffer();
 		CreateTileBuffer();
 		CreateVertexArray();
 		
 		GL gl = Program.GL;
-		
-		var tsl = gl.GetUniformLocation(shaderProgramHandle, "TileSize");
+
+		Matrix4x4 screenMatrix = Matrix4x4.Identity;
+		screenMatrix *= Matrix4x4.CreateScale(2.0F / frameBufferWidth, -2.0F / frameBufferHeight, 1.0F);
+		screenMatrix *= Matrix4x4.CreateTranslation(-1.0F, 1.0F, 0.0F);
 		
 		gl.BindFramebuffer(GLEnum.Framebuffer, frameBufferHandle);
+		gl.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
 		
-		gl.Disable(GLEnum.DepthTest);
-		
-		gl.ClearColor(0.5f, 0.0f, 0.5f, 1.0f);
+		gl.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		gl.Clear(ClearBufferMask.ColorBufferBit);
 		
 		gl.UseProgram(shaderProgramHandle);
-		gl.Uniform2(tsl, layer.Scene.World.TileWidth, layer.Scene.World.TileHeight);
+		gl.Uniform2(shaderTileSizeUniform, new Vector2(layer.Scene.World.TileWidth, layer.Scene.World.TileHeight));
+		gl.UniformMatrix4(shaderScreenMatrixUniform, 1, false, (float*)&screenMatrix);
+
+		for(int i = 0; i < layer.Scene.Tilesets.Count; i++) {
+			var link = layer.Scene.Tilesets[i];
+			if(link.Tileset == null || link.Slot <= 0) continue;
+			int index = link.Slot - 1;
+			gl.ActiveTexture(GLEnum.Texture0 + index);
+			gl.BindTexture(GLEnum.Texture2DArray, link.Tileset.TextureArrayHandle);
+			gl.Uniform1(shaderTextureUniforms[index], index);
+		}
+		
 		gl.BindVertexArray(vertexArrayHandle);
+		
 		gl.DrawArraysInstanced(GLEnum.Triangles, 0, 6, (uint)(width * height));
+		
 		gl.BindVertexArray(0);
 		
 		gl.BindFramebuffer(GLEnum.Framebuffer, 0);
+		
+		gl.Viewport(0, 0, (uint)Program.FramebufferSize.X, (uint)Program.FramebufferSize.Y);
 	}
 
 	public void Dispose() {
@@ -257,11 +290,11 @@ layout (location = 2) in vec2 aTileRef;
 out vec2 TexCoords;
 out vec2 TileRef;
 
+uniform mat4 ScreenMatrix;
 uniform vec2 TileSize;
 
-void main()
-{
-    gl_Position = vec4((aOffset.x + aPos.x) * TileSize.x, (aOffset.y + aPos.y) * TileSize.y, 0.0, 1.0);
+void main() {
+    gl_Position = ScreenMatrix * vec4((aOffset.x + aPos.x) * TileSize.x, (aOffset.y + aPos.y) * TileSize.y, 0.0, 1.0);
     TexCoords = aPos;
 	TileRef = aTileRef;
 }
@@ -269,19 +302,36 @@ void main()
 	
 	private const string FRAGMENT_SRC = @"
 #version 330 core
-out vec4 FragColor;
-  
+
 in vec2 TexCoords;
 in vec2 TileRef;
 
-// uniform sampler2DArray Tilesets[16];
-uniform sampler2DArray Tileset1;
+out vec4 FragColor;
+
+uniform sampler2DArray Tilesets[16];
+// uniform sampler2DArray Tileset1;
+// uniform sampler2DArray Tileset2;
+// uniform sampler2DArray Tileset3;
+// uniform sampler2DArray Tileset4;
+// uniform sampler2DArray Tileset5;
+// uniform sampler2DArray Tileset6;
+// uniform sampler2DArray Tileset7;
+// uniform sampler2DArray Tileset8;
 
 void main() {
 	int tileset = int(TileRef.y);
-	// Tilesets[tileset]
+    FragColor = texture(Tilesets[tileset], vec3(TexCoords.xy, TileRef.x));
     // FragColor = texture(Tileset1, vec3(TexCoords.xy, TileRef.x));
-	FragColor = vec4(TexCoords.x, TexCoords.y, 0, 1);
+
+	// if(tileset == 0) {
+	// 	FragColor = texture(Tileset1, vec3(TexCoords.xy, TileRef.x));
+	// } else if(tileset == 1) {
+	// 	FragColor = texture(Tileset2, vec3(TexCoords.xy, TileRef.x));
+	// } else if(tileset == 2) {
+	// 	FragColor = texture(Tileset3, vec3(TexCoords.xy, TileRef.x));
+	// } else if(tileset == 3) {
+	// 	FragColor = texture(Tileset4, vec3(TexCoords.xy, TileRef.x));
+	// }
 }
 ";
 #endregion ==== GLSL SHADER SOURCE ====

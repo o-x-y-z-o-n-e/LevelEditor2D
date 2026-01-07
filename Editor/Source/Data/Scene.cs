@@ -5,6 +5,7 @@ namespace L2D;
 
 public class Scene {
 
+	public File File => file;
 	public World World => file.World;
 
 	public string ID {
@@ -69,10 +70,10 @@ public class Scene {
 		tileCountX = sceneElement.Attribute("tile_count_x").ParseAsInt();
 		tileCountY = sceneElement.Attribute("tile_count_y").ParseAsInt();
 
-		foreach(var tilesetElement in sceneElement.Element("tilesets").Elements("tileset")) {
+		foreach(var linkElement in sceneElement.Element("tilesets").Elements("link")) {
 			TilesetLink tileset = new TilesetLink(file);
 			tilesets.Add(tileset);
-			tileset.Parse(tilesetElement);
+			tileset.Parse(linkElement);
 		}
 
 		foreach(var groupElement in sceneElement.Element("groups").Elements("group")) {
@@ -156,6 +157,18 @@ public class TilesetLink {
 		this.file = file;
 		slot = 1;
 		tileset = null;
+	}
+	
+	internal TilesetLink(File file, int slot) {
+		this.file = file;
+		this.slot = slot;
+		tileset = null;
+	}
+	
+	internal TilesetLink(File file, int slot, Tileset tileset) {
+		this.file = file;
+		this.slot = slot;
+		this.tileset = tileset;
 	}
 
 	internal void Parse(XElement sceneElement) {

@@ -22,6 +22,8 @@ public class World {
 	public int TilesetCount => tilesets.Count;
 	public int SceneCount => scenes.Count;
 
+	public int MaxTilesetSlots => maxTilesetSlots;
+
 	public IEnumerable<Tileset> Tilesets => tilesets;
 
 	private File file;
@@ -30,6 +32,7 @@ public class World {
 	private int tileHeight;
 	private List<Tileset> tilesets;
 	private List<Scene> scenes;
+	private int maxTilesetSlots;
 
 	internal World(File file) {
 		this.file = file;
@@ -39,6 +42,7 @@ public class World {
 		tileHeight = 16;
 		tilesets = new();
 		scenes = new();
+		maxTilesetSlots = 16;
 	}
 	
 	public Tileset GetTileset(int index) {

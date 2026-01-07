@@ -4,7 +4,7 @@ namespace L2D;
 
 public class Layer {
 
-	public Scene Scene => scene;	
+	public Scene Scene => scene;
 
 	public string Name {
 		get => name;
