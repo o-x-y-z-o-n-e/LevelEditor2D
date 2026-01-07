@@ -8,14 +8,20 @@ public class CanvasPanel : Panel {
 	
 	private Vector2 scrolling;
 	private float zooming;
+	private bool gridScenesOnly;
+	
+	private const float ZOOM_RANGE_MIN = -5;
+	private const float ZOOM_RANGE_MAX = 15;
+	private const float ZOOM_RANGE_SCALE = 0.25F;
 
 	public CanvasPanel() {
 		Title = "Canvas";
 
 		flags |= ImGuiWindowFlags.NoScrollWithMouse;
 		
-		scrolling = new(64, 64);
+		scrolling = new(0, 0);
 		zooming = 0;
+		gridScenesOnly = false;
 	}
 
 	protected override void Update() {
@@ -32,11 +38,12 @@ public class CanvasPanel : Panel {
 
 		World world = Program.File.World;
 
-		float zoom_range_min = -5;
-		float zoom_range_max = 15;
-		float zoom_range_scale = 0.25F;
+		ImGui.Checkbox("Grid Scenes Only", ref gridScenesOnly);
+		
+		ImGui.SameLine();
+		
 		ImGui.SetNextItemWidth(400);
-		ImGui.SliderFloat("Zoom", ref zooming, zoom_range_min, zoom_range_max);
+		ImGui.SliderFloat("Zoom", ref zooming, ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
 		ImGui.OpenPopupOnItemClick("zoom-menu", ImGuiPopupFlags.MouseButtonRight);
 		if(ImGui.BeginPopup("zoom-menu")) {
 			if(ImGui.MenuItem("Reset", null, false, true)) {
@@ -58,22 +65,28 @@ public class CanvasPanel : Panel {
 		ImGui.InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags.MouseButtonLeft | ImGuiButtonFlags.MouseButtonRight);
 		bool is_hovered = ImGui.IsItemHovered(); // Hovered
 		bool is_active = ImGui.IsItemActive();   // Held
-		float zoom = MathF.Exp(zooming * zoom_range_scale);
-		Vector2 origin = new(canvas_p0.X + scrolling.X, canvas_p0.Y + scrolling.Y); // Lock scrolled origin
-		Vector2 scale = new Vector2(world.TileWidth, world.TileHeight) * zoom;
-		Vector2 mouse_pos_in_canvas = new(io.MousePos.X - origin.X, io.MousePos.Y - origin.Y);
 		
+		float zoom = MathF.Exp(zooming * ZOOM_RANGE_SCALE);
+		
+		Matrix4x4 transform = Matrix4x4.Identity;
+
+		Vector2 zoomScale = new(world.TileWidth * zoom, world.TileHeight * zoom);
+		transform *= Matrix4x4.CreateTranslation(canvas_sz.X / 2 / zoomScale.X, canvas_sz.Y / 2 / zoomScale.Y, 0);
+		transform *= Matrix4x4.CreateScale(zoomScale.X, zoomScale.Y, 1);
+		transform *= Matrix4x4.CreateTranslation(scrolling.X * zoom, scrolling.Y * zoom, 0);
+		transform *= Matrix4x4.CreateTranslation(canvas_p0.X, canvas_p0.Y, 0);
+		
+		// TODO: mouse center zoom option
 		// TODO: clamp scroll
-		// TODO: center zoom
 		
 		if(is_active && ImGui.IsMouseDragging(ImGuiMouseButton.Right, -1.0F)) {
-			scrolling.X += io.MouseDelta.X;
-			scrolling.Y += io.MouseDelta.Y;
+			scrolling.X += io.MouseDelta.X / zoom;
+			scrolling.Y += io.MouseDelta.Y / zoom;
 		}
 		if(is_hovered) {
 			zooming += io.MouseWheel;
 			if(io.MouseWheel != 0.0F) {
-				zooming = float.Clamp(float.Round(zooming), zoom_range_min, zoom_range_max);
+				zooming = float.Clamp(float.Round(zooming), ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
 			}
 		}
 
@@ -88,33 +101,16 @@ public class CanvasPanel : Panel {
 		
 		drawList.PushClipRect(canvas_p0 + new Vector2(1), canvas_p1 - new Vector2(1), true);
 
-		DrawWorldBorder(world, drawList, origin, scale);
+		DrawWorldBorder(world, drawList, transform);
 		
 		for(int i = 0; i < world.SceneCount; i++) {
-			DrawScene(world.GetScene(i), drawList, origin, scale);
-		}
-		
-		int grid_alpha = (int)(20 * Utilities.Map(zooming, zoom_range_min / 2.0F, 0, 0.0F, 1.0F));
-		Vector2 grid_step = scale;
-		for(float x = scrolling.X % grid_step.X; x < canvas_sz.X; x += grid_step.X) {
-			drawList.AddLine(
-				new Vector2(canvas_p0.X + x, canvas_p0.Y),
-				new Vector2(canvas_p0.X + x, canvas_p1.Y),
-				Color.FromArgb(grid_alpha, 200, 200, 200).GetPackedValue()
-			);
-		}
-		for(float y = scrolling.Y % grid_step.Y; y < canvas_sz.Y; y += grid_step.Y) {
-			drawList.AddLine(
-				new Vector2(canvas_p0.X, canvas_p0.Y + y),
-				new Vector2(canvas_p1.X, canvas_p0.Y + y),
-				Color.FromArgb(grid_alpha, 200, 200, 200).GetPackedValue()
-			);
+			DrawScene(world.GetScene(i), drawList, transform);
 		}
 		
 		drawList.PopClipRect();
 	}
 
-	private void DrawWorldBorder(World world, ImDrawListPtr drawList, Vector2 origin, Vector2 scale) {
+	private void DrawWorldBorder(World world, ImDrawListPtr drawList, Matrix4x4 transform) {
 		if(world.SceneCount == 0) return;
 		int minX = int.MaxValue;
 		int minY = int.MaxValue;
@@ -127,61 +123,57 @@ public class CanvasPanel : Panel {
 			if(scene.WorldX+scene.TileCountX > maxX) maxX = scene.WorldX + scene.TileCountX;
 			if(scene.WorldY+scene.TileCountY > maxY) maxY = scene.WorldY + scene.TileCountY;
 		}
-		
 		minX--;
 		minY--;
 		maxX++;
 		maxY++;
+		Vector2 p0 = Vector2.Transform(new Vector2(minX, minY), transform);
+		Vector2 p1 = Vector2.Transform(new Vector2(maxX, minY), transform);
+		Vector2 p2 = Vector2.Transform(new Vector2(minX, maxY), transform);
+		Vector2 p3 = Vector2.Transform(new Vector2(maxX, maxY), transform);
 
-		Vector2[] points = {
-			origin + scale * new Vector2(minX, minY),
-			origin + scale * new Vector2(maxX, minY),
-			origin + scale * new Vector2(minX, maxY),
-			origin + scale * new Vector2(maxX, maxY)
-		};
+		if(!gridScenesOnly) {
+			DrawGrid(new Rectangle(minX, minY, maxX - minX, maxY - minY), drawList, transform);
+		}
 
 		uint boundryLineColor = Color.FromArgb(255, 180, 180, 180).GetPackedValue();
 		int lineSize = 1;
 		int halfLineSize = lineSize / 2;
 		drawList.AddLine(
-			points[0] + new Vector2(0, halfLineSize),
-			points[1] + new Vector2(0, halfLineSize),
+			p0 + new Vector2(0, halfLineSize),
+			p1 + new Vector2(0, halfLineSize),
 			boundryLineColor,
 			lineSize
 		);
 		drawList.AddLine(
-			points[0] + new Vector2(halfLineSize, 0),
-			points[2] + new Vector2(halfLineSize, 0),
+			p0 + new Vector2(halfLineSize, 0),
+			p2 + new Vector2(halfLineSize, 0),
 			boundryLineColor,
 			lineSize
 		);
 		drawList.AddLine(
-			points[3] + new Vector2(-halfLineSize, 0),
-			points[1] + new Vector2(-halfLineSize, 0),
+			p3 + new Vector2(-halfLineSize, 0),
+			p1 + new Vector2(-halfLineSize, 0),
 			boundryLineColor,
 			lineSize
 		);
 		drawList.AddLine(
-			points[3] + new Vector2(0, -halfLineSize),
-			points[2] + new Vector2(0, -halfLineSize),
+			p3 + new Vector2(0, -halfLineSize),
+			p2 + new Vector2(0, -halfLineSize),
 			boundryLineColor,
 			lineSize
 		);
 	}
 
-	private void DrawScene(Scene scene, ImDrawListPtr drawList, Vector2 origin, Vector2 scale) {
-		Vector2 scenePos = scale * new Vector2(scene.WorldX, scene.WorldY);
-		
-		Vector2[] points = {
-			origin + scale * new Vector2(scene.WorldX, scene.WorldY),
-			origin + scale * new Vector2(scene.WorldX+scene.TileCountX, scene.WorldY),
-			origin + scale * new Vector2(scene.WorldX, scene.WorldY+scene.TileCountY),
-			origin + scale * new Vector2(scene.WorldX+scene.TileCountX, scene.WorldY+scene.TileCountY)
-		};
+	private void DrawScene(Scene scene, ImDrawListPtr drawList, Matrix4x4 transform) {
+		Vector2 p0 = Vector2.Transform(new Vector2(scene.WorldX, scene.WorldY), transform);
+		Vector2 p1 = Vector2.Transform(new Vector2(scene.WorldX + scene.TileCountX, scene.WorldY), transform);
+		Vector2 p2 = Vector2.Transform(new Vector2(scene.WorldX, scene.WorldY + scene.TileCountY), transform);
+		Vector2 p3 = Vector2.Transform(new Vector2(scene.WorldX + scene.TileCountX, scene.WorldY + scene.TileCountY), transform);
 		
 		// ID label
 		Vector2 idTextSize = ImGui.CalcTextSize(scene.ID);
-		Vector2 idTextPos = origin + scenePos - Vector2.UnitY * idTextSize.Y;
+		Vector2 idTextPos = p0 - Vector2.UnitY * idTextSize.Y;
 		uint idTextColor = scene == Program.SelectedScene ? Color.FromArgb(255, 20, 220, 20).GetPackedValue() : 0xFFFFFFFF;
 		drawList.AddText(idTextPos, idTextColor, scene.ID);
 		drawList.AddRectFilled(idTextPos, idTextPos + idTextSize, Color.FromArgb(40, 180, 180, 180).GetPackedValue());
@@ -191,7 +183,12 @@ public class CanvasPanel : Panel {
 			if(!scene.Layers[i].Visible || !scene.Layers[i].HasTilemap) continue;
 			scene.Layers[i].Tilemap.Draw();
 			uint tex = scene.Layers[i].Tilemap.GetFrameBufferTexture();
-			drawList.AddImage((nint)tex, points[0], points[3], new(0,1), new(1,0));
+			drawList.AddImage((nint)tex, p0, p3, new(0,1), new(1,0));
+		}
+		
+		// Grid
+		if(gridScenesOnly) {
+			DrawGrid(new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY), drawList, transform);
 		}
 		
 		// Boundry lines
@@ -199,28 +196,46 @@ public class CanvasPanel : Panel {
 		int lineSize = 1;
 		int halfLineSize = lineSize / 2;
 		drawList.AddLine(
-			points[0] + new Vector2(0, halfLineSize),
-			points[1] + new Vector2(0, halfLineSize),
+			p0 + new Vector2(0, halfLineSize),
+			p1 + new Vector2(0, halfLineSize),
 			boundryLineColor,
 			lineSize
 		);
 		drawList.AddLine(
-			points[0] + new Vector2(halfLineSize, 0),
-			points[2] + new Vector2(halfLineSize, 0),
+			p0 + new Vector2(halfLineSize, 0),
+			p2 + new Vector2(halfLineSize, 0),
 			boundryLineColor,
 			lineSize
 		);
 		drawList.AddLine(
-			points[3] + new Vector2(-halfLineSize, 0),
-			points[1] + new Vector2(-halfLineSize, 0),
+			p3 + new Vector2(-halfLineSize, 0),
+			p1 + new Vector2(-halfLineSize, 0),
 			boundryLineColor,
 			lineSize
 		);
 		drawList.AddLine(
-			points[3] + new Vector2(0, -halfLineSize),
-			points[2] + new Vector2(0, -halfLineSize),
+			p3 + new Vector2(0, -halfLineSize),
+			p2 + new Vector2(0, -halfLineSize),
 			boundryLineColor,
 			lineSize
 		);
+	}
+
+	private void DrawGrid(Rectangle region, ImDrawListPtr drawList, Matrix4x4 transform) {
+		int gridAlpha = (int)(20 * Utilities.Map(zooming, ZOOM_RANGE_MIN / 2.0F, 0, 0.0F, 1.0F));
+		for(int x = region.X; x <= region.X + region.Width; x++) {
+			drawList.AddLine(
+				Vector2.Transform(new Vector2(x, region.Y), transform),
+				Vector2.Transform(new Vector2(x, region.Y + region.Height), transform),
+				Color.FromArgb(gridAlpha, 200, 200, 200).GetPackedValue()
+			);
+		}
+		for(int y = region.Y; y <= region.Y + region.Height; y++) {
+			drawList.AddLine(
+				Vector2.Transform(new Vector2(region.X, y), transform),
+				Vector2.Transform(new Vector2(region.X + region.Width, y), transform),
+				Color.FromArgb(gridAlpha, 200, 200, 200).GetPackedValue()
+			);
+		}
 	}
 }
