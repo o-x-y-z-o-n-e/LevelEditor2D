@@ -6,11 +6,13 @@ namespace L2D;
 
 public class Tilemap : IDisposable {
 
-	private const uint MAX_TILESETS = 16; 
+	private const uint MAX_TILESETS = 16;
 	
-	public Layer Layer => layer;
-
-	private Layer layer;
+	public Scene Scene => scene;
+	
+	public TileRef[,] Grid => grid;
+	
+	private Scene scene;
 	private TileRef[,] grid;
 	private int width;
 	private int height;
@@ -30,9 +32,14 @@ public class Tilemap : IDisposable {
 	private static int shaderScreenMatrixUniform;
 	private static int[] shaderTextureUniforms;
 	
-	internal Tilemap(Layer layer) {
-		this.layer = layer;
-		Resize();
+	internal Tilemap(Scene scene) {
+		this.scene = scene;
+		Resize(scene.TileCountX, scene.TileCountY);
+	}
+	
+	internal Tilemap(TileDrawBrush brush) {
+		this.scene = brush.Scene;
+		Resize(brush.Width, brush.Height);
 	}
 
 	~Tilemap() {
@@ -40,7 +47,7 @@ public class Tilemap : IDisposable {
 	}
 	
 	internal void Parse(XElement tilemapElement) {
-		Resize();
+		Resize(scene.TileCountX, scene.TileCountY);
 		string[] items = tilemapElement.Value.Split(',');
 		for(int i = 0; i < items.Length && i < grid.Length; i++) {
 			int tile = 0;
@@ -53,13 +60,19 @@ public class Tilemap : IDisposable {
 		}
 	}
 	
-	public void Resize() {
-		if(width == layer.Scene.TileCountX && height == layer.Scene.TileCountY) {
-			return;
+	public void Resize(int w, int h) {
+		if(width == w && height == h) return;
+		var newGrid = new TileRef[w, h];
+		if(grid != null) {
+			for(int x = 0; x < width && x < w; x++) {
+				for(int y = 0; y < height && y < h; y++) {
+					newGrid[x, y] = grid[x, y];
+				}
+			}
 		}
-		width = layer.Scene.TileCountX;
-		height = layer.Scene.TileCountY;
-		grid = new TileRef[width, height];
+		width = w;
+		height = h;
+		grid = newGrid;
 	}
 
 	public uint GetFrameBufferTexture() {
@@ -118,8 +131,8 @@ public class Tilemap : IDisposable {
 	private unsafe void CreateFrameBuffer() {
 		GL gl = Program.GL;
 		
-		uint w = (uint)(width * layer.Scene.World.TileWidth);
-		uint h = (uint)(height * layer.Scene.World.TileHeight);
+		uint w = (uint)(width * scene.World.TileWidth);
+		uint h = (uint)(height * scene.World.TileHeight);
 
 		if(frameBufferWidth == w && frameBufferHeight == h) return;
 		
@@ -223,7 +236,7 @@ public class Tilemap : IDisposable {
 		gl.BindVertexArray(0);
 	}
 
-	public unsafe void Draw() {
+	public unsafe void Render() {
 		CreateShaders();
 		CreateFrameBuffer();
 		CreateTileBuffer();
@@ -242,11 +255,11 @@ public class Tilemap : IDisposable {
 		gl.Clear(ClearBufferMask.ColorBufferBit);
 		
 		gl.UseProgram(shaderProgramHandle);
-		gl.Uniform2(shaderTileSizeUniform, new Vector2(layer.Scene.World.TileWidth, layer.Scene.World.TileHeight));
+		gl.Uniform2(shaderTileSizeUniform, new Vector2(scene.World.TileWidth, scene.World.TileHeight));
 		gl.UniformMatrix4(shaderScreenMatrixUniform, 1, false, (float*)&screenMatrix);
 
-		for(int i = 0; i < layer.Scene.Tilesets.Count; i++) {
-			var link = layer.Scene.Tilesets[i];
+		for(int i = 0; i < scene.Tilesets.Count; i++) {
+			var link = scene.Tilesets[i];
 			if(link.Tileset == null || link.Slot <= 0) continue;
 			int index = link.Slot - 1;
 			gl.ActiveTexture(GLEnum.Texture0 + index);
@@ -273,10 +286,11 @@ public class Tilemap : IDisposable {
 	protected void Dispose(bool disposing) {
 		if(disposed) return;
 		if(disposing) { }
-		Program.GL.DeleteFramebuffer(frameBufferHandle);
-		Program.GL.DeleteTexture(frameBufferTextureHandle);
-		Program.GL.DeleteBuffer(tileBufferHandle);
-		Program.GL.DeleteBuffer(vertexArrayHandle);
+		Program.GL.DeleteTextures(new ReadOnlySpan<uint>(frameBufferTextureHandle));
+		Program.GL.DeleteFramebuffers(new ReadOnlySpan<uint>(frameBufferHandle));
+		Program.GL.DeleteBuffers(new ReadOnlySpan<uint>(tileBufferHandle));
+		Program.GL.DeleteBuffers(new ReadOnlySpan<uint>(vertexArrayHandle));
+		Console.WriteLine("Disposed tilemap resources");
 		disposed = true;
 	}
 	
@@ -360,7 +374,3 @@ public struct TileRef {
 		TilesetSlot = tilesetSlot;
 	}
 }
-
-public struct Tile {
-	
-} 

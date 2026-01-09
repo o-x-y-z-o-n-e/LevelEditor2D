@@ -79,7 +79,8 @@ public static class Program {
 	public static void Main(string[] args) {
 		WindowOptions options = WindowOptions.Default with {
 			WindowState = WindowState.Maximized,
-			Title = "L2D"
+			Title = "L2D",
+			API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(4, 1))
 		};
 		window = Window.Create(options);
 		window.VSync = false;

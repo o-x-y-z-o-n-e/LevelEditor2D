@@ -75,12 +75,15 @@ public class TilePickerPanel : Panel {
 			}
 			
 			if(open) {
+				Tileset tileset = link.Tileset;
 				string tilesetLabel = "<Select Tileset>";
-				if(link.Tileset != null) {
-					tilesetLabel = link.Tileset.ID;
+				if(tileset != null) {
+					tilesetLabel = tileset.ID;
 				}
+				
+				string slotPreviewLabel = $"{link.Slot}";
 
-				if(ImGui.BeginCombo("Slot", $"{link.Slot}", ImGuiComboFlags.None)) {
+				if(ImGui.BeginCombo("Slot", slotPreviewLabel, ImGuiComboFlags.None)) {
 					bool atLeastOneOption = false;
 					for(int s = 1; s <= maxTilesetSlots; s++) {
 						bool match = false;
@@ -108,7 +111,7 @@ public class TilePickerPanel : Panel {
 				ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
 				ImGui.Text("Tileset");
 				
-				Texture texSource = link.Tileset?.GetTexture();
+				Texture texSource = tileset?.GetTexture();
 				
 				Vector2 areaPos = ImGui.GetCursorScreenPos();
 				Vector2 areaSize = new(region.X, texSource?.Height * scale + 20 ?? region.X);
@@ -123,13 +126,51 @@ public class TilePickerPanel : Panel {
 				// drawList.AddRectFilled(areaPos, p1, Utilities.GetPackedColor(50, 50, 50, 255)); // background
 				// drawList.AddRect(p0, p1, Utilities.GetPackedColor(180, 180, 180, 255)); // border
 				// ImGui.Dummy(areaSize);
-				if(texSource != null) {
+				if(tileset != null && texSource != null) {
+					Vector2 origin = ImGui.GetCursorPos();
 					Vector2 border = new(4,4);
-					if(texSource != null) {
-						Vector2 size = new Vector2(texSource.Width, texSource.Height) * scale;
-						//ImGui.PushClipRect(p0 + new Vector2(1), p1 - new Vector2(1), true);
-						ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1,1,1,1));
-						//ImGui.PopClipRect();
+					Vector2 size = new Vector2(texSource.Width, texSource.Height) * scale;
+					//ImGui.PushClipRect(p0 + new Vector2(1), p1 - new Vector2(1), true);
+					ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1,1,1,1));
+					//ImGui.PopClipRect();
+					
+					var brush = Program.CanvasPanel.GetActiveBrush();
+					
+					for(int y = 0; y < tileset.TextureTileCountY; y++) {
+						for(int x = 0; x < tileset.TextureTileCountX; x++) {
+							int tileID = (y * tileset.TextureTileCountX + x) + 1;
+							bool selected = false;
+
+							if(brush != null) {
+								for(int by = 0; by < brush.Height; by++) {
+									for(int bx = 0; bx < brush.Width; bx++) {
+										var tile = brush.Tilemap.Grid[bx, by];
+										selected = tile.TileID == tileID && tile.TilesetSlot == link.Slot;
+										if(selected) break;
+									}
+									if(selected) break;
+								}
+							}
+							
+							ImGui.SetCursorPos(origin + new Vector2(scene.World.TileWidth * x, scene.World.TileHeight * y) * scale);
+							ImGui.PushID(tileID);
+							Vector2 c = ImGui.GetCursorScreenPos();
+							Vector2 s = new Vector2(scene.World.TileWidth, scene.World.TileHeight) * scale;
+							if(ImGui.InvisibleButton("##tile", s, ImGuiButtonFlags.EnableNav)) {
+								if(brush != null) {
+									brush.SetSize(1, 1, true);
+									brush.SetTile(0, 0, tileID, link.Slot);
+								}
+							}
+							if(ImGui.IsItemHovered()) {
+								ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
+							}
+							if(selected) {
+								ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
+								ImGui.GetWindowDrawList().AddRect(c, c + s, Utilities.GetPackedColor(255, 255, 255, 255));
+							}
+							ImGui.PopID();
+						}
 					}
 				} else {
 					ImGui.Text("No tileset selected...");

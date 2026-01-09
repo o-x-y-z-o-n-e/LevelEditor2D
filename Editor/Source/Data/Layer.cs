@@ -40,7 +40,7 @@ public class Layer {
 		visible = layerElement.Attribute("visible").ParseAsBool(true);
 		var tilemapElement = layerElement.Element("tilemap");
 		if(tilemapElement != null) {
-			tilemap = new Tilemap(this);
+			tilemap = new Tilemap(scene);
 			tilemap.Parse(tilemapElement);
 		}
 	}

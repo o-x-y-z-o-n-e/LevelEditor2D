@@ -8,6 +8,8 @@ namespace L2D;
 
 public class Tileset {
 
+	// TODO: fix size when not same as world tile size
+	
 	public string ID {
 		get => id;
 		set => id = value;
@@ -62,12 +64,12 @@ public class Tileset {
 	private Vector2D<int> size;
 
 	private uint textureArrayHandle;
-	private uint textureTileCountX;
-	private uint textureTileCountY;
+	private int textureTileCountX;
+	private int textureTileCountY;
 	
 	public uint TextureArrayHandle => textureArrayHandle;
-	public uint TextureTileCountX  => textureTileCountX;
-	public uint TextureTileCountY  => textureTileCountY;
+	public int TextureTileCountX  => textureTileCountX;
+	public int TextureTileCountY  => textureTileCountY;
 	
 
 	internal Tileset(File file) {
@@ -157,6 +159,9 @@ public class Tileset {
 			int tileCountX = image.Width / size.X;
 			int tileCountY = image.Height / size.Y;
 			int tileCount = tileCountX * tileCountY;
+
+			textureTileCountX = tileCountX;
+			textureTileCountY = tileCountY;
 			
 			// int tileComps = 4;
 			// int tileSize = size.X * size.Y * tileComps;
