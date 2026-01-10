@@ -171,10 +171,10 @@ public class TileBrush {
 				else trimBottom++;
 			}
 
-			int w = int.Max(1, width - trimLeft - trimRight);
-			int h = int.Max(1, height - trimTop - trimBottom);
+			int w = width - trimLeft - trimRight;
+			int h = height - trimTop - trimBottom;
 			
-			SetSize(w, h, true);
+			SetSize(int.Max(1, w), int.Max(1, h), true);
 
 			offsetX += trimLeft;
 			offsetY += trimTop;
@@ -182,14 +182,17 @@ public class TileBrush {
 				for(int x = 0; x < w; x++) {
 					int tx = offsetX + mx - scene.WorldX + x;
 					int ty = offsetY + my - scene.WorldY + y;
-					if(tx < 0 || ty < 0 || tx >= scene.TileCountX || ty >= scene.TileCountY) continue;
-					// if(layer.Tilemap.Grid[tx, ty].TileID == 0 || layer.Tilemap.Grid[tx, ty].TilesetSlot == 0) continue;
-					tilemap.Grid[x, y] = layer.Tilemap.Grid[tx, ty];
+					if(tx < 0 || ty < 0 || tx >= scene.TileCountX || ty >= scene.TileCountY) {
+						tilemap.Grid[x, y] = new TileRef(0, 0);
+					} else {
+						tilemap.Grid[x, y] = layer.Tilemap.Grid[tx, ty];
+					}
 				}
 			}
 
-			// TODO: copy tiles from layer
-			// TODO: trim area
+			if(w <= 0 || h <= 0) {
+				tilemap.Grid[0, 0] = new TileRef(0, 0);
+			}
 		}
 		
 		Point offset = resizing ? new(int.Min(resizeTileOrigin.X - mx, 0), int.Min(resizeTileOrigin.Y - my, 0)) : new(-width / 2, -height / 2);
