@@ -26,8 +26,8 @@ public class TileBrush {
 		tilemap = null;
 		width = 0;
 		height = 0;
-		resizing = true;
-		SetSize(5, 4, true);
+		resizing = false;
+		SetSize(1, 1, true);
 	}
 
 	public void SetSize(int w, int h, bool set = true) {

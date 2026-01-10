@@ -123,17 +123,21 @@ public class CanvasPanel : Panel {
 		Scene activeScene = Program.SelectedScene;
 		
 		if(activeScene == null && tileBrush != null) {
+			if(tileBrush == activeTool) activeTool = null;
 			tileBrush?.Dispose();
 			tileBrush = null;
 		} else if(activeScene != null && (tileBrush == null || tileBrush.Scene != activeScene)) {
+			if(tileBrush == activeTool) activeTool = null;
 			tileBrush?.Dispose();
 			tileBrush = new TileBrush(activeScene);
 		}
 
 		if(activeScene == null && tileEraser != null) {
+			if(tileEraser == activeTool) activeTool = null;
 			tileEraser?.Dispose();
 			tileEraser = null;
 		} else if(activeScene != null && (tileEraser == null || tileEraser.Scene != activeScene)) {
+			if(tileEraser == activeTool) activeTool = null;
 			tileEraser?.Dispose();
 			tileEraser = new TileEraser(activeScene);
 		}
