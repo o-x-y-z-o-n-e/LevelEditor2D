@@ -11,6 +11,9 @@ public class Tilemap : IDisposable {
 	public Scene Scene => scene;
 	
 	public TileRef[,] Grid => grid;
+
+	public int Width => width;
+	public int Height => height;
 	
 	private Scene scene;
 	private TileRef[,] grid;
@@ -32,18 +35,14 @@ public class Tilemap : IDisposable {
 	private static int shaderScreenMatrixUniform;
 	private static int[] shaderTextureUniforms;
 	
-	internal Tilemap(Scene scene) {
-		this.scene = scene;
+	internal Tilemap(Layer layer) {
+		scene = layer.Scene;
 		Resize(scene.TileCountX, scene.TileCountY);
 	}
 	
-	internal Tilemap(TileDrawBrush brush) {
-		this.scene = brush.Scene;
+	internal Tilemap(TileBrush brush) {
+		scene = brush.Scene;
 		Resize(brush.Width, brush.Height);
-	}
-
-	~Tilemap() {
-		Dispose(false);
 	}
 	
 	internal void Parse(XElement tilemapElement) {
@@ -263,7 +262,7 @@ public class Tilemap : IDisposable {
 			if(link.Tileset == null || link.Slot <= 0) continue;
 			int index = link.Slot - 1;
 			gl.ActiveTexture(GLEnum.Texture0 + index);
-			gl.BindTexture(GLEnum.Texture2DArray, link.Tileset.TextureArrayHandle);
+			gl.BindTexture(GLEnum.Texture2DArray, link.Tileset.TextureArray.Handle);
 			gl.Uniform1(shaderTextureUniforms[index], index);
 		}
 		
@@ -279,18 +278,10 @@ public class Tilemap : IDisposable {
 	}
 
 	public void Dispose() {
-		Dispose(disposing: true);
-		GC.SuppressFinalize(this);
-	}
-
-	protected void Dispose(bool disposing) {
 		if(disposed) return;
-		if(disposing) { }
-		Program.GL.DeleteTextures(new ReadOnlySpan<uint>(frameBufferTextureHandle));
-		Program.GL.DeleteFramebuffers(new ReadOnlySpan<uint>(frameBufferHandle));
-		Program.GL.DeleteBuffers(new ReadOnlySpan<uint>(tileBufferHandle));
-		Program.GL.DeleteBuffers(new ReadOnlySpan<uint>(vertexArrayHandle));
-		Console.WriteLine("Disposed tilemap resources");
+		Program.GL.DeleteTexture(frameBufferTextureHandle);
+		Program.GL.DeleteFramebuffer(frameBufferHandle);
+		Program.GL.DeleteBuffer(tileBufferHandle);
 		disposed = true;
 	}
 	

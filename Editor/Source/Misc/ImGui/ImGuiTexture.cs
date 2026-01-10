@@ -18,7 +18,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         R = TextureParameterName.TextureWrapR
     }
 
-    class Texture : IDisposable
+    class ImGuiTexture : IDisposable
     {
         public const SizedInternalFormat Srgb8Alpha8 = (SizedInternalFormat) GLEnum.Srgb8Alpha8;
         public const SizedInternalFormat Rgb32F = (SizedInternalFormat) GLEnum.Rgb32f;
@@ -33,7 +33,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         public readonly uint MipmapLevels;
         public readonly SizedInternalFormat InternalFormat;
 
-        public unsafe Texture(GL gl, int width, int height, IntPtr data, bool generateMipmaps = false, bool srgb = false)
+        public unsafe ImGuiTexture(GL gl, int width, int height, IntPtr data, bool generateMipmaps = false, bool srgb = false)
         {
             _gl = gl;
             MaxAniso ??= gl.GetFloat(MaxTextureMaxAnisotropy);
@@ -80,7 +80,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         public void SetAnisotropy(float level)
         {
             const TextureParameterName textureMaxAnisotropy = (TextureParameterName) 0x84FE;
-            _gl.TexParameter(GLEnum.Texture2D, (GLEnum) textureMaxAnisotropy, Util.Clamp(level, 1, MaxAniso.GetValueOrDefault()));
+            _gl.TexParameter(GLEnum.Texture2D, (GLEnum) textureMaxAnisotropy, ImGuiUtil.Clamp(level, 1, MaxAniso.GetValueOrDefault()));
         }
 
         public void SetLod(int @base, int min, int max)

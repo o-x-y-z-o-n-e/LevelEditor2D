@@ -17,7 +17,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         public UniformType Type;
     }
 
-    class Shader
+    class ImGuiShader
     {
         public uint Program { get; private set; }
         private readonly Dictionary<string, int> _uniformToLocation = new Dictionary<string, int>();
@@ -26,7 +26,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         private GL _gl;
         private (ShaderType Type, string Path)[] _files;
 
-        public Shader(GL gl, string vertexShader, string fragmentShader)
+        public ImGuiShader(GL gl, string vertexShader, string fragmentShader)
         {
             _gl = gl;
             _files = new[]{

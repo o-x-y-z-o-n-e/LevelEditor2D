@@ -15,7 +15,10 @@ public class CanvasPanel : Panel {
 	private bool isHovered;
 	private bool isPressed;
 
-	private TileDrawBrush activeBrush;
+	private TileBrush tileBrush;
+	private TileEraser tileEraser;
+
+	private object activeTool;
 	
 	private const float ZOOM_RANGE_MIN = -5;
 	private const float ZOOM_RANGE_MAX = 15;
@@ -29,7 +32,9 @@ public class CanvasPanel : Panel {
 		camera = new(0, 0);
 		zooming = 0;
 		gridScenesOnly = true;
-		activeBrush = null;
+		tileBrush = null;
+		tileEraser = null;
+		activeTool = null;
 	}
 
 	protected override void Update() {
@@ -115,18 +120,38 @@ public class CanvasPanel : Panel {
 			ProcessScene(world.GetScene(i), drawList, transform);
 		}
 		
-		// TODO: brush
-
 		Scene activeScene = Program.SelectedScene;
-
-		if(activeScene == null && activeBrush != null) {
-			activeBrush = null;
-		} else if(activeScene != null && (activeBrush == null || activeBrush.Scene != activeScene)) {
-			activeBrush = new TileDrawBrush(activeScene);
+		
+		if(activeScene == null && tileBrush != null) {
+			tileBrush?.Dispose();
+			tileBrush = null;
+		} else if(activeScene != null && (tileBrush == null || tileBrush.Scene != activeScene)) {
+			tileBrush?.Dispose();
+			tileBrush = new TileBrush(activeScene);
 		}
 
-		if(isHovered && activeBrush != null) {
-			UpdateBrush(activeBrush, drawList, transform, worldBorder);
+		if(activeScene == null && tileEraser != null) {
+			tileEraser?.Dispose();
+			tileEraser = null;
+		} else if(activeScene != null && (tileEraser == null || tileEraser.Scene != activeScene)) {
+			tileEraser?.Dispose();
+			tileEraser = new TileEraser(activeScene);
+		}
+		
+		if(isHovered) {
+			
+			if(activeTool == null) activeTool = tileBrush;
+			if(ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
+				activeTool = tileEraser;
+			} else if(ImGui.IsKeyReleased(ImGuiKey.LeftShift)) {
+				activeTool = tileBrush;
+			}
+			
+			if(tileBrush == activeTool) {
+				tileBrush.Update(drawList, transform, worldBorder);
+			} else if(tileEraser == activeTool) {
+				tileEraser.Update(drawList, transform, worldBorder);
+			}
 		}
 		
 		drawList.PopClipRect();
@@ -265,179 +290,7 @@ public class CanvasPanel : Panel {
 		}
 	}
 
-	private void UpdateBrush(TileDrawBrush brush, ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder) {
-		Scene scene = brush.Scene;
-		Layer layer = Program.SelectedLayer;
-		if(layer.Scene != scene) return;
-		
-		Vector2 mousePos = ImGui.GetIO().MousePos;
-		Matrix4x4.Invert(transform, out var transformInverted);
-		Vector2 mousePosTileCoord = Vector2.Transform(mousePos, transformInverted);
-
-		int mx = (int)MathF.Floor(mousePosTileCoord.X);
-		int my = (int)MathF.Floor(mousePosTileCoord.Y);
-		// if(!worldBorder.Contains(mx, my)) return;
-		
-		var offset = brush.TileDrawOffset;
-
-		Rectangle area = new Rectangle(offset.X + mx, offset.Y + my, brush.Width, brush.Height);
-		
-		Vector2 w0 = new Vector2(offset.X+mx,             offset.Y+my             );
-		Vector2 w1 = new Vector2(offset.X+mx+brush.Width, offset.Y+my             );
-		Vector2 w2 = new Vector2(offset.X+mx,             offset.Y+my+brush.Height);
-		Vector2 w3 = new Vector2(offset.X+mx+brush.Width, offset.Y+my+brush.Height);
-		
-		Vector2 p0 = Vector2.Transform(w0, transform);
-		Vector2 p1 = Vector2.Transform(w1, transform);
-		Vector2 p2 = Vector2.Transform(w2, transform);
-		Vector2 p3 = Vector2.Transform(w3, transform);
-
-		uint borderColorBlue = Utilities.GetPackedColor(40, 40, 255, 255);
-		uint fillColorBlue = Utilities.GetPackedColor(40, 40, 255, 64);
-		uint borderColorRed = Utilities.GetPackedColor(255, 40, 40, 255);
-		uint fillColorRed = Utilities.GetPackedColor(255, 40, 40, 64);
-
-		Rectangle sceneRegion = new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
-
-		bool imprint = ImGui.IsMouseDown(ImGuiMouseButton.Left);
-		bool copy = ImGui.IsMouseDown(ImGuiMouseButton.Middle);
-		
-		if(imprint) {
-			for(int y = 0; y < brush.Height; y++) {
-				for(int x = 0; x < brush.Width; x++) {
-					int tx = offset.X + mx - scene.WorldX + x;
-					int ty = offset.Y + my - scene.WorldY + y;
-					if(tx < 0 || ty < 0 || tx >= scene.TileCountX || ty >= scene.TileCountY) continue;
-					if(brush.Tilemap.Grid[x, y].TileID == 0 || brush.Tilemap.Grid[x, y].TilesetSlot == 0) continue;
-					layer.Tilemap.Grid[tx, ty] = brush.Tilemap.Grid[x, y];
-				}
-			}
-		} else {
-			if(copy) {
-				// TODO: drag resize
-				brush.SetSize(1, 1, false);
-			} else if(!copy && brush.Resizing) {
-				brush.SetSize(brush.Width, brush.Height, true);
-				// TODO: copy tiles from layer
-			}
-		}
-
-		if(!brush.Resizing) {
-			brush.Tilemap.Render();
-			uint tex = brush.Tilemap.GetFrameBufferTexture();
-			drawList.AddImage((nint)tex, p0, p3, new(0,1), new(1,0));
-		}
-
-		// valid tile overlay
-		for(int y = 0; y < brush.Height; y++) {
-			for(int x = 0; x < brush.Width; x++) {
-				int wx = offset.X + mx + x;
-				int wy = offset.Y + my + y;
-				if(!sceneRegion.Contains(wx, wy) || !brush.HasTile(x, y)) continue;
-				
-				Vector2 t0 = Vector2.Transform(new Vector2(wx, wy), transform);
-				Vector2 t1 = Vector2.Transform(new Vector2(wx+1, wy), transform);
-				Vector2 t2 = Vector2.Transform(new Vector2(wx, wy+1), transform);
-				Vector2 t3 = Vector2.Transform(new Vector2(wx+1, wy+1), transform);
-				
-				drawList.AddRectFilled(t0, t3, fillColorBlue);
-				
-				{	// left
-					bool inb = sceneRegion.Contains(wx - 1, wy);
-					bool hst = brush.HasTile(x - 1, y);
-					if(x - 1 < 0 || !inb || !hst) {
-						drawList.AddLine(
-							t0, t2, borderColorBlue
-						);
-					}
-				}
-				{	// right
-					bool inb = sceneRegion.Contains(wx + 1, wy);
-					bool hst = brush.HasTile(x + 1, y);
-					if(x + 1 >= brush.Width || !inb || !hst) {
-						drawList.AddLine(
-							t1, t3, borderColorBlue
-						);
-					}
-				}
-				{	// top
-					bool inb = sceneRegion.Contains(wx, wy - 1);
-					bool hst = brush.HasTile(x, y - 1);
-					if(y - 1 < 0 || !inb || !hst) {
-						drawList.AddLine(
-							t0, t1, borderColorBlue
-						);
-					}
-				}
-				{	// top
-					bool inb = sceneRegion.Contains(wx, wy + 1);
-					bool hst = brush.HasTile(x, y + 1);
-					if(y + 1 >= brush.Height || !inb || !hst) {
-						drawList.AddLine(
-							t2, t3, borderColorBlue
-						);
-					}
-				}
-			}
-		}
-		
-		
-		
-		// invalid tile overlay
-		for(int y = 0; y < brush.Height; y++) {
-			for(int x = 0; x < brush.Width; x++) {
-				int wx = offset.X + mx + x;
-				int wy = offset.Y + my + y;
-				if(sceneRegion.Contains(wx, wy) || !brush.HasTile(x, y)) continue;
-				
-				Vector2 t0 = Vector2.Transform(new Vector2(wx, wy), transform);
-				Vector2 t1 = Vector2.Transform(new Vector2(wx+1, wy), transform);
-				Vector2 t2 = Vector2.Transform(new Vector2(wx, wy+1), transform);
-				Vector2 t3 = Vector2.Transform(new Vector2(wx+1, wy+1), transform);
-				
-				drawList.AddRectFilled(t0, t3, fillColorRed);
-
-				{	// left
-					bool inb = sceneRegion.Contains(wx - 1, wy);
-					bool hst = brush.HasTile(x - 1, y);
-					if(x - 1 < 0 || inb || !hst) {
-						drawList.AddLine(
-							t0, t2, borderColorRed
-						);
-					}
-				}
-				{	// right
-					bool inb = sceneRegion.Contains(wx + 1, wy);
-					bool hst = brush.HasTile(x + 1, y);
-					if(x + 1 >= brush.Width || inb || !hst) {
-						drawList.AddLine(
-							t1, t3, borderColorRed
-						);
-					}
-				}
-				{	// top
-					bool inb = sceneRegion.Contains(wx, wy - 1);
-					bool hst = brush.HasTile(x, y - 1);
-					if(y - 1 < 0 || inb || !hst) {
-						drawList.AddLine(
-							t0, t1, borderColorRed
-						);
-					}
-				}
-				{	// top
-					bool inb = sceneRegion.Contains(wx, wy + 1);
-					bool hst = brush.HasTile(x, y + 1);
-					if(y + 1 >= brush.Height || inb || !hst) {
-						drawList.AddLine(
-							t2, t3, borderColorRed
-						);
-					}
-				}
-			}
-		}
-	}
-
-	public TileDrawBrush GetActiveBrush() {
-		return activeBrush;
+	public TileBrush GetCurrentBrush() {
+		return tileBrush;
 	}
 }

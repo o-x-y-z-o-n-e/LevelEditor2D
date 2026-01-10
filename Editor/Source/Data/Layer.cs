@@ -26,6 +26,7 @@ public class Layer {
 	private bool visible;
 	private LayerGroup group;
 	private Tilemap tilemap;
+	private bool disposed;
 
 	internal Layer(Scene scene) {
 		this.scene = scene;
@@ -40,9 +41,15 @@ public class Layer {
 		visible = layerElement.Attribute("visible").ParseAsBool(true);
 		var tilemapElement = layerElement.Element("tilemap");
 		if(tilemapElement != null) {
-			tilemap = new Tilemap(scene);
+			tilemap = new Tilemap(this);
 			tilemap.Parse(tilemapElement);
 		}
+	}
+
+	public void Dispose() {
+		if(disposed) return;
+		tilemap?.Dispose();
+		disposed = true;
 	}
 	
 }

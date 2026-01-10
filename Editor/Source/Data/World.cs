@@ -33,6 +33,7 @@ public class World {
 	private List<Tileset> tilesets;
 	private List<Scene> scenes;
 	private int maxTilesetSlots;
+	private bool disposed;
 
 	internal World(File file) {
 		this.file = file;
@@ -69,6 +70,13 @@ public class World {
 			scene.Parse(sceneElement);
 			scenes.Add(scene);
 		}
+	}
+	
+	public void Dispose() {
+		if(disposed) return;
+		for(int i = 0; i < tilesets.Count; i++) tilesets[i]?.Dispose();
+		for(int i = 0; i < scenes.Count; i++) scenes[i]?.Dispose();
+		disposed = true;
 	}
 
 }

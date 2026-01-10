@@ -152,7 +152,7 @@ public class TilesetsPanel : Panel {
 				}
 
 				if(tileset != null) {
-					Texture texSource = tileset.GetTexture();
+					Texture texSource = tileset.GetTexturePreview();
 					Vector2 header = new(0, 12);
 					Vector2 border = new(4,4);
 					if(texSource != null) {
@@ -248,7 +248,7 @@ public class TilesetsPanel : Panel {
 		// drawList.AddRectFilled(areaPos, p1, Utilities.GetPackedColor(50, 50, 50, 255)); // background
 		// drawList.AddRect(p0, p1, Utilities.GetPackedColor(180, 180, 180, 255)); // border
 		if(tileset != null) {
-			Texture texSource = tileset.GetTexture();
+			Texture texSource = tileset.GetTexturePreview();
 			Vector2 border = new(4,4);
 			if(texSource != null) {
 				Vector2 size = new Vector2(texSource.Width, texSource.Height) * previewScale;

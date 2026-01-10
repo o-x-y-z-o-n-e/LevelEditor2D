@@ -50,6 +50,7 @@ public class Scene {
 	private List<TilesetLink> tilesets;
 	private List<LayerGroup> groups;
 	private List<Layer> layers;
+	private bool disposed;
 
 	internal Scene(File file) {
 		this.file = file;
@@ -135,6 +136,11 @@ public class Scene {
 		return layers.Contains(layer);
 	}
 
+	public void Dispose() {
+		if(disposed) return;
+		for(int i = 0; i < layers.Count; i++) layers[i]?.Dispose();
+		disposed = true;
+	}
 }
 
 public class TilesetLink {

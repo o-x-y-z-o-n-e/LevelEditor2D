@@ -37,8 +37,8 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         private uint _elementsHandle;
         private uint _vertexArrayObject;
 
-        private Texture _fontTexture;
-        private Shader _shader;
+        private ImGuiTexture _fontTexture;
+        private ImGuiShader _shader;
 
         private int _windowWidth;
         private int _windowHeight;
@@ -669,7 +669,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
         }";
 
-            _shader = new Shader(_gl, vertexSource, fragmentSource);
+            _shader = new ImGuiShader(_gl, vertexSource, fragmentSource);
 
             _attribLocationTex = _shader.GetUniformLocation("Texture");
             _attribLocationProjMtx = _shader.GetUniformLocation("ProjMtx");
@@ -703,7 +703,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             // Upload texture to graphics system
             _gl.GetInteger(GLEnum.TextureBinding2D, out int lastTexture);
 
-            _fontTexture = new Texture(_gl, width, height, pixels);
+            _fontTexture = new ImGuiTexture(_gl, width, height, pixels);
             _fontTexture.Bind();
             _fontTexture.SetMagFilter(TextureMagFilter.Nearest);
             _fontTexture.SetMinFilter(TextureMinFilter.Nearest);

@@ -53,24 +53,20 @@ public class Tileset {
 		get => size.Y;
 		set => size.Y = value;
 	}
+	
+	public Texture TexturePreview => texturePreview;
+	public TextureArray TextureArray => textureArray;
 
 	private File file;
 	private string id;
 	private string group;
 	private string textureFilePath;
-	private Texture textureSource;
 	private Vector2D<int> offset;
 	private Vector2D<int> spacing;
 	private Vector2D<int> size;
-
-	private uint textureArrayHandle;
-	private int textureTileCountX;
-	private int textureTileCountY;
-	
-	public uint TextureArrayHandle => textureArrayHandle;
-	public int TextureTileCountX  => textureTileCountX;
-	public int TextureTileCountY  => textureTileCountY;
-	
+	private bool disposed;
+	private Texture texturePreview;
+	private TextureArray textureArray;
 
 	internal Tileset(File file) {
 		this.file = file;
@@ -96,30 +92,30 @@ public class Tileset {
 		ReloadTexture();
 	}
 
-	public Texture GetTexture() {
-		return textureSource;
-	}
+	public Texture GetTexturePreview() => texturePreview;
+
+	public TextureArray GetTextureArray() => textureArray;
 
 	public int GetTextureWidth() {
-		if(textureSource == null) return 0;
-		return textureSource.Width;
+		if(texturePreview == null) return 0;
+		return texturePreview.Width;
 	}
 	
 	public int GetTextureHeight() {
-		if(textureSource == null) return 0;
-		return textureSource.Height;
+		if(texturePreview == null) return 0;
+		return texturePreview.Height;
 	}
 
 	public int GetTileCount() => GetTileCountX() * GetTileCountY();
 
 	public int GetTileCountX() {
-		if(textureSource == null || size.X + spacing.X == 0) return 0;
-		return (textureSource.Width - offset.X + spacing.X) / (size.X + spacing.X);
+		if(texturePreview == null || size.X + spacing.X == 0) return 0;
+		return (texturePreview.Width - offset.X + spacing.X) / (size.X + spacing.X);
 	}
 
 	public int GetTileCountY() {
-		if(textureSource == null || size.Y + spacing.Y == 0) return 0;
-		return (textureSource.Height - offset.Y + spacing.Y) / (size.Y + spacing.Y);
+		if(texturePreview == null || size.Y + spacing.Y == 0) return 0;
+		return (texturePreview.Height - offset.Y + spacing.Y) / (size.Y + spacing.Y);
 	}
 
 	public Rectangle<int> GetTileRegion(int tileIndex) {
@@ -140,15 +136,15 @@ public class Tileset {
 	}
 
 	public void ReloadTexture() {
-		if(textureSource != null) {
-			textureSource.Dispose();
+		if(texturePreview != null) {
+			texturePreview.Dispose();
 		}
 
 		GL gl = Program.GL;
 
 		string path = file.GetAbsolutePath(textureFilePath);
 		
-		textureSource = Texture.Load(path);
+		texturePreview = Texture.LoadFromFile(path);
 		
 		// temp
 		try {
@@ -156,43 +152,17 @@ public class Tileset {
 
 			ImageResult image = ImageResult.FromMemory(raw, ColorComponents.RedGreenBlueAlpha);
 
-			int tileCountX = image.Width / size.X;
-			int tileCountY = image.Height / size.Y;
+			int tileCountX = GetTileCountX();
+			int tileCountY = GetTileCountY();
 			int tileCount = tileCountX * tileCountY;
 
-			textureTileCountX = tileCountX;
-			textureTileCountY = tileCountY;
-			
-			// int tileComps = 4;
-			// int tileSize = size.X * size.Y * tileComps;
-			// byte[] reorganized = new byte[image.Data.Length];
-			// for(int i = 0; i < tileCount; i++) {
-			// 	for(int py = 0; py < size.Y; py++) {
-			// 		for(int px = 0; px < size.X; px++) {
-			// 			int dst = 0;
-			// 			int src = 0;
-			// 			
-			// 			dst = (i * tileSize) + ((px + size.X * py) * tileComps);
-			// 			int tx = i % tileCountX;
-			// 			int ty = i / tileCountX;
-            //             
-			// 			src = ()
-			// 			
-			// 			// copy single pixel (all component offsets)
-			// 			for(int c = 0; c < tileComps; c++) {
-			// 				reorganized[dst+c] = image.Data[src+c];
-			// 			}
-			// 		}
-			// 	}
-			// }
-
-			if(textureArrayHandle != 0) {
-				gl.DeleteTexture(textureArrayHandle);
+			if(textureArray != null) {
+				textureArray.Dispose();
 			}
 
-			textureArrayHandle = gl.GenTexture();
-
-			gl.BindTexture(TextureTarget.Texture2DArray, textureArrayHandle);
+			textureArray = new TextureArray();
+			
+			textureArray.Bind();
 			
 			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureMinFilter, (int)GLEnum.Nearest);
 			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureMagFilter, (int)GLEnum.Nearest);
@@ -217,14 +187,19 @@ public class Tileset {
 				}
 			}
 			
-			// gl.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, 0, (uint)size.X, (uint)size.Y, (uint)tileCount, GLEnum.Rgba8, GLEnum.UnsignedByte, readOnlyData);
-			
-			gl.BindTexture(TextureTarget.Texture2DArray, 0);
+			textureArray.UnBind();
 			
 			gl.PixelStore(GLEnum.UnpackRowLength, 0);
 			gl.PixelStore(GLEnum.UnpackSkipPixels, 0);
 			gl.PixelStore(GLEnum.UnpackSkipRows, 0);
 			
 		} catch { }
+	}
+
+	public void Dispose() {
+		if(disposed) return;
+		texturePreview?.Dispose();
+		textureArray?.Dispose();
+		disposed = true;
 	}
 }

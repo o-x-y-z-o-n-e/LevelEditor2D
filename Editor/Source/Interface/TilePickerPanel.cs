@@ -111,7 +111,7 @@ public class TilePickerPanel : Panel {
 				ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
 				ImGui.Text("Tileset");
 				
-				Texture texSource = tileset?.GetTexture();
+				Texture texSource = tileset?.GetTexturePreview();
 				
 				Vector2 areaPos = ImGui.GetCursorScreenPos();
 				Vector2 areaSize = new(region.X, texSource?.Height * scale + 20 ?? region.X);
@@ -123,25 +123,23 @@ public class TilePickerPanel : Panel {
 				);
 				Vector2 p0 = areaPos;
 				Vector2 p1 = p0 + areaSize - new Vector2(16);
-				// drawList.AddRectFilled(areaPos, p1, Utilities.GetPackedColor(50, 50, 50, 255)); // background
-				// drawList.AddRect(p0, p1, Utilities.GetPackedColor(180, 180, 180, 255)); // border
-				// ImGui.Dummy(areaSize);
+				bool hoveredTile = false;
 				if(tileset != null && texSource != null) {
 					Vector2 origin = ImGui.GetCursorPos();
 					Vector2 border = new(4,4);
 					Vector2 size = new Vector2(texSource.Width, texSource.Height) * scale;
-					//ImGui.PushClipRect(p0 + new Vector2(1), p1 - new Vector2(1), true);
 					ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1,1,1,1));
-					//ImGui.PopClipRect();
 					
-					var brush = Program.CanvasPanel.GetActiveBrush();
-					
-					for(int y = 0; y < tileset.TextureTileCountY; y++) {
-						for(int x = 0; x < tileset.TextureTileCountX; x++) {
-							int tileID = (y * tileset.TextureTileCountX + x) + 1;
+					var brush = Program.CanvasPanel.GetCurrentBrush();
+
+					int countX = tileset.GetTileCountX();
+					int countY = tileset.GetTileCountY();
+					for(int y = 0; y < countY; y++) {
+						for(int x = 0; x < countX; x++) {
+							int tileID = (y * countX + x) + 1;
 							bool selected = false;
 
-							if(brush != null) {
+							if(brush != null && !brush.Resizing) {
 								for(int by = 0; by < brush.Height; by++) {
 									for(int bx = 0; bx < brush.Width; bx++) {
 										var tile = brush.Tilemap.Grid[bx, by];
@@ -164,6 +162,7 @@ public class TilePickerPanel : Panel {
 							}
 							if(ImGui.IsItemHovered()) {
 								ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
+								hoveredTile = true;
 							}
 							if(selected) {
 								ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
@@ -172,9 +171,19 @@ public class TilePickerPanel : Panel {
 							ImGui.PopID();
 						}
 					}
+					if(!hoveredTile) {
+						ImGui.SetCursorPos(origin);
+						if(ImGui.InvisibleButton("##clear", ImGui.GetContentRegionAvail())) {
+							if(brush != null) {
+								brush.SetSize(1, 1, true);
+								brush.SetTile(0, 0, 0, 0);
+							}
+						}
+					}
 				} else {
 					ImGui.Text("No tileset selected...");
 				}
+				
 				ImGui.EndChild(); // tileset-picker
 				ImGui.Separator();
 				ImGui.Spacing();

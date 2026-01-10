@@ -12,7 +12,7 @@ using Silk.NET.OpenGL.Legacy;
 #endif
 
 namespace Silk.NET.OpenGL.Extensions.ImGui {
-    static class Util
+    static class ImGuiUtil
     {
         [Pure]
         public static float Clamp(float value, float min, float max)

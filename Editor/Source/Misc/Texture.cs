@@ -23,11 +23,7 @@ public class Texture {
 		disposed = false;
 	}
 
-	~Texture() {
-		Dispose(false);
-	}
-
-	public static Texture Load(string filePath) {
+	public static Texture LoadFromFile(string filePath) {
 		try {
 			byte[] raw = System.IO.File.ReadAllBytes(filePath);
 			
@@ -61,14 +57,16 @@ public class Texture {
 		}
 	}
 	
-	public void Dispose() {
-		Dispose(disposing: true);
-		GC.SuppressFinalize(this);
+	public void Bind() {
+		Program.GL.BindTexture(GLEnum.Texture2D, handle);
 	}
-
-	protected void Dispose(bool disposing) {
+	
+	public void UnBind() {
+		Program.GL.BindTexture(GLEnum.Texture2D, 0);
+	}
+	
+	public void Dispose() {
 		if(disposed) return;
-		if(disposing) { }
 		Program.GL.DeleteTexture(handle);
 		disposed = true;
 	}
