@@ -15,8 +15,8 @@ public class CanvasPanel : Panel {
 	private bool isHovered;
 	private bool isPressed;
 
-	private TileBrush tileBrush;
-	private TileEraser tileEraser;
+	private TileBrushTool tileBrush;
+	private TileEraserTool tileEraser;
 
 	private object activeTool;
 	
@@ -92,25 +92,27 @@ public class CanvasPanel : Panel {
 		// TODO: mouse center zoom option
 		// TODO: clamp scroll
 		
-		if(isPressed && ImGui.IsMouseDragging(ImGuiMouseButton.Right, -1.0F)) {
-			camera.X += io.MouseDelta.X / zoom;
-			camera.Y += io.MouseDelta.Y / zoom;
-		}
+		
 		if(isHovered) {
+			// if(ImGui.IsMouseDragging(ImGuiMouseButton.Middle, -1.0F)) {
+			if(ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
+				camera.X += io.MouseDelta.X / zoom;
+				camera.Y += io.MouseDelta.Y / zoom;
+			}
 			zooming += io.MouseWheel;
 			if(io.MouseWheel != 0.0F) {
 				zooming = float.Clamp(float.Round(zooming), ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
 			}
 		}
 
-		Vector2 drag_delta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Right);
-		if(drag_delta.X == 0.0f && drag_delta.Y == 0.0f) {
-			ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
-		}
-		if(ImGui.BeginPopup("context")) {
-			if(ImGui.MenuItem("yo mama", null, false, true)) { }
-			ImGui.EndPopup();
-		}
+		// Vector2 drag_delta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Right);
+		// if(drag_delta.X == 0.0f && drag_delta.Y == 0.0f) {
+		// 	ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
+		// }
+		// if(ImGui.BeginPopup("context")) {
+		// 	if(ImGui.MenuItem("yo mama", null, false, true)) { }
+		// 	ImGui.EndPopup();
+		// }
 		
 		drawList.PushClipRect(canvas_p0 + new Vector2(1), canvas_p1 - new Vector2(1), true);
 
@@ -129,7 +131,7 @@ public class CanvasPanel : Panel {
 		} else if(activeScene != null && (tileBrush == null || tileBrush.Scene != activeScene)) {
 			if(tileBrush == activeTool) activeTool = null;
 			tileBrush?.Dispose();
-			tileBrush = new TileBrush(activeScene);
+			tileBrush = new TileBrushTool(activeScene);
 		}
 
 		if(activeScene == null && tileEraser != null) {
@@ -139,7 +141,7 @@ public class CanvasPanel : Panel {
 		} else if(activeScene != null && (tileEraser == null || tileEraser.Scene != activeScene)) {
 			if(tileEraser == activeTool) activeTool = null;
 			tileEraser?.Dispose();
-			tileEraser = new TileEraser(activeScene);
+			tileEraser = new TileEraserTool(activeScene);
 		}
 		
 		if(isHovered) {
@@ -294,7 +296,7 @@ public class CanvasPanel : Panel {
 		}
 	}
 
-	public TileBrush GetCurrentBrush() {
+	public TileBrushTool GetCurrentBrush() {
 		return tileBrush;
 	}
 }

@@ -13,20 +13,20 @@ public class MenuBar {
 
 			if(ImGui.BeginMenu("File")) {
 				if(ImGui.MenuItem("New")) {
-					
+					// TODO
 				}
 				if(ImGui.MenuItem("Open", "Ctrl+O")) {
-					
+					// TODO
 				}
 				if(Program.File == null) ImGui.BeginDisabled();
 				if(ImGui.MenuItem("Save", "Ctrl+S")) {
-					
+					Program.File.Write();
 				}
 				if(ImGui.MenuItem("Save as..", "Ctrl+Shift+S")) {
-					
+					// TODO
 				}
 				if(ImGui.MenuItem("Reload", "Ctrl+R")) {
-					
+					Program.File.Read();
 				}
 				if(Program.File == null) ImGui.EndDisabled();
 				if(ImGui.MenuItem("Quit", "Ctrl+Q")) {
@@ -61,8 +61,12 @@ public class MenuBar {
 			
 			if(ImGui.BeginMenu("Help")) {
 				ImGui.BeginDisabled();
-				if(ImGui.MenuItem("Manual")) { }
-				if(ImGui.MenuItem("About")) { }
+				if(ImGui.MenuItem("Manual")) {
+					// TODO
+				}
+				if(ImGui.MenuItem("About")) {
+					// TODO
+				}
 				ImGui.EndDisabled();
 				ImGui.EndMenu();
 			}

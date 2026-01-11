@@ -1,9 +1,13 @@
-﻿using System.Numerics;
+﻿using System.Drawing;
+using System.Numerics;
 using ImGuiNET;
 
 namespace L2D; 
 
 public class TilePickerPanel : Panel {
+
+	private bool multiSelect;
+	private Vector2 multiSelectOrigin;
 
 	public TilePickerPanel() {
 		Title = "Tile Picker";
@@ -126,6 +130,7 @@ public class TilePickerPanel : Panel {
 				bool hoveredTile = false;
 				if(tileset != null && texSource != null) {
 					Vector2 origin = ImGui.GetCursorPos();
+					Vector2 originScreen = ImGui.GetCursorScreenPos();
 					Vector2 border = new(4,4);
 					Vector2 size = new Vector2(texSource.Width, texSource.Height) * scale;
 					ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1,1,1,1));
@@ -134,11 +139,56 @@ public class TilePickerPanel : Panel {
 
 					int countX = tileset.GetTileCountX();
 					int countY = tileset.GetTileCountY();
+					
+					Vector2 multiSelectMin = new(0);
+					Vector2 multiSelectMax = new(0);
+					RectangleF multiSelectRect = new(0, 0, 0, 0);
+					
+					if(ImGui.IsWindowFocused()) {
+						
+						Vector2 pos = ImGui.GetMousePos();
+						multiSelectMin = new Vector2(float.Min(pos.X, multiSelectOrigin.X), float.Min(pos.Y, multiSelectOrigin.Y));
+						multiSelectMax = new Vector2(float.Max(pos.X, multiSelectOrigin.X), float.Max(pos.Y, multiSelectOrigin.Y));
+						multiSelectRect = new RectangleF(multiSelectMin.X, multiSelectMin.Y, multiSelectMax.X - multiSelectMin.X, multiSelectMax.Y - multiSelectMin.Y);
+						
+						if(ImGui.IsMouseDragging(ImGuiMouseButton.Left, -1.0F)) {
+							if(!multiSelect) {
+								multiSelect = true;
+								multiSelectOrigin = ImGui.GetMousePos();
+							}
+							ImGui.GetWindowDrawList().AddRect(multiSelectMin, multiSelectMax, Utilities.GetPackedColor(255, 255, 255, 255));
+						} else {
+							if(multiSelect) {
+								multiSelect = false;
+								
+								int minX = (int)((multiSelectMin.X - originScreen.X) / (float)(scale * scene.World.TileWidth));
+								int minY = (int)((multiSelectMin.Y - originScreen.Y) / (float)(scale * scene.World.TileHeight));
+								int maxX = (int)((multiSelectMax.X - originScreen.X) / (float)(scale * scene.World.TileWidth));
+								int maxY = (int)((multiSelectMax.Y - originScreen.Y) / (float)(scale * scene.World.TileHeight));
+
+								minX = int.Max(minX, 0);
+								minY = int.Max(minY, 0);
+								maxX = int.Min(maxX, countX - 1);
+								maxY = int.Min(maxY, countY - 1);
+								
+								brush.SetSize(maxX - minX + 1, maxY - minY + 1);
+								
+								for(int y = minY; y <= maxY; y++) {
+									for(int x = minX; x <= maxX; x++) {
+										int tileID = (y * countX + x) + 1;
+										
+										brush.SetTile(x - minX, y - minY, tileID, link.Slot);
+									}
+								}
+							}
+						}
+					}
+
 					for(int y = 0; y < countY; y++) {
 						for(int x = 0; x < countX; x++) {
 							int tileID = (y * countX + x) + 1;
 							bool selected = false;
-
+							
 							if(brush != null && !brush.Resizing) {
 								for(int by = 0; by < brush.Height; by++) {
 									for(int bx = 0; bx < brush.Width; bx++) {
@@ -154,13 +204,19 @@ public class TilePickerPanel : Panel {
 							ImGui.PushID(tileID);
 							Vector2 c = ImGui.GetCursorScreenPos();
 							Vector2 s = new Vector2(scene.World.TileWidth, scene.World.TileHeight) * scale;
-							if(ImGui.InvisibleButton("##tile", s, ImGuiButtonFlags.EnableNav)) {
+							if(ImGui.InvisibleButton("##tile", s)) {
 								if(brush != null) {
 									brush.SetSize(1, 1, true);
 									brush.SetTile(0, 0, tileID, link.Slot);
 								}
 							}
-							if(ImGui.IsItemHovered()) {
+							
+							bool inMultiSelect = false;
+							if(multiSelect) {
+								inMultiSelect = multiSelectRect.IntersectsWith(new RectangleF(c.X, c.Y, s.X, s.Y));
+							}
+							
+							if(ImGui.IsItemHovered() || inMultiSelect) {
 								ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
 								hoveredTile = true;
 							}

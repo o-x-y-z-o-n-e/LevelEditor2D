@@ -71,7 +71,7 @@ public class Scene {
 		tileCountX = sceneElement.Attribute("tile_count_x").ParseAsInt();
 		tileCountY = sceneElement.Attribute("tile_count_y").ParseAsInt();
 
-		foreach(var linkElement in sceneElement.Element("tilesets").Elements("link")) {
+		foreach(var linkElement in sceneElement.Element("links").Elements("link")) {
 			TilesetLink tileset = new TilesetLink(file);
 			tilesets.Add(tileset);
 			tileset.Parse(linkElement);
@@ -88,6 +88,35 @@ public class Scene {
 			layers.Add(layer);
 		}
 
+	}
+
+	internal XElement Serialize() {
+		var element = new XElement("scene");
+		element.Add(
+			new XAttribute("id", id),
+			new XAttribute("world_x", worldX),
+			new XAttribute("world_y", worldY),
+			new XAttribute("tile_count_x", tileCountX),
+			new XAttribute("tile_count_y", tileCountY)
+		);
+
+		var linksParent = new XElement("links");
+		foreach(var link in tilesets) {
+			linksParent.Add(link.Serialize());
+		}
+		element.Add(linksParent);
+
+		var groupsParent = new XElement("groups");
+		// TODO
+		element.Add(groupsParent);
+
+		var layersParent = new XElement("layers");
+		foreach(var layer in layers) {
+			layersParent.Add(layer.Serialize());
+		}
+		element.Add(layersParent);
+        
+		return element;
 	}
 
 	public Layer AddLayer() {
@@ -177,14 +206,23 @@ public class TilesetLink {
 		this.tileset = tileset;
 	}
 
-	internal void Parse(XElement sceneElement) {
-		slot = sceneElement.Attribute("slot").ParseAsInt();
-		string id = sceneElement.Attribute("id").Value;
+	internal void Parse(XElement linkElement) {
+		slot = linkElement.Attribute("slot").ParseAsInt();
+		string id = linkElement.Attribute("tileset").Value;
 		foreach(var tileset in file.World.Tilesets) {
 			if(tileset.ID == id) {
 				this.tileset = tileset;
 			}
 		}
+	}
+
+	internal XElement Serialize() {
+		XElement linkElement = new XElement("link");
+		linkElement.Add(
+			new XAttribute("slot", slot),
+			new XAttribute("tileset", tileset.ID)
+		);
+		return linkElement;
 	}
 }
 

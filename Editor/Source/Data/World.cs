@@ -72,6 +72,26 @@ public class World {
 		}
 	}
 	
+	internal XElement Serialize() {
+		XElement rootElement = new XElement("world");
+		rootElement.Add(
+			new XAttribute("name", name),
+			new XAttribute("tile_width", tileWidth),
+			new XAttribute("tile_height", tileHeight)
+		);
+		var tilesetsParent = new XElement("tilesets");
+		foreach(var tileset in tilesets) {
+			tilesetsParent.Add(tileset.Serialize());
+		}
+		rootElement.Add(tilesetsParent);
+		var scenesParent = new XElement("scenes");
+		foreach(var scene in scenes) {
+			scenesParent.Add(scene.Serialize());
+		}
+		rootElement.Add(scenesParent);
+		return rootElement;
+	}
+	
 	public void Dispose() {
 		if(disposed) return;
 		for(int i = 0; i < tilesets.Count; i++) tilesets[i]?.Dispose();

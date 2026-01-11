@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Text;
 using System.Xml.Linq;
 using Silk.NET.OpenGL;
 
@@ -40,7 +41,7 @@ public class Tilemap : IDisposable {
 		Resize(scene.TileCountX, scene.TileCountY);
 	}
 	
-	internal Tilemap(TileBrush brush) {
+	internal Tilemap(TileBrushTool brush) {
 		scene = brush.Scene;
 		Resize(brush.Width, brush.Height);
 	}
@@ -57,6 +58,22 @@ public class Tilemap : IDisposable {
 			
 			grid[i % width, i / width] = new(tile, tileset);
 		}
+	}
+
+	internal XElement Serialize() {
+		var element = new XElement("tilemap");
+		StringBuilder strBuilder = new StringBuilder();
+		for(int y = 0; y < height; y++) {
+			for(int x = 0; x < width; x++) {
+				var tile = grid[x, y];
+				strBuilder.Append(tile.TileID);
+				strBuilder.Append(':');
+				strBuilder.Append(tile.TilesetSlot);
+				strBuilder.Append(',');
+			}
+		}
+		element.Add(strBuilder.ToString());
+		return element;
 	}
 	
 	public void Resize(int w, int h) {

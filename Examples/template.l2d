@@ -12,17 +12,17 @@
   </tilesets>
   <scenes>
     <scene id="test_scene_0" world_x="0" world_y="0" tile_count_x="16" tile_count_y="16">
-      <tilesets>
-        <link slot="1" id="caves-03"/>
-		<link slot="2" id="caves-07"/>
-		<link slot="3" id="caves-01"/>
-		<link slot="4" id="caves-02"/>
-      </tilesets>
+      <links>
+        <link slot="1" tileset="caves-03"/>
+		<link slot="2" tileset="caves-07"/>
+		<link slot="3" tileset="caves-01"/>
+		<link slot="4" tileset="caves-02"/>
+      </links>
 	  <groups>
 	    <group id="ground" color="20,200,30"/>
 	  </groups>
       <layers>
-        <layer name="Layer Name Test" group="ground" visible="true">
+        <layer name="Layer Name Test" group="ground" visible="true"> 
           <tilemap>
             0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,
             0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,0:0,
@@ -48,14 +48,14 @@
       </layers>
     </scene>
 	<scene id="test_scene_1" world_x="18" world_y="2" tile_count_x="4" tile_count_y="4">
-	  <tilesets>
-        <link slot="1" id="caves-05"/>
-      </tilesets>
+	  <links>
+        <link slot="1" tileset="caves-05"/>
+      </links>
 	  <groups>
 	    <group id="ground" color="20,200,30"/>
 	  </groups>
       <layers>
-        <layer name="Layer Name Test" group="ground" visible="true">
+        <layer name="Layer Name Test 2" group="ground" visible="true">
           <tilemap>
             0:1,1:1,0:1,0:1,
             2:1,1:1,0:1,0:1,

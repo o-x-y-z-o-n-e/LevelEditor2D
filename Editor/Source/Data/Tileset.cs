@@ -92,6 +92,22 @@ public class Tileset {
 		ReloadTexture();
 	}
 
+	internal XElement Serialize() {
+		var element = new XElement("tileset");
+		element.Add(
+			new XAttribute("id", id),
+			new XAttribute("group", group),
+			new XAttribute("texture_file", textureFilePath),
+			new XAttribute("px_offset_x", offset.X),
+			new XAttribute("px_offset_y", offset.Y),
+			new XAttribute("px_spacing_x", spacing.X),
+			new XAttribute("px_spacing_y", spacing.Y)
+			// new XAttribute("px_texels_x", size.X),
+			// new XAttribute("px_texels_y", size.Y)
+		);
+		return element;
+	}
+
 	public Texture GetTexturePreview() => texturePreview;
 
 	public TextureArray GetTextureArray() => textureArray;

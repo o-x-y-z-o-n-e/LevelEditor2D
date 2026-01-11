@@ -4,7 +4,7 @@ using ImGuiNET;
 
 namespace L2D; 
 
-public class TileBrush {
+public class TileBrushTool {
 	
 	public Scene Scene => scene;
 	public Tilemap Tilemap => tilemap;
@@ -21,7 +21,7 @@ public class TileBrush {
 	private Point resizeTileOrigin;
 	private bool disposed;
 
-	public TileBrush(Scene scene) {
+	public TileBrushTool(Scene scene) {
 		this.scene = scene;
 		tilemap = null;
 		width = 0;
@@ -75,7 +75,7 @@ public class TileBrush {
 		int my = (int)MathF.Floor(mousePosTileCoord.Y);
 		
 		bool imprint = ImGui.IsMouseDown(ImGuiMouseButton.Left);
-		bool resize = ImGui.IsMouseDown(ImGuiMouseButton.Middle);
+		bool resize = ImGui.IsMouseDown(ImGuiMouseButton.Right);
 		
 		if(resize) {
 			if(!resizing) {

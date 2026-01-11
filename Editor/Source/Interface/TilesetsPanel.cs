@@ -283,7 +283,15 @@ public class TilesetsPanel : Panel {
 				idEditBuffer = tileset.ID;
 			}
 		}
-
+		
+		string fileDisplayString = tileset != null ? tileset.TextureFilePath : "...";
+		if(ImGui.Button(fileDisplayString)) {
+			// TODO: open file select dialog
+		}
+		
+		ImGui.BeginDisabled();
+		ImGui.Separator();
+		ImGui.Text("Under construction");
 		Vector2D<int> spacing = tileset != null ? new(tileset.SpacingX, tileset.SpacingY) : new(0,0);
 		if(ImGui.InputInt2("Tileset Spacing", ref spacing.X)) {
 			tileset.SpacingX = spacing.X;
@@ -296,10 +304,12 @@ public class TilesetsPanel : Panel {
 			tileset.OffsetY = offset.Y;
 		}
 		
-		string fileDisplayString = tileset != null ? tileset.TextureFilePath : "...";
-		if(ImGui.Button(fileDisplayString)) {
-			// TODO: open file select dialog
+		Vector2D<int> texels = tileset != null ? new(tileset.SizeX, tileset.SizeY) : new(0,0);
+		if(ImGui.InputInt2("Tileset Texels", ref texels.X)) {
+			tileset.SizeX = texels.X;
+			tileset.SizeY = texels.Y;
 		}
+		ImGui.EndDisabled();
 
 		int tileCount = tileset != null ? tileset.GetTileCount() : 0;
 		tileCount = 10;

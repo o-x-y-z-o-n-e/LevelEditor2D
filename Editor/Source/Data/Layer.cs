@@ -46,6 +46,23 @@ public class Layer {
 		}
 	}
 
+	internal XElement Serialize() {
+		var element = new XElement("layer");
+		element.Add(
+			new XAttribute("name", name),
+			new XAttribute("group", ""), // TODO
+			new XAttribute("visible", visible)
+		);
+		
+		element.Add(tilemap.Serialize());
+
+		var entitiesParent = new XElement("entities");
+		// TODO
+		element.Add(entitiesParent);
+		
+		return element;
+	}
+	
 	public void Dispose() {
 		if(disposed) return;
 		tilemap?.Dispose();

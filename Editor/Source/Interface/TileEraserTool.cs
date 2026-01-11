@@ -4,7 +4,7 @@ using ImGuiNET;
 
 namespace L2D; 
 
-public class TileEraser {
+public class TileEraserTool {
 
 	public Scene Scene => scene;
 
@@ -15,7 +15,7 @@ public class TileEraser {
 	private Point resizeTileOrigin;
 	private bool disposed;
 	
-	public TileEraser(Scene scene) {
+	public TileEraserTool(Scene scene) {
 		this.scene = scene;
 		width = 1;
 		height = 1;
@@ -44,7 +44,7 @@ public class TileEraser {
 		int my = (int)MathF.Floor(mousePosTileCoord.Y);
 		
 		bool remove = ImGui.IsMouseDown(ImGuiMouseButton.Left);
-		bool resize = ImGui.IsMouseDown(ImGuiMouseButton.Middle);
+		bool resize = ImGui.IsMouseDown(ImGuiMouseButton.Right);
 
 		if(resize) {
 			if(!resizing) {
