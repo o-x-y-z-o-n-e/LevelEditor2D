@@ -161,6 +161,16 @@ public class CanvasPanel : Panel {
 		}
 		
 		drawList.PopClipRect();
+
+		// float left = worldBorder.Left * zoomScale.X;// + canvas_sz.X / zoom;
+		// float right = worldBorder.Right * zoomScale.X;
+		// if(camera.X < left) {
+		// 	camera.X = left;
+		// }
+		
+		//if(camera.X > right) {
+		//	camera.X = right;
+		//}
 	}
 
 	private Rectangle WorldBorder(World world, ImDrawListPtr drawList, Matrix4x4 transform) {
@@ -237,7 +247,11 @@ public class CanvasPanel : Panel {
 
 		// Tilemap layers
 		for(int i = 0; i < scene.LayerCount; i++) {
-			if(!scene.Layers[i].Visible || !scene.Layers[i].HasTilemap) continue;
+			bool hide = !scene.Layers[i].Visible;
+			if(Program.LayersPanel.IsolateLayerView && scene == Program.SelectedScene) {
+				hide = scene.Layers[i] != Program.SelectedLayer;
+			}
+			if(hide || !scene.Layers[i].HasTilemap) continue;
 			scene.Layers[i].Tilemap.Render();
 			uint tex = scene.Layers[i].Tilemap.GetFrameBufferTexture();
 			drawList.AddImage((nint)tex, p0, p3, new(0,1), new(1,0));

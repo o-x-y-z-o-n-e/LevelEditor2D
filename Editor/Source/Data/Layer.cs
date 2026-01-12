@@ -33,7 +33,7 @@ public class Layer {
 		name = "new_layer";
 		visible = true;
 		group = null;
-		tilemap = null;
+		tilemap = new Tilemap(this);
 	}
 
 	internal void Parse(XElement layerElement) {
@@ -41,7 +41,6 @@ public class Layer {
 		visible = layerElement.Attribute("visible").ParseAsBool(true);
 		var tilemapElement = layerElement.Element("tilemap");
 		if(tilemapElement != null) {
-			tilemap = new Tilemap(this);
 			tilemap.Parse(tilemapElement);
 		}
 	}

@@ -94,13 +94,12 @@ public static class Program {
 		window.Dispose();
 	}
 
-	private static void Load() {
-		controller = new ImGuiController(
-			gl = window.CreateOpenGL(), // load OpenGL
-			window, // pass in our window
-			input = window.CreateInput() // create an input context
-		);
+	private static unsafe void Load() {
+		gl = window.CreateOpenGL();
+		input = window.CreateInput();
 
+		controller = new ImGuiController(gl, window, input);
+		
 		menuBar = new MenuBar();
 		canvasPanel = new CanvasPanel();
 		layersPanel = new LayersPanel();
@@ -169,6 +168,8 @@ public static class Program {
 				SetSelectedLayer(scene.LastActiveLayer);
 			} else if(scene.Layers.Count > 0) {
 				SetSelectedLayer(scene.Layers[0]);
+			} else {
+				SetSelectedLayer(null);
 			}
 		} else {
 			SetSelectedLayer(null);

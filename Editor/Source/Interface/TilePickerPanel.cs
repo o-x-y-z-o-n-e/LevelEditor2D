@@ -8,6 +8,7 @@ public class TilePickerPanel : Panel {
 
 	private bool multiSelect;
 	private Vector2 multiSelectOrigin;
+	private int tilesetLinkTarget;
 
 	public TilePickerPanel() {
 		Title = "Tile Picker";
@@ -110,8 +111,18 @@ public class TilePickerPanel : Panel {
 				}
 
 				if(ImGui.Button(tilesetLabel, new Vector2(ImGui.CalcItemWidth(), 0))) {
-					
+					tilesetLinkTarget = i;
+					ImGui.OpenPopup("select-tileset");
 				}
+				
+				if(ImGui.BeginPopupModal("select-tileset")) {
+			
+					if(ImGui.Button("Cancel")) {
+						ImGui.CloseCurrentPopup();
+					}
+					ImGui.EndPopup();
+				}
+				
 				ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
 				ImGui.Text("Tileset");
 				

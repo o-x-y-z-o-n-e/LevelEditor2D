@@ -154,11 +154,32 @@ public class Scene {
 	}
 
 	public void DeleteLayer(int index) {
-		layers.RemoveAt(index);
+		DeleteLayer(layers[index]);
 	}
 	
 	public void DeleteLayer(Layer layer) {
+		if(layer.Scene != this) return;
+		if(LastActiveLayer == layer) LastActiveLayer = null;
 		layers.Remove(layer);
+	}
+	
+	public Layer CopyLayer(int index) {
+		return CopyLayer(layers[index]);
+	}
+	
+	public Layer CopyLayer(Layer srcLayer) {
+		if(srcLayer.Scene != this) return null;
+
+		Layer newLayer = AddLayer();
+
+		newLayer.Visible = srcLayer.Visible;
+		for(int y = 0; y < tileCountY; y++) {
+			for(int x = 0; x < tileCountX; x++) {
+				newLayer.Tilemap.Grid[x, y] = srcLayer.Tilemap.Grid[x, y];
+			}
+		}
+		
+		return newLayer;
 	}
 
 	public bool HasLayer(Layer layer) {

@@ -7,7 +7,7 @@ namespace L2D;
 
 public class Tilemap : IDisposable {
 
-	private const uint MAX_TILESETS = 16;
+	private const uint MAX_TILESETS = 16; // TODO: upgrade to 32
 	
 	public Scene Scene => scene;
 	

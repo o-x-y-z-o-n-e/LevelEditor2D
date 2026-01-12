@@ -34,7 +34,7 @@ public class TileEraserTool {
 
 	public void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder) {
 		Layer layer = Program.SelectedLayer;
-		if(layer.Scene != scene) return;
+		if(layer == null || layer.Scene != scene) return;
 
 		Vector2 mousePos = ImGui.GetIO().MousePos;
 		Matrix4x4.Invert(transform, out var transformInverted);

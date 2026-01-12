@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
+using System.Runtime.InteropServices;
+using IconFonts;
 using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.Input.Extensions;
@@ -69,9 +71,11 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         /// <summary>
         /// Constructs a new ImGuiController with font configuration and onConfigure Action.
         /// </summary>
-        public ImGuiController(GL gl, IView view, IInputContext input, ImGuiFontConfig? imGuiFontConfig = null, Action onConfigureIO = null)
+        public unsafe ImGuiController(GL gl, IView view, IInputContext input, ImGuiFontConfig? imGuiFontConfig = null, Action onConfigureIO = null)
         {
             Init(gl, view, input);
+            
+            imGuiFontConfig = new ImGuiFontConfig("Fonts/JetBrainsMono-Medium.ttf", 18);
 
             var io = ImGuiNET.ImGui.GetIO();
             if (imGuiFontConfig is not null)
@@ -79,6 +83,47 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
                 var glyphRange = imGuiFontConfig.Value.GetGlyphRange?.Invoke(io) ?? default;
 
                 io.Fonts.AddFontFromFileTTF(imGuiFontConfig.Value.FontPath, imGuiFontConfig.Value.FontSize, null, glyphRange);
+            }
+            
+            ImFontConfig config = new ImFontConfig();
+            
+            config.FontData = null;
+            config.FontDataSize = 0;
+            config.FontDataOwnedByAtlas = 1;
+            config.FontNo = 0;
+            config.SizePixels = 0;
+            config.OversampleH = 1;
+            config.OversampleV = 1;
+            config.PixelSnapH = 1;
+            config.GlyphExtraSpacing = new(0);
+            config.GlyphOffset = new(0, 4);
+            config.GlyphRanges = null;
+            config.GlyphMinAdvanceX = 18;
+            config.GlyphMaxAdvanceX = float.MaxValue;
+            config.MergeMode = 1;
+            config.FontBuilderFlags = 0;
+            config.RasterizerMultiply = 1;
+            config.RasterizerDensity = 1;
+            config.EllipsisChar = 0;
+            // config.Name = null;
+            config.DstFont = null;
+            
+            ushort[] iconRanges = new ushort[] { Codicons.IconMin, Codicons.IconMax, 0 };
+
+            GCHandle rangeHandle = GCHandle.Alloc(iconRanges, GCHandleType.Pinned);
+            try
+            {
+                io.Fonts.AddFontFromFileTTF(
+                    "Fonts/Codicons.ttf",
+                    18.0f,
+                    &config, 
+                    rangeHandle.AddrOfPinnedObject()
+                );
+            }
+            finally
+            {
+                if (rangeHandle.IsAllocated)
+                    rangeHandle.Free();
             }
 
             onConfigureIO?.Invoke();
@@ -795,6 +840,8 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
 	        s.Colors[(int)ImGuiCol.ScrollbarGrab] = new(0.30f, 0.30f, 0.35f, 1.00f);
 	        s.Colors[(int)ImGuiCol.ScrollbarGrabHovered] = new(0.40f, 0.40f, 0.50f, 1.00f);
 	        s.Colors[(int)ImGuiCol.ScrollbarGrabActive] = new(0.45f, 0.45f, 0.55f, 1.00f);
+            
+            s.Colors[(int)ImGuiCol.ModalWindowDimBg] = new(0.0f, 0.0f, 0.0f, 0.5f);
         
 	        // Style tweaks
 	        s.WindowRounding = 3.0f;
