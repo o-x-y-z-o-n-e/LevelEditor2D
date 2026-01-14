@@ -43,7 +43,7 @@ public class TilesetsPanel : Panel {
 		ImGui.Columns(2);
 		Edit();
 		ImGui.NextColumn();
-		Items();
+		Items(Program.SelectedTileset);
 	}
 
 	private void Menu() {
@@ -79,7 +79,7 @@ public class TilesetsPanel : Panel {
 		ImGui.EndDisabled();
 	}
 
-	private void Items() {
+	private Tileset Items(Tileset selected) {
 		ImGui.BeginChild("tileset-select");
 		
 		World world = Program.File.World;
@@ -107,10 +107,10 @@ public class TilesetsPanel : Panel {
 				ImGui.TableNextRow();
 				ImGui.TableNextColumn();
 				if(ImGui.Selectable(tileset.ID, Program.SelectedTileset == tileset, ImGuiSelectableFlags.SpanAllColumns)) {
-					if(Program.SelectedTileset == tileset) {
-						Program.SetSelectedTileset(null);
+					if(tileset == selected) {
+						selected = null;
 					} else {
-						Program.SetSelectedTileset(tileset);
+						selected = tileset;
 					}
 				}
 				ImGui.TableNextColumn();
@@ -147,7 +147,7 @@ public class TilesetsPanel : Panel {
 				ImGui.SetCursorScreenPos(areaPos + areaOffset);
 				ImGui.PushClipRect(p0, p1, true);
 				
-				if(Program.SelectedTileset == tileset) {
+				if(tileset == selected) {
 					drawList.AddRectFilled(p0, p1, Utilities.GetPackedColor(80, 80, 80, 80));
 				}
 
@@ -172,10 +172,10 @@ public class TilesetsPanel : Panel {
 				}
 				
 				if(ImGui.InvisibleButton("select", itemSize)) {
-					if(Program.SelectedTileset == tileset) {
-						Program.SetSelectedTileset(null);
+					if(tileset == selected) {
+						selected = null;
 					} else {
-						Program.SetSelectedTileset(tileset);
+						selected = tileset;
 					}
 				}
 
@@ -221,6 +221,8 @@ public class TilesetsPanel : Panel {
 		}
 
 		ImGui.EndChild();
+
+		return selected;
 	}
 	
 	private void Edit() {
@@ -341,6 +343,47 @@ public class TilesetsPanel : Panel {
 		ImGui.EndChild(); // tileset-edit
 		
 		lastSelectedTileset = tileset;
+	}
+
+	public void SelectTilesetDialog(Action<bool, Tileset> onFinish) {
+		ImGui.SetNextWindowSizeConstraints(new Vector2(400, 300), ImGui.GetIO().DisplaySize);
+		bool selected = false;
+		Tileset result = null;
+		bool open = true;
+		if(ImGui.BeginPopupModal("Select Tileset", ref open)) {
+			Vector2 area = ImGui.GetContentRegionAvail();
+			var style = ImGui.GetStyle();
+			
+			float buttonWidth1 = ImGui.CalcTextSize("List").X + style.FramePadding.X * 2.0F;
+			float buttonWidth2 = ImGui.CalcTextSize("Grid").X + style.FramePadding.X * 2.0F;
+			float widthNeeded = buttonWidth1 + style.ItemSpacing.X + buttonWidth2;
+		
+			ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - widthNeeded);
+		
+			ImGui.BeginDisabled(mode == ViewMode.List);
+			if(ImGui.Button("List")) {
+				mode = ViewMode.List;
+			}
+			ImGui.EndDisabled();
+			ImGui.SameLine();
+			ImGui.BeginDisabled(mode == ViewMode.Grid);
+			if(ImGui.Button("Grid")) {
+				mode = ViewMode.Grid;
+			}
+			ImGui.EndDisabled();
+            
+			result = Items(null);
+			if(result != null) {
+				selected = true;
+				open = false;
+				ImGui.CloseCurrentPopup();
+			}
+			
+			ImGui.EndPopup();
+		}
+		if(!open) {
+			onFinish?.Invoke(selected, result);
+		}
 	}
 	
 }

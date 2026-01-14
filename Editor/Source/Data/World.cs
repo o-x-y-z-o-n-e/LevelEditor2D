@@ -1,4 +1,5 @@
-﻿using System.Xml.Linq;
+﻿using System.Runtime.InteropServices.ComTypes;
+using System.Xml.Linq;
 
 namespace L2D; 
 
@@ -25,6 +26,7 @@ public class World {
 	public int MaxTilesetSlots => maxTilesetSlots;
 
 	public IEnumerable<Tileset> Tilesets => tilesets;
+	public IEnumerable<Scene> Scenes => scenes;
 
 	private File file;
 	private string name;
@@ -56,6 +58,33 @@ public class World {
 		return scenes[index];
 	}
 
+	public int GetSceneIndex(Scene scene) {
+		return scenes.IndexOf(scene);
+	}
+
+	public Scene CreateScene(string id, int width, int height, int x, int y) {
+		foreach(var s in scenes) if(s.ID == id) return null;
+		Scene scene = new Scene(file);
+		scene.ID = id;
+		scene.WorldX = x;
+		scene.WorldY = y;
+		scene.TileCountX = width;
+		scene.TileCountY = height;
+		scenes.Add(scene);
+		return scene;
+	}
+	
+	public void SwapScenes(int index1, int index2) {
+		if(index1 < 0 || index1 >= scenes.Count || index2 < 0 || index2 >= scenes.Count) return;
+		var t = scenes[index1];
+		scenes[index1] = scenes[index2];
+		scenes[index2] = t;
+	}
+	
+	public void SwapScenes(Scene scene1, Scene scene2) {
+		SwapScenes(scenes.IndexOf(scene1), scenes.IndexOf(scene2));
+	}
+
 	internal void Parse(XElement worldElement) {
 		name = worldElement.Attribute("name").Value;
 		tileWidth = worldElement.Attribute("tile_width").ParseAsInt(16);
@@ -75,6 +104,7 @@ public class World {
 	internal XElement Serialize() {
 		XElement rootElement = new XElement("world");
 		rootElement.Add(
+			new XAttribute("version", Program.VERSION_STRING),
 			new XAttribute("name", name),
 			new XAttribute("tile_width", tileWidth),
 			new XAttribute("tile_height", tileHeight)

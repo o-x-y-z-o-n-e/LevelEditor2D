@@ -84,5 +84,7 @@ public class File {
 	public void MarkDirty() {
 		dirty = true;
 	}
-	
+
+	public string GetFileName() => Path.GetFileName(path);
+
 }

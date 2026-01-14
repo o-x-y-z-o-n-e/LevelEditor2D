@@ -7,9 +7,19 @@ using Silk.NET.Windowing;
 using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
 
+using NativeFileDialogSharp;
+
 namespace L2D;
 
 public static class Program {
+
+	public const int VERSION_MAJOR = 0;
+	public const int VERSION_MINOR = 1;
+	public const int VERSION_PATCH = 0;
+	
+	public static readonly string VERSION_STRING = $"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}";
+
+	public const int IMGUI_STRING_MAX = 1024;
 
 	public static string Title {
 		get => window.Title;
@@ -110,14 +120,11 @@ public static class Program {
 
 		foreach(string arg in System.Environment.GetCommandLineArgs()) {
 			if(file == null && arg.EndsWith(".l2d")) {
-				file = new File(arg);
+				OpenFile(arg);
 			}
 		}
 
-		if(file != null) {
-			file.Read();
-			SetSelectedScene(file?.World?.GetScene(0));
-		}
+		Dialog.FileOpen();
 	}
 
 	private static void Render(double deltaTime) {
@@ -191,4 +198,18 @@ public static class Program {
 		selectedTileset = tileset;
 	}
 
+	public static void SetWindowTitle(string title) {
+		window.Title = title;
+	}
+
+	public static void OpenFile(string filePath) {
+		file = new File(filePath);
+		
+		if(file != null) {
+			file.Read();
+			SetWindowTitle("L2D - " + file.GetFileName());
+			SetSelectedScene(file?.World?.GetScene(0));
+		}
+	}
+	
 }

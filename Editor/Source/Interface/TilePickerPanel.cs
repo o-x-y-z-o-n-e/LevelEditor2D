@@ -12,6 +12,7 @@ public class TilePickerPanel : Panel {
 
 	public TilePickerPanel() {
 		Title = "Tile Picker";
+		tilesetLinkTarget = -1;
 	}
 
 	protected override void Update() {
@@ -112,17 +113,16 @@ public class TilePickerPanel : Panel {
 
 				if(ImGui.Button(tilesetLabel, new Vector2(ImGui.CalcItemWidth(), 0))) {
 					tilesetLinkTarget = i;
-					ImGui.OpenPopup("select-tileset");
+					ImGui.OpenPopup("Select Tileset");
 				}
-				
-				if(ImGui.BeginPopupModal("select-tileset")) {
-			
-					if(ImGui.Button("Cancel")) {
-						ImGui.CloseCurrentPopup();
-					}
-					ImGui.EndPopup();
+
+				if(i == tilesetLinkTarget) {
+					Program.TilesetsPanel.SelectTilesetDialog((selected, tileset) => {
+						if(selected) link.Tileset = tileset;
+						tilesetLinkTarget = -1;
+					});
 				}
-				
+
 				ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
 				ImGui.Text("Tileset");
 				

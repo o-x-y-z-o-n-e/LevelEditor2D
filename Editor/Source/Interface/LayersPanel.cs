@@ -34,7 +34,7 @@ public class LayersPanel : Panel {
 
 		if(scene != null) {
 			ImGui.PushItemFlag(ImGuiItemFlags.AllowDuplicateId, true);
-
+			
 			int count = scene.Layers.Count;
 			for(int i = 0; i < count; i++) {
 				ImGui.PushID(i);
@@ -43,6 +43,7 @@ public class LayersPanel : Panel {
 				Layer layer = scene.Layers[i];
 				bool selected = Program.SelectedLayer == layer;
 				
+				if(!layer.Visible) ImGui.PushStyleColor(ImGuiCol.Text, Utilities.GetPackedColor(255, 255, 255, 128));
 				if(isolateLayerView && selected) ImGui.PushStyleColor(ImGuiCol.Text, Utilities.GetPackedColor(0, 0, 255, 255));
 				if(ImGui.Selectable(layer.Name, selected, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap)) {
 					if(selected) {
@@ -52,6 +53,7 @@ public class LayersPanel : Panel {
 					}
 				}
 				if(isolateLayerView && selected) ImGui.PopStyleColor();
+				if(!layer.Visible) ImGui.PopStyleColor();
 				
 				if(ImGui.IsItemActive() && !ImGui.IsItemHovered()) {
 					int n_next = i + (ImGui.GetMouseDragDelta(0).Y < 0.0F ? -1 : 1);

@@ -274,6 +274,7 @@ public class Tilemap : IDisposable {
 		gl.Uniform2(shaderTileSizeUniform, new Vector2(scene.World.TileWidth, scene.World.TileHeight));
 		gl.UniformMatrix4(shaderScreenMatrixUniform, 1, false, (float*)&screenMatrix);
 
+		// TODO: blank tileset for invalid tileset slots from tiles
 		for(int i = 0; i < scene.Tilesets.Count; i++) {
 			var link = scene.Tilesets[i];
 			if(link.Tileset == null || link.Slot <= 0) continue;
