@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices.ComTypes;
 using System.Xml.Linq;
 
-namespace L2D; 
+namespace L2D;
 
 public class World {
 
@@ -9,12 +9,12 @@ public class World {
 		get => name;
 		set => name = value;
 	}
-	
+
 	public int TileWidth {
 		get => tileWidth;
 		set => tileWidth = value;
 	}
-	
+
 	public int TileHeight {
 		get => tileHeight;
 		set => tileHeight = value;
@@ -39,7 +39,7 @@ public class World {
 
 	internal World(File file) {
 		this.file = file;
-		
+
 		name = "New World";
 		tileWidth = 16;
 		tileHeight = 16;
@@ -47,7 +47,7 @@ public class World {
 		scenes = new();
 		maxTilesetSlots = 16;
 	}
-	
+
 	public Tileset GetTileset(int index) {
 		if(index < 0 || index >= tilesets.Count) return null;
 		return tilesets[index];
@@ -62,28 +62,64 @@ public class World {
 		return scenes.IndexOf(scene);
 	}
 
-	public Scene CreateScene(string id, int width, int height, int x, int y) {
-		foreach(var s in scenes) if(s.ID == id) return null;
+	public Scene CreateScene(string id, int width, int height, int x, int y, bool blankLayer = true) {
+		foreach(var s in scenes)
+			if(s.ID == id)
+				return null;
 		Scene scene = new Scene(file);
 		scene.ID = id;
 		scene.WorldX = x;
 		scene.WorldY = y;
 		scene.TileCountX = width;
 		scene.TileCountY = height;
-		scene.AddLayer();
+		if(blankLayer) scene.AddLayer();
 		scenes.Add(scene);
 		return scene;
 	}
-	
+
 	public void SwapScenes(int index1, int index2) {
 		if(index1 < 0 || index1 >= scenes.Count || index2 < 0 || index2 >= scenes.Count) return;
 		var t = scenes[index1];
 		scenes[index1] = scenes[index2];
 		scenes[index2] = t;
 	}
-	
+
 	public void SwapScenes(Scene scene1, Scene scene2) {
 		SwapScenes(scenes.IndexOf(scene1), scenes.IndexOf(scene2));
+	}
+
+	public Scene CopyScene(int index, string newID, int x, int y) {
+		if(index < 0 || index >= scenes.Count) return null;
+		return CopyScene(scenes[index], newID, x, y);
+	}
+	
+	public Scene CopyScene(Scene srcScene, string newID, int x, int y) {
+		if(!scenes.Contains(srcScene)) return null;
+		Scene newScene = CreateScene(newID, srcScene.TileCountX, srcScene.TileCountY, x, y, false);
+		
+		// TODO: groups
+
+		for(int i = 0; i < srcScene.Tilesets.Count; i++) {
+			var src = srcScene.Tilesets[i];
+			var link = new TilesetLink(file, src.Slot);
+			link.Tileset = src.Tileset;
+			newScene.Tilesets.Add(link);
+		}
+		
+		for(int i = 0; i < srcScene.LayerCount; i++) {
+			Layer srcLayer = srcScene.Layers[i];
+			Layer newLayer = newScene.AddLayer();
+			
+			newLayer.Name = srcLayer.Name;
+			newLayer.Visible = srcLayer.Visible;
+			for(int ty = 0; ty < srcScene.TileCountY; ty++) {
+				for(int tx = 0; tx < srcScene.TileCountX; tx++) {
+					newLayer.Tilemap.Grid[tx, ty] = srcLayer.Tilemap.Grid[tx, ty];
+				}
+			}
+		}
+		
+		return newScene;
 	}
 
 	public void DeleteScene(int index) {

@@ -26,6 +26,8 @@ public class ScenesPanel : Panel {
 		
 		World world = Program.File.World;
 
+		bool scenePreviewShown = false;
+
 		Vector2 listSize = ImGui.GetContentRegionAvail();
 		listSize.Y -= 200;
 		ImGui.BeginChild("scene_list", listSize, ImGuiChildFlags.Borders);
@@ -95,10 +97,12 @@ public class ScenesPanel : Panel {
 			}
 			
 			Program.CanvasPanel.EnableScenePreview(new(sceneReposVar.X, sceneReposVar.Y, sceneResizeVar.X, sceneResizeVar.Y));
+			scenePreviewShown = true;
 			
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Create")) {
-				world.CreateScene(sceneRenameBuffer, sceneResizeVar.X, sceneResizeVar.Y, sceneReposVar.X, sceneReposVar.Y);
+				var newScene = world.CreateScene(sceneRenameBuffer, sceneResizeVar.X, sceneResizeVar.Y, sceneReposVar.X, sceneReposVar.Y);
+				Program.SetSelectedScene(newScene);
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -109,20 +113,54 @@ public class ScenesPanel : Panel {
 			}
 			
 			ImGui.EndPopup();
-		} else {
-			Program.CanvasPanel.DisableScenePreview();
 		}
 		
 		ImGui.SameLine();
 		ImGui.BeginDisabled(Program.SelectedScene == null);
 		
 		if(ImGui.Button(Codicons.Copy)) {
+			sceneReposVar = new(0);
+			sceneRenameBuffer = "";
 			ImGui.OpenPopup("copy-scene");
 		}
 		
 		if(ImGui.BeginPopup("copy-scene")) {
 			ImGui.Text("Copy scene");
-			// TODO
+			
+			ImGui.InputText("New ID", ref sceneRenameBuffer, Program.IMGUI_STRING_MAX);
+			ImGui.DragInt2("Position", ref sceneReposVar.X, 1);
+			
+			Scene src = Program.SelectedScene;
+			
+			bool valid = sceneRenameBuffer != "";
+			foreach(var s in world.Scenes) {
+				if(s.ID == sceneRenameBuffer) {
+					valid = false;
+					break;
+				}
+				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
+				if(r.IntersectsWith(new(sceneReposVar.X, sceneReposVar.Y, src.TileCountX, src.TileCountY))) {
+					valid = false;
+					break;
+				}
+			}
+			
+			Program.CanvasPanel.EnableScenePreview(new(sceneReposVar.X, sceneReposVar.Y, src.TileCountX, src.TileCountY));
+			scenePreviewShown = true;
+			
+			ImGui.BeginDisabled(!valid);
+			if(ImGui.Button("Copy")) {
+				Scene newScene = world.CopyScene(src, sceneRenameBuffer, sceneReposVar.X, sceneReposVar.Y);
+				Program.SetSelectedScene(newScene);
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndDisabled();
+			
+			ImGui.SameLine();
+			if(ImGui.Button("Cancel")) {
+				ImGui.CloseCurrentPopup();
+			}
+			
 			ImGui.EndPopup();
 		}
 		
@@ -173,19 +211,58 @@ public class ScenesPanel : Panel {
 		if(Program.SelectedScene != null) {
 			Scene scene = Program.SelectedScene;
 			string id = scene.ID;
-			if(ImGui.InputText("ID", ref id, 256, ImGuiInputTextFlags.EnterReturnsTrue)) {
-				// TODO: update scene id
+			if(ImGui.InputText("ID", ref id, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+				bool valid = true;
+				foreach(var s in world.Scenes) {
+					if(s.ID == id) {
+						valid = false;
+						break;
+					}
+				}
+				if(valid) scene.ID = id;
 			}
 			
-			int wx = scene.WorldX;
-			if(ImGui.InputInt("World X", ref wx)) {
-				scene.WorldX = wx;
+			if(ImGui.Button($"{scene.WorldX}, {scene.WorldY}", new Vector2(ImGui.CalcItemWidth(), 0))) {
+				sceneReposVar = new(scene.WorldX, scene.WorldY);
+				ImGui.OpenPopup("repos");
+			}
+			ImGui.SameLine();
+			ImGui.SetCursorPosX(ImGui.GetCursorPosX() - ImGui.GetStyle().ItemInnerSpacing.X);
+			ImGui.Text("Position");
+			
+			if(ImGui.BeginPopup("repos")) {
+				ImGui.Text("Position scene");
+				ImGui.DragInt2("##New Position", ref sceneReposVar.X, 1);
+				
+				Program.CanvasPanel.EnableScenePreview(new(sceneReposVar.X, sceneReposVar.Y, scene.TileCountX, scene.TileCountY), scene);
+				scenePreviewShown = true;
+
+				bool valid = true;
+				foreach(var s in world.Scenes) {
+					if(s == scene) continue;
+					Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
+					if(r.IntersectsWith(new(sceneReposVar.X, sceneReposVar.Y, scene.TileCountX, scene.TileCountY))) {
+						valid = false;
+						break;
+					}
+				}
+				
+				ImGui.BeginDisabled(!valid);
+				if(ImGui.Button("Confirm")) {
+					scene.WorldX = sceneReposVar.X;
+					scene.WorldY = sceneReposVar.Y;
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.EndDisabled();
+				
+				ImGui.SameLine();
+				ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize("Cancel").X - ImGui.GetStyle().FramePadding.X * 2);
+				if(ImGui.Button("Cancel")) {
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.EndPopup();
 			}
 			
-			int wy = scene.WorldY;
-			if(ImGui.InputInt("World Y", ref wy)) {
-				scene.WorldY = wy;
-			}
 			
 			if(ImGui.Button($"{scene.TileCountX}, {scene.TileCountY}", new Vector2(ImGui.CalcItemWidth(), 0))) {
 				sceneResizeVar = new(scene.TileCountX, scene.TileCountY);
@@ -196,15 +273,32 @@ public class ScenesPanel : Panel {
 			ImGui.Text("Size");
 			
 			if(ImGui.BeginPopup("resize")) {
-				ImGui.Text("Resize scene?");
-				if(ImGui.InputInt2("##New Size", ref sceneResizeVar.X)) {
+				ImGui.Text("Resize scene");
+				if(ImGui.DragInt2("##New Size", ref sceneResizeVar.X, 1)) {
 					if(sceneResizeVar.X < 1) sceneResizeVar.X = 1;
 					if(sceneResizeVar.Y < 1) sceneResizeVar.Y = 1;
 				}
+				
+				Program.CanvasPanel.EnableScenePreview(new(scene.WorldX, scene.WorldY, sceneResizeVar.X, sceneResizeVar.Y), scene);
+				scenePreviewShown = true;
+				
+				bool valid = true;
+				foreach(var s in world.Scenes) {
+					if(s == scene) continue;
+					Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
+					if(r.IntersectsWith(new(scene.WorldX, scene.WorldY, sceneResizeVar.X, sceneResizeVar.Y))) {
+						valid = false;
+						break;
+					}
+				}
+				
+				ImGui.BeginDisabled(!valid);
 				if(ImGui.Button("Confirm")) {
 					// TODO
 					ImGui.CloseCurrentPopup();
 				}
+				ImGui.EndDisabled();
+				
 				ImGui.SameLine();
 				ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize("Cancel").X - ImGui.GetStyle().FramePadding.X * 2);
 				if(ImGui.Button("Cancel")) {
@@ -214,6 +308,10 @@ public class ScenesPanel : Panel {
 			}
 		} else {
 			ImGui.Text("No scene selected...");
+		}
+
+		if(!scenePreviewShown) {
+			Program.CanvasPanel.DisableScenePreview();
 		}
 		
 		// TODO: local tool bar for actions; new, up, down, copy, delete

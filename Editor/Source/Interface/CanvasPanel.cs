@@ -18,8 +18,9 @@ public class CanvasPanel : Panel {
 
 	private object activeTool;
 
-	private bool newScenePreview;
-	private Rectangle newSceneArea;
+	private bool previewSceneEnabled;
+	private Scene previewSceneExisting;
+	private Rectangle previewSceneArea;
 	
 	private const float ZOOM_RANGE_MIN = -5;
 	private const float ZOOM_RANGE_MAX = 15;
@@ -91,8 +92,8 @@ public class CanvasPanel : Panel {
 		Vector2 tileSize = new(world.TileWidth, world.TileHeight);
 		Vector2 zoomScale = tileSize * zoom;
 
-		if(newScenePreview) {
-			Vector2 p = new(newSceneArea.X + newSceneArea.Width / 2.0F, newSceneArea.Y + newSceneArea.Height / 2.0F);
+		if(previewSceneEnabled) {
+			Vector2 p = new(previewSceneArea.X + previewSceneArea.Width / 2.0F, previewSceneArea.Y + previewSceneArea.Height / 2.0F);
 			camera = -p * tileSize;
 		}
 
@@ -102,10 +103,14 @@ public class CanvasPanel : Panel {
 		transform *= Matrix4x4.CreateTranslation(canvas_p0.X, canvas_p0.Y, 0);
 		
 		// TODO: mouse center zoom option
+
+		bool movingCamera = false;
 		
 		if(isHovered) {
+			// ImGui.SetMouseCursor((ImGuiMouseCursor)10);
 			// if(ImGui.IsMouseDragging(ImGuiMouseButton.Middle, -1.0F)) {
 			if(ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
+				movingCamera = true;
 				ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
 				camera.X += io.MouseDelta.X / zoom;
 				camera.Y += io.MouseDelta.Y / zoom;
@@ -164,14 +169,14 @@ public class CanvasPanel : Panel {
 					activeTool = tileBrush;
 				}
 				if(tileBrush == activeTool) {
-					tileBrush.Update(drawList, transform, worldBorder);
+					tileBrush.Update(drawList, transform, worldBorder, movingCamera);
 				} else if(tileEraser == activeTool) {
-					tileEraser.Update(drawList, transform, worldBorder);
+					tileEraser.Update(drawList, transform, worldBorder, movingCamera);
 				}
 			}
 		}
 
-		if(newScenePreview) {
+		if(previewSceneEnabled) {
 			DrawScenePreview(drawList, transform);
 		}
 		
@@ -316,14 +321,15 @@ public class CanvasPanel : Panel {
 	}
 
 	private void DrawScenePreview(ImDrawListPtr drawList, Matrix4x4 transform) {
-		Vector2 p0 = Vector2.Transform(new Vector2(newSceneArea.X, newSceneArea.Y), transform);
-		Vector2 p3 = Vector2.Transform(new Vector2(newSceneArea.X+newSceneArea.Width, newSceneArea.Y+newSceneArea.Height), transform);
+		Vector2 p0 = Vector2.Transform(new Vector2(previewSceneArea.X, previewSceneArea.Y), transform);
+		Vector2 p3 = Vector2.Transform(new Vector2(previewSceneArea.X+previewSceneArea.Width, previewSceneArea.Y+previewSceneArea.Height), transform);
 
 		bool overlaps = false;
 
 		foreach(var scene in Program.File.World.Scenes) {
+			if(scene == previewSceneExisting) continue;
 			Rectangle area = new(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
-			if(area.IntersectsWith(newSceneArea)) {
+			if(area.IntersectsWith(previewSceneArea)) {
 				overlaps = true;
 				break;
 			}
@@ -342,13 +348,16 @@ public class CanvasPanel : Panel {
 		return tileBrush;
 	}
 
-	public void EnableScenePreview(Rectangle area) {
-		newScenePreview = true;
-		newSceneArea = area;
+	public void EnableScenePreview(Rectangle area, Scene existingScene = null) {
+		previewSceneEnabled = true;
+		previewSceneArea = area;
+		previewSceneExisting = existingScene;
 	}
 
 	public void DisableScenePreview() {
-		newScenePreview = false;
+		previewSceneEnabled = false;
+		previewSceneArea = default;
+		previewSceneExisting = null;
 	}
 
 	public void LocateScene(Scene scene) {

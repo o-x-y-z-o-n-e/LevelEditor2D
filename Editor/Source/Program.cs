@@ -204,8 +204,14 @@ public static class Program {
 		selectedTileset = tileset;
 	}
 
+	public static void NewFile(string filePath) {
+		// TODO
+	}
+
 	public static void OpenFile(string filePath) {
 		file = new File(filePath);
+		
+		Program.UpdateWindowTitle();
 		
 		if(file != null) {
 			file.Read();
@@ -271,6 +277,9 @@ public static class Program {
 				break;
 			case ImGuiMouseCursor.ResizeNWSE:
 				cur = StandardCursor.NwseResize;
+				break;
+			case (ImGuiMouseCursor)10:
+				cur = StandardCursor.Crosshair;
 				break;
 		}
 		input.Mice[0].Cursor.StandardCursor = cur;

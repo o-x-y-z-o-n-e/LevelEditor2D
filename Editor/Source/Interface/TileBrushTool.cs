@@ -63,7 +63,7 @@ public class TileBrushTool {
 		disposed = true;
 	}
 	
-	public void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder) {
+	public void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera) {
 		Layer layer = Program.SelectedLayer;
 		if(layer == null || layer.Scene != scene) return;
 		
@@ -215,6 +215,10 @@ public class TileBrushTool {
 		uint fillColorInvalid = Utilities.GetPackedColor(255, 40, 40, 64);
 
 		Rectangle sceneRegion = new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
+
+		if(sceneRegion.Contains(mx, my) && !movingCamera) {
+			ImGui.SetMouseCursor((ImGuiMouseCursor)10);
+		}
 		
 		if(!resizing) {
 			if(imprint) {

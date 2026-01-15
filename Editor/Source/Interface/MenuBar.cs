@@ -10,6 +10,7 @@ public class MenuBar {
 	}
 	
 	internal void Execute() {
+		bool confirmNew = false;
 		bool confirmQuit = false;
 		bool confirmOpen = false;
 		bool confirmReload = false;
@@ -17,7 +18,11 @@ public class MenuBar {
 		if(ImGui.BeginMainMenuBar()) {
 			if(ImGui.BeginMenu("File")) {
 				if(ImGui.MenuItem("New")) {
-					Program.NewProjectModal.Open();
+					if(Program.File != null && Program.File.UnsavedChanges) {
+						confirmNew = true;
+					} else {
+						Program.NewProjectModal.Open();
+					}
 				}
 				if(ImGui.MenuItem("Open", "Ctrl+O")) {
 					if(Program.File != null && Program.File.UnsavedChanges) {
@@ -99,6 +104,19 @@ public class MenuBar {
 			}
 
 			ImGui.EndMainMenuBar();
+			
+			if(confirmNew) ImGui.OpenPopup("Confirm New File");
+			if(ImGui.BeginPopupModal("Confirm New File", ImGuiWindowFlags.AlwaysAutoResize)) {
+				ImGui.Text("You have unsaved changes. Are you sure you want to create a new file?");
+				if(ImGui.Button("Yes")) {
+					Program.NewProjectModal.Open();
+				}
+				ImGui.SameLine();
+				if(ImGui.Button("No")) {
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.EndPopup();
+			}
 			
 			if(confirmQuit) ImGui.OpenPopup("Confirm Quit");
 			if(ImGui.BeginPopupModal("Confirm Quit", ImGuiWindowFlags.AlwaysAutoResize)) {

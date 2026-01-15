@@ -1,4 +1,4 @@
-﻿<world name="test_world" tile_width="16" tile_height="16">
+﻿<world version="0.1.0" name="test_world" tile_width="16" tile_height="16">
   <tilesets>
     <tileset id="lone_forest_ground" group="lone_forest" texture_file="lone_forest/lone_forest_ground.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
     <tileset id="lone_forest_path" group="lone_forest" texture_file="lone_forest/lone_forest_path.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />

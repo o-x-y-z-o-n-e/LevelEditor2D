@@ -141,6 +141,7 @@ public class LayersPanel : Panel {
 			if(ImGui.Button("Ok")) {
 				Layer layer = scene.CopyLayer(Program.SelectedLayer);
 				layer.Name = layerRenameBuffer;
+				Program.SetSelectedLayer(layer);
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
 			}
@@ -174,6 +175,9 @@ public class LayersPanel : Panel {
 				layerRenameBuffer = "";
 			}
 			ImGui.SameLine();
+			ImGui.Dummy(new Vector2(80, 0));
+			ImGui.SameLine();
+			ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize("Cancel").X - ImGui.GetStyle().FramePadding.X * 2);
 			if(ImGui.Button("Cancel")) {
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
