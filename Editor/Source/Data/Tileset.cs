@@ -158,7 +158,7 @@ public class Tileset {
 
 		GL gl = Program.GL;
 
-		string path = file.GetAbsolutePath(textureFilePath);
+		string path = file.GetPath(textureFilePath);
 		
 		texturePreview = Texture.LoadFromFile(path);
 		

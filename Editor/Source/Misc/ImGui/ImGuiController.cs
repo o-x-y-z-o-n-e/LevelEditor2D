@@ -47,6 +47,8 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
 
         public IntPtr Context;
 
+        public bool AllowInput;
+
         /// <summary>
         /// Constructs a new ImGuiController.
         /// </summary>
@@ -74,6 +76,8 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         public unsafe ImGuiController(GL gl, IView view, IInputContext input, ImGuiFontConfig? imGuiFontConfig = null, Action onConfigureIO = null)
         {
             Init(gl, view, input);
+
+            AllowInput = true;
             
             imGuiFontConfig = new ImGuiFontConfig("Fonts/JetBrainsMono-Medium.ttf", 18);
 
@@ -131,6 +135,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
             io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
             io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
+            io.BackendFlags |= ImGuiBackendFlags.HasMouseCursors;
 
             CreateDeviceResources();
 
@@ -292,6 +297,8 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         private void UpdateImGuiInput()
         {
             var io = ImGuiNET.ImGui.GetIO();
+            
+            // TODO: block input
 
             using var mouseState = _input.Mice[0].CaptureState();
 

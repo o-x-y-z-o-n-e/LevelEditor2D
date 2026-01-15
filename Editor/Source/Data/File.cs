@@ -9,13 +9,15 @@ namespace L2D;
 public class File {
 
 	public World World => world;
+	
+	public bool UnsavedChanges => dirty;
 
 	private string path;
 	private World world;
 	private bool dirty;
 
 	internal File(string path) {
-		this.path = path;
+		SetPath(path);
 	}
 
 	public bool Read() {
@@ -23,7 +25,7 @@ public class File {
 		try {
 			stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
 			XDocument document = XDocument.Load(stream);
-			dirty = false;
+			UnmarkDirty();
 			Parse(document);
 			stream.Close();
 			return true;
@@ -48,7 +50,7 @@ public class File {
 		try {
 			stream = System.IO.File.Create(path);
 			XDocument document = new XDocument();
-			dirty = false;
+			UnmarkDirty();
 			Serialize(document);
 			XmlWriterSettings settings = new XmlWriterSettings();
 			settings.OmitXmlDeclaration = true;
@@ -73,16 +75,31 @@ public class File {
 		doc.Add(world.Serialize());
 	}
 
-	public string GetAbsolutePath(string localPath) {
-		return Path.GetFullPath(localPath, Path.GetFullPath(Path.GetDirectoryName(path)));
+	public string GetPath(string localPath) {
+		return Path.GetFullPath(localPath, Path.GetDirectoryName(path));
 	}
+
+	public string GetPath() => path;
 	
 	public string GetRelativePath(string fullPath) {
 		return Path.GetRelativePath(Path.GetDirectoryName(path), fullPath);
 	}
 
+	public void SetPath(string path) {
+		this.path = Path.GetFullPath(path);
+		Program.UpdateWindowTitle();
+	}
+
 	public void MarkDirty() {
+		if(dirty) return;
 		dirty = true;
+		Program.UpdateWindowTitle();
+	}
+	
+	private void UnmarkDirty() {
+		if(!dirty) return;
+		dirty = false;
+		Program.UpdateWindowTitle();
 	}
 
 	public string GetFileName() => Path.GetFileName(path);

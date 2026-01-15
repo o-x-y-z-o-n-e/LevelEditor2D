@@ -1,8 +1,6 @@
 ﻿using System.Drawing;
 using System.Numerics;
 using ImGuiNET;
-using Silk.NET.Maths;
-using Rectangle = System.Drawing.Rectangle;
 
 namespace L2D;
 
@@ -19,6 +17,9 @@ public class CanvasPanel : Panel {
 	private TileEraserTool tileEraser;
 
 	private object activeTool;
+
+	private bool newScenePreview;
+	private Rectangle newSceneArea;
 	
 	private const float ZOOM_RANGE_MIN = -5;
 	private const float ZOOM_RANGE_MAX = 15;
@@ -35,6 +36,10 @@ public class CanvasPanel : Panel {
 		tileBrush = null;
 		tileEraser = null;
 		activeTool = null;
+	}
+
+	private float GetZoom() {
+		return MathF.Exp(zooming * ZOOM_RANGE_SCALE);
 	}
 
 	protected override void Update() {
@@ -78,24 +83,30 @@ public class CanvasPanel : Panel {
 		ImGui.InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags.MouseButtonLeft | ImGuiButtonFlags.MouseButtonRight);
 		isHovered = ImGui.IsItemHovered();  // Hovered
 		isPressed = ImGui.IsItemActive();   // Held
-		
-		float zoom = MathF.Exp(zooming * ZOOM_RANGE_SCALE);
+
+		float zoom = GetZoom();
 		
 		Matrix4x4 transform = Matrix4x4.Identity;
 
-		Vector2 zoomScale = new(world.TileWidth * zoom, world.TileHeight * zoom);
+		Vector2 tileSize = new(world.TileWidth, world.TileHeight);
+		Vector2 zoomScale = tileSize * zoom;
+
+		if(newScenePreview) {
+			Vector2 p = new(newSceneArea.X + newSceneArea.Width / 2.0F, newSceneArea.Y + newSceneArea.Height / 2.0F);
+			camera = -p * tileSize;
+		}
+
 		transform *= Matrix4x4.CreateTranslation(canvas_sz.X / 2 / zoomScale.X, canvas_sz.Y / 2 / zoomScale.Y, 0);
 		transform *= Matrix4x4.CreateScale(zoomScale.X, zoomScale.Y, 1);
 		transform *= Matrix4x4.CreateTranslation(camera.X * zoom, camera.Y * zoom, 0);
 		transform *= Matrix4x4.CreateTranslation(canvas_p0.X, canvas_p0.Y, 0);
 		
 		// TODO: mouse center zoom option
-		// TODO: clamp scroll
-		
 		
 		if(isHovered) {
 			// if(ImGui.IsMouseDragging(ImGuiMouseButton.Middle, -1.0F)) {
 			if(ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
+				ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
 				camera.X += io.MouseDelta.X / zoom;
 				camera.Y += io.MouseDelta.Y / zoom;
 			}
@@ -145,32 +156,26 @@ public class CanvasPanel : Panel {
 		}
 		
 		if(isHovered) {
-			
 			if(activeTool == null) activeTool = tileBrush;
-			if(ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
-				activeTool = tileEraser;
-			} else if(ImGui.IsKeyReleased(ImGuiKey.LeftShift)) {
-				activeTool = tileBrush;
+			if(activeTool != null) {
+				if(ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
+					activeTool = tileEraser;
+				} else if(ImGui.IsKeyReleased(ImGuiKey.LeftShift)) {
+					activeTool = tileBrush;
+				}
+				if(tileBrush == activeTool) {
+					tileBrush.Update(drawList, transform, worldBorder);
+				} else if(tileEraser == activeTool) {
+					tileEraser.Update(drawList, transform, worldBorder);
+				}
 			}
-			
-			if(tileBrush == activeTool) {
-				tileBrush.Update(drawList, transform, worldBorder);
-			} else if(tileEraser == activeTool) {
-				tileEraser.Update(drawList, transform, worldBorder);
-			}
+		}
+
+		if(newScenePreview) {
+			DrawScenePreview(drawList, transform);
 		}
 		
 		drawList.PopClipRect();
-
-		// float left = worldBorder.Left * zoomScale.X;// + canvas_sz.X / zoom;
-		// float right = worldBorder.Right * zoomScale.X;
-		// if(camera.X < left) {
-		// 	camera.X = left;
-		// }
-		
-		//if(camera.X > right) {
-		//	camera.X = right;
-		//}
 	}
 
 	private Rectangle WorldBorder(World world, ImDrawListPtr drawList, Matrix4x4 transform) {
@@ -310,7 +315,45 @@ public class CanvasPanel : Panel {
 		}
 	}
 
+	private void DrawScenePreview(ImDrawListPtr drawList, Matrix4x4 transform) {
+		Vector2 p0 = Vector2.Transform(new Vector2(newSceneArea.X, newSceneArea.Y), transform);
+		Vector2 p3 = Vector2.Transform(new Vector2(newSceneArea.X+newSceneArea.Width, newSceneArea.Y+newSceneArea.Height), transform);
+
+		bool overlaps = false;
+
+		foreach(var scene in Program.File.World.Scenes) {
+			Rectangle area = new(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
+			if(area.IntersectsWith(newSceneArea)) {
+				overlaps = true;
+				break;
+			}
+		}
+
+		if(overlaps) {
+			drawList.AddRectFilled(p0, p3, Utilities.GetPackedColor(255, 10, 10, 128));
+			drawList.AddRect(p0, p3, Utilities.GetPackedColor(255, 10, 10, 255));
+		} else {
+			drawList.AddRectFilled(p0, p3, Utilities.GetPackedColor(20, 255, 20, 128));
+			drawList.AddRect(p0, p3, Utilities.GetPackedColor(20, 255, 20, 255));
+		}
+	}
+
 	public TileBrushTool GetCurrentBrush() {
 		return tileBrush;
+	}
+
+	public void EnableScenePreview(Rectangle area) {
+		newScenePreview = true;
+		newSceneArea = area;
+	}
+
+	public void DisableScenePreview() {
+		newScenePreview = false;
+	}
+
+	public void LocateScene(Scene scene) {
+		float zoom = GetZoom();
+		Vector2 p = new(scene.WorldX + scene.TileCountX / 2.0F, scene.WorldY + scene.TileCountY / 2.0F);
+		camera = -p * new Vector2(scene.World.TileWidth, scene.World.TileHeight);
 	}
 }

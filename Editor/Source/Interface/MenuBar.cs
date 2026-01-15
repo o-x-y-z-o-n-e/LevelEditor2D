@@ -1,4 +1,5 @@
 ﻿using ImGuiNET;
+using NativeFileDialogSharp;
 
 namespace L2D; 
 
@@ -9,30 +10,56 @@ public class MenuBar {
 	}
 	
 	internal void Execute() {
+		bool confirmQuit = false;
+		bool confirmOpen = false;
+		bool confirmReload = false;
+		
 		if(ImGui.BeginMainMenuBar()) {
-
 			if(ImGui.BeginMenu("File")) {
 				if(ImGui.MenuItem("New")) {
-					// TODO
+					Program.NewProjectModal.Open();
 				}
 				if(ImGui.MenuItem("Open", "Ctrl+O")) {
-					// TODO
+					if(Program.File != null && Program.File.UnsavedChanges) {
+						confirmOpen = true;
+					} else {
+						FileDialog.Open(Program.File.GetPath(), Program.FILE_EXTENSION, result => {
+							if(result != null) Program.OpenFile(result);
+						});
+					}
 				}
-				if(Program.File == null) ImGui.BeginDisabled();
+
+				bool disabled = Program.File == null;
+				
+				if(disabled) ImGui.BeginDisabled();
 				if(ImGui.MenuItem("Save", "Ctrl+S")) {
-					Program.File.Write();
+					Program.SaveFile();
 				}
 				if(ImGui.MenuItem("Save as..", "Ctrl+Shift+S")) {
-					// TODO
+					FileDialog.Save(Program.File.GetPath(), Program.FILE_EXTENSION, result => {
+						if(result != null) {
+							Program.SaveFile(result);
+						}
+					});
 				}
 				if(ImGui.MenuItem("Reload", "Ctrl+R")) {
-					Program.File.Read();
+					if(Program.File.UnsavedChanges) {
+						confirmReload = true;
+					} else {
+						Program.ReloadFile();
+					}
 				}
-				if(Program.File == null) ImGui.EndDisabled();
+				if(disabled) ImGui.EndDisabled();
+				
 				if(ImGui.MenuItem("Quit", "Ctrl+Q")) {
-					Program.Close();
+					if(Program.File != null && Program.File.UnsavedChanges) {
+						confirmQuit = true;
+					} else {
+						Program.Close();
+					}
 				}
 				ImGui.EndMenu();
+				
 			}
 
 			if(ImGui.BeginMenu("Edit")) {
@@ -72,7 +99,50 @@ public class MenuBar {
 			}
 
 			ImGui.EndMainMenuBar();
+			
+			if(confirmQuit) ImGui.OpenPopup("Confirm Quit");
+			if(ImGui.BeginPopupModal("Confirm Quit", ImGuiWindowFlags.AlwaysAutoResize)) {
+				ImGui.Text("You have unsaved changes. Are you sure you want to quit?");
+				if(ImGui.Button("Yes")) {
+					Program.Close();
+				}
+				ImGui.SameLine();
+				if(ImGui.Button("No")) {
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.EndPopup();
+			}
+			
+			if(confirmOpen) ImGui.OpenPopup("Confirm Open");
+			if(ImGui.BeginPopupModal("Confirm Open", ImGuiWindowFlags.AlwaysAutoResize)) {
+				ImGui.Text("You have unsaved changes. Are you sure you want to open another file?");
+				if(ImGui.Button("Yes")) {
+					FileDialog.Open(Program.File.GetPath(), Program.FILE_EXTENSION, result => {
+						if(result != null) Program.OpenFile(result);
+					});
+				}
+				ImGui.SameLine();
+				if(ImGui.Button("No")) {
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.EndPopup();
+			}
+			
+			if(confirmReload) ImGui.OpenPopup("Confirm Reload");
+			if(ImGui.BeginPopupModal("Confirm Reload", ImGuiWindowFlags.AlwaysAutoResize)) {
+				ImGui.Text("You have unsaved changes. Are you sure you want to reload file from disk?");
+				if(ImGui.Button("Yes")) {
+					Program.ReloadFile();
+				}
+				ImGui.SameLine();
+				if(ImGui.Button("No")) {
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.EndPopup();
+			}
 		}
+
+		
 	}
 	
 }

@@ -20,6 +20,11 @@ public class TilePickerPanel : Panel {
 			ImGui.Text("No scene selected...");
 			return;
 		}
+		
+		if(Program.SelectedLayer == null) {
+			ImGui.Text("No layer selected...");
+			return;
+		}
 
 		int scale = 4;
 

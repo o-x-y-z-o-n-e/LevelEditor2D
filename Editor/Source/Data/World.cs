@@ -70,6 +70,7 @@ public class World {
 		scene.WorldY = y;
 		scene.TileCountX = width;
 		scene.TileCountY = height;
+		scene.AddLayer();
 		scenes.Add(scene);
 		return scene;
 	}
@@ -83,6 +84,20 @@ public class World {
 	
 	public void SwapScenes(Scene scene1, Scene scene2) {
 		SwapScenes(scenes.IndexOf(scene1), scenes.IndexOf(scene2));
+	}
+
+	public void DeleteScene(int index) {
+		if(index < 0 || index >= scenes.Count) return;
+		DeleteScene(scenes[index]);
+	}
+	
+	public void DeleteScene(Scene scene) {
+		if(!scenes.Contains(scene)) return;
+		scenes.Remove(scene);
+		scene.Dispose();
+		if(scene == Program.SelectedScene) {
+			Program.SetSelectedScene(null);
+		}
 	}
 
 	internal void Parse(XElement worldElement) {

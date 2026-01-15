@@ -68,7 +68,7 @@ public class ScenesPanel : Panel {
 		ImGui.EndChild();
 		
 		if(ImGui.Button(Codicons.DiffAdded)) {
-			sceneResizeVar = new(0);
+			sceneResizeVar = new(16);
 			sceneReposVar = new(0);
 			sceneRenameBuffer = "";
 			ImGui.OpenPopup("add-scene");
@@ -78,8 +78,8 @@ public class ScenesPanel : Panel {
 			ImGui.Text("New scene");
 
 			ImGui.InputText("ID", ref sceneRenameBuffer, Program.IMGUI_STRING_MAX);
-			ImGui.InputInt2("Position", ref sceneReposVar.X);
-			ImGui.InputInt2("Size", ref sceneResizeVar.X);
+			ImGui.DragInt2("Position", ref sceneReposVar.X, 1);
+			ImGui.DragInt2("Size", ref sceneResizeVar.X, 1);
 
 			bool valid = sceneRenameBuffer != "" && sceneResizeVar.X > 0 && sceneResizeVar.Y > 0;
 			foreach(var s in world.Scenes) {
@@ -94,7 +94,7 @@ public class ScenesPanel : Panel {
 				}
 			}
 			
-			// TODO: draw ghost area in canvas + center camera at position
+			Program.CanvasPanel.EnableScenePreview(new(sceneReposVar.X, sceneReposVar.Y, sceneResizeVar.X, sceneResizeVar.Y));
 			
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Create")) {
@@ -109,6 +109,8 @@ public class ScenesPanel : Panel {
 			}
 			
 			ImGui.EndPopup();
+		} else {
+			Program.CanvasPanel.DisableScenePreview();
 		}
 		
 		ImGui.SameLine();
@@ -132,7 +134,17 @@ public class ScenesPanel : Panel {
 		
 		if(ImGui.BeginPopup("delete-scene")) {
 			ImGui.Text("Delete scene?");
-			// TODO
+			if(ImGui.Button("Confirm")) {
+				world.DeleteScene(Program.SelectedScene);
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.SameLine();
+			ImGui.Dummy(new Vector2(80, 0));
+			ImGui.SameLine();
+			ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize("Cancel").X - ImGui.GetStyle().FramePadding.X * 2);
+			if(ImGui.Button("Cancel")) {
+				ImGui.CloseCurrentPopup();
+			}
 			ImGui.EndPopup();
 		}
 		
@@ -151,7 +163,7 @@ public class ScenesPanel : Panel {
 		ImGui.SameLine();
 		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(Codicons.OpenInProduct).X - 12);
 		if(ImGui.Button(Codicons.OpenInProduct)) {
-			// TODO: move camera to center scene
+			Program.CanvasPanel.LocateScene(Program.SelectedScene);
 		}
 		
 		ImGui.EndDisabled();
@@ -174,16 +186,6 @@ public class ScenesPanel : Panel {
 			if(ImGui.InputInt("World Y", ref wy)) {
 				scene.WorldY = wy;
 			}
-
-			// int tcx = scene.TileCountX;
-			// if(ImGui.InputInt("Tiles Width", ref tcx)) {
-			// 	// TODO: update tile count
-			// }
-			// 
-			// int tcy = scene.TileCountY;
-			// if(ImGui.DragInt("Tiles Height", ref tcy)) {
-			// 	// TODO: update tile count
-			// }
 			
 			if(ImGui.Button($"{scene.TileCountX}, {scene.TileCountY}", new Vector2(ImGui.CalcItemWidth(), 0))) {
 				sceneResizeVar = new(scene.TileCountX, scene.TileCountY);

@@ -2,12 +2,11 @@
 using System.Drawing;
 using ImGuiNET;
 using Silk.NET.Input;
+using Silk.NET.Input.Extensions;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
-
-using NativeFileDialogSharp;
 
 namespace L2D;
 
@@ -18,6 +17,8 @@ public static class Program {
 	public const int VERSION_PATCH = 0;
 	
 	public static readonly string VERSION_STRING = $"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}";
+	
+	public const string FILE_EXTENSION = "l2d";
 
 	public const int IMGUI_STRING_MAX = 1024;
 
@@ -34,6 +35,7 @@ public static class Program {
 	public static ScenesPanel ScenesPanel => scenesPanel;
 	public static TilePickerPanel TilePickerPanel => tilePickerPanel;
 	public static TilesetsPanel TilesetsPanel => tilesetsPanel;
+	public static NewProjectModal NewProjectModal => newProjectModal;
 	
 	public static Scene SelectedScene {
 		get => selectedScene;
@@ -71,6 +73,7 @@ public static class Program {
 	private static ScenesPanel scenesPanel;
 	private static TilePickerPanel tilePickerPanel;
 	private static TilesetsPanel tilesetsPanel;
+	private static NewProjectModal newProjectModal;
 
 	private static File file;
 	private static Scene selectedScene;
@@ -117,6 +120,7 @@ public static class Program {
 		scenesPanel = new ScenesPanel();
 		tilePickerPanel = new TilePickerPanel();
 		tilesetsPanel = new TilesetsPanel();
+		newProjectModal = new NewProjectModal();
 
 		foreach(string arg in System.Environment.GetCommandLineArgs()) {
 			if(file == null && arg.EndsWith(".l2d")) {
@@ -124,7 +128,9 @@ public static class Program {
 			}
 		}
 
-		Dialog.FileOpen();
+		if(file == null) {
+			newProjectModal.Open();
+		}
 	}
 
 	private static void Render(double deltaTime) {
@@ -145,14 +151,14 @@ public static class Program {
 		objectsPanel.Execute();
 		tilePickerPanel.Execute();
 		canvasPanel.Execute();
+		newProjectModal.Execute();
 		
-		// if(!test) {
-		// 	test = true;
-		// 	ImGui.SetWindowFocus("Tilesets");
-		// }
+		FileDialog.CompleteThreads();
 
 		controller.Render();
 
+		UpdateMouseCursor();
+		
 		if(requestClose) {
 			window?.Close();
 		}
@@ -198,18 +204,76 @@ public static class Program {
 		selectedTileset = tileset;
 	}
 
-	public static void SetWindowTitle(string title) {
-		window.Title = title;
-	}
-
 	public static void OpenFile(string filePath) {
 		file = new File(filePath);
 		
 		if(file != null) {
 			file.Read();
-			SetWindowTitle("L2D - " + file.GetFileName());
 			SetSelectedScene(file?.World?.GetScene(0));
 		}
+	}
+
+	public static void SaveFile(string filePath) {
+		file.SetPath(filePath);
+		file.Write();
+	}
+
+	public static void SaveFile() {
+		file.Write();
+	}
+
+	public static void ReloadFile() {
+		file.Read();
+	}
+
+	public static void AllowInput(bool enabled) {
+		controller.AllowInput = enabled;
+	}
+
+	internal static void UpdateWindowTitle() {
+		if(file == null) {
+			window.Title = $"L2D";
+		} else if(file.UnsavedChanges) {
+			window.Title = $"L2D - {file.GetFileName()}*";
+		} else {
+			window.Title = $"L2D - {file.GetFileName()}";
+		}
+	}
+
+	private static void UpdateMouseCursor() {
+		StandardCursor cur = StandardCursor.Default;
+		switch(ImGui.GetMouseCursor()) {
+			default:
+			case ImGuiMouseCursor.None:
+			case ImGuiMouseCursor.Arrow:
+				cur = StandardCursor.Default;
+				break;
+			case ImGuiMouseCursor.Hand:
+				cur = StandardCursor.Hand;
+				break;
+			case ImGuiMouseCursor.NotAllowed:
+				cur = StandardCursor.NotAllowed;
+				break;
+			case ImGuiMouseCursor.TextInput:
+				cur = StandardCursor.IBeam;
+				break;
+			case ImGuiMouseCursor.ResizeAll:
+				cur = StandardCursor.ResizeAll;
+				break;
+			case ImGuiMouseCursor.ResizeNS:
+				cur = StandardCursor.VResize;
+				break;
+			case ImGuiMouseCursor.ResizeEW:
+				cur = StandardCursor.HResize;
+				break;
+			case ImGuiMouseCursor.ResizeNESW:
+				cur = StandardCursor.NeswResize;
+				break;
+			case ImGuiMouseCursor.ResizeNWSE:
+				cur = StandardCursor.NwseResize;
+				break;
+		}
+		input.Mice[0].Cursor.StandardCursor = cur;
 	}
 	
 }
