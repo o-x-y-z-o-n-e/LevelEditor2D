@@ -17,7 +17,9 @@ public class File {
 	private bool dirty;
 
 	internal File(string path) {
-		SetPath(path);
+		this.path = Path.GetFullPath(path);
+		this.world = null;
+		this.dirty = false;
 	}
 
 	public bool Read() {
@@ -71,6 +73,11 @@ public class File {
 		}
 	}
 
+	public void New() {
+		world?.Dispose();
+		world = new World(this);
+	}
+
 	private void Serialize(XDocument doc) {
 		doc.Add(world.Serialize());
 	}
@@ -103,5 +110,9 @@ public class File {
 	}
 
 	public string GetFileName() => Path.GetFileName(path);
+
+	public void Dispose() {
+		world?.Dispose();
+	}
 
 }

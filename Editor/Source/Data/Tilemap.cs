@@ -274,14 +274,21 @@ public class Tilemap : IDisposable {
 		gl.Uniform2(shaderTileSizeUniform, new Vector2(scene.World.TileWidth, scene.World.TileHeight));
 		gl.UniformMatrix4(shaderScreenMatrixUniform, 1, false, (float*)&screenMatrix);
 
-		// TODO: blank tileset for invalid tileset slots from tiles
-		for(int i = 0; i < scene.Tilesets.Count; i++) {
-			var link = scene.Tilesets[i];
-			if(link.Tileset == null || link.Slot <= 0) continue;
-			int index = link.Slot - 1;
-			gl.ActiveTexture(GLEnum.Texture0 + index);
-			gl.BindTexture(GLEnum.Texture2DArray, link.Tileset.TextureArray.Handle);
-			gl.Uniform1(shaderTextureUniforms[index], index);
+		for(int i = 0; i < MAX_TILESETS; i++) {
+			TilesetLink link = null;
+			foreach(var l in scene.Tilesets) {
+				if(l.Slot - 1 == i && l.Tileset != null) {
+					link = l;
+					break;
+				}
+			}
+			gl.ActiveTexture(GLEnum.Texture0 + i);
+			if(link != null) {
+				gl.BindTexture(GLEnum.Texture2DArray, link.Tileset.TextureArray.Handle);
+			} else {
+				gl.BindTexture(GLEnum.Texture2DArray, 0);
+			}
+			gl.Uniform1(shaderTextureUniforms[i], i);
 		}
 		
 		gl.BindVertexArray(vertexArrayHandle);

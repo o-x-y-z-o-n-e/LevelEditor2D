@@ -81,9 +81,10 @@ public class CanvasPanel : Panel {
 		drawList.AddRectFilled(canvas_p0, canvas_p1, Color.FromArgb(255, 50, 50, 50).GetPackedValue());
 		drawList.AddRect(canvas_p0, canvas_p1, Color.FromArgb(255, 180, 180, 180).GetPackedValue());
 		
-		ImGui.InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags.MouseButtonLeft | ImGuiButtonFlags.MouseButtonRight);
+		// ImGui.InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags.MouseButtonRight);
+		ImGui.Dummy(canvas_sz);
 		isHovered = ImGui.IsItemHovered();  // Hovered
-		isPressed = ImGui.IsItemActive();   // Held
+		//isPressed = ImGui.IsItemActive();   // Held
 
 		float zoom = GetZoom();
 		
@@ -132,10 +133,12 @@ public class CanvasPanel : Panel {
 		
 		drawList.PushClipRect(canvas_p0 + new Vector2(1), canvas_p1 - new Vector2(1), true);
 
-		Rectangle worldBorder = WorldBorder(world, drawList, transform);
+		Rectangle worldBorder = DrawWorldBorder(world, drawList, transform);
 		
 		for(int i = 0; i < world.SceneCount; i++) {
-			ProcessScene(world.GetScene(i), drawList, transform);
+			ImGui.PushID(i);
+			DrawScene(world.GetScene(i), drawList, transform);
+			ImGui.PopID();
 		}
 		
 		Scene activeScene = Program.SelectedScene;
@@ -183,7 +186,7 @@ public class CanvasPanel : Panel {
 		drawList.PopClipRect();
 	}
 
-	private Rectangle WorldBorder(World world, ImDrawListPtr drawList, Matrix4x4 transform) {
+	private Rectangle DrawWorldBorder(World world, ImDrawListPtr drawList, Matrix4x4 transform) {
 		if(world.SceneCount == 0) return new Rectangle(0,0,0,0);
 		int minX = int.MaxValue;
 		int minY = int.MaxValue;
@@ -208,7 +211,7 @@ public class CanvasPanel : Panel {
 		Rectangle region = new Rectangle(minX, minY, maxX - minX, maxY - minY);
 
 		if(!gridScenesOnly) {
-			PlaceGrid(region, drawList, transform);
+			DrawGrid(region, drawList, transform);
 		}
 
 		uint boundryLineColor = Color.FromArgb(255, 180, 180, 180).GetPackedValue();
@@ -242,7 +245,7 @@ public class CanvasPanel : Panel {
 		return region;
 	}
 
-	private void ProcessScene(Scene scene, ImDrawListPtr drawList, Matrix4x4 transform) {
+	private void DrawScene(Scene scene, ImDrawListPtr drawList, Matrix4x4 transform) {
 		Vector2 p0 = Vector2.Transform(new Vector2(scene.WorldX, scene.WorldY), transform);
 		Vector2 p1 = Vector2.Transform(new Vector2(scene.WorldX + scene.TileCountX, scene.WorldY), transform);
 		Vector2 p2 = Vector2.Transform(new Vector2(scene.WorldX, scene.WorldY + scene.TileCountY), transform);
@@ -252,9 +255,23 @@ public class CanvasPanel : Panel {
 		Vector2 idTextSize = ImGui.CalcTextSize(scene.ID);
 		Vector2 idTextPos = p0 - Vector2.UnitY * idTextSize.Y;
 		uint idTextColor = scene == Program.SelectedScene ? Color.FromArgb(255, 20, 220, 20).GetPackedValue() : 0xFFFFFFFF;
+		
 		drawList.AddText(idTextPos, idTextColor, scene.ID);
 		drawList.AddRectFilled(idTextPos, idTextPos + idTextSize, Color.FromArgb(40, 180, 180, 180).GetPackedValue());
-
+		
+		//ImGui.PushID(scene.ID);
+		ImGui.SetCursorScreenPos(idTextPos);
+		if(ImGui.InvisibleButton("select-scene", idTextSize)) {
+			Program.SetSelectedScene(scene);
+		}
+		// if(ImGui.Selectable(scene.ID, Program.SelectedScene == scene, ImGuiSelectableFlags.AllowOverlap, idTextSize)) {
+		// 	Program.SetSelectedScene(scene);
+		// }
+		if(ImGui.IsItemHovered()) {
+			ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+		}
+		//ImGui.PopID();
+		
 		// Tilemap layers
 		for(int i = 0; i < scene.LayerCount; i++) {
 			bool hide = !scene.Layers[i].Visible;
@@ -269,7 +286,7 @@ public class CanvasPanel : Panel {
 		
 		// Grid
 		if(gridScenesOnly) {
-			PlaceGrid(new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY), drawList, transform);
+			DrawGrid(new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY), drawList, transform);
 		}
 		
 		// Boundry lines
@@ -302,7 +319,7 @@ public class CanvasPanel : Panel {
 		);
 	}
 
-	private void PlaceGrid(Rectangle region, ImDrawListPtr drawList, Matrix4x4 transform) {
+	private void DrawGrid(Rectangle region, ImDrawListPtr drawList, Matrix4x4 transform) {
 		int gridAlpha = (int)(20 * Utilities.Map(zooming, ZOOM_RANGE_MIN / 2.0F, 0, 0.0F, 1.0F));
 		for(int x = region.X; x <= region.X + region.Width; x++) {
 			drawList.AddLine(

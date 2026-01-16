@@ -122,7 +122,7 @@ public class TilePickerPanel : Panel {
 				}
 
 				if(i == tilesetLinkTarget) {
-					Program.TilesetsPanel.SelectTilesetDialog((selected, tileset) => {
+					Program.TilesetsPanel.SelectTilesetModal((selected, tileset) => {
 						if(selected) link.Tileset = tileset;
 						tilesetLinkTarget = -1;
 					});

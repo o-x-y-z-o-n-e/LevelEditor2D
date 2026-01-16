@@ -47,7 +47,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
 
         public IntPtr Context;
 
-        public bool AllowInput;
+        public static bool AllowInput;
 
         /// <summary>
         /// Constructs a new ImGuiController.
@@ -200,16 +200,16 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         /// <param name="keycode">The native keycode of the key generating the event.</param>
         /// <param name="scancode">The native scancode of the key generating the event.</param>
         /// <param name="down">True if the event is a key down event, otherwise False</param>
-        private static void OnKeyEvent(IKeyboard keyboard, Key keycode, int scancode, bool down)
-        {
+        private static void OnKeyEvent(IKeyboard keyboard, Key keycode, int scancode, bool down) {
+            if(!AllowInput) return;
             var io = ImGuiNET.ImGui.GetIO();
             var imGuiKey = TranslateInputKeyToImGuiKey(keycode);
             io.AddKeyEvent(imGuiKey, down);
             io.SetKeyEventNativeData(imGuiKey, (int) keycode, scancode);
         }
 
-        private void OnKeyChar(IKeyboard arg1, char arg2)
-        {
+        private void OnKeyChar(IKeyboard arg1, char arg2) {
+            if(!AllowInput) return;
             _pressedChars.Add(arg2);
         }
 
@@ -298,32 +298,31 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         {
             var io = ImGuiNET.ImGui.GetIO();
             
-            // TODO: block input
-
             using var mouseState = _input.Mice[0].CaptureState();
 
-            io.MouseDown[0] = mouseState.IsButtonPressed(MouseButton.Left);
-            io.MouseDown[1] = mouseState.IsButtonPressed(MouseButton.Right);
-            io.MouseDown[2] = mouseState.IsButtonPressed(MouseButton.Middle);
+            io.MouseDown[0] = AllowInput && mouseState.IsButtonPressed(MouseButton.Left);
+            io.MouseDown[1] = AllowInput && mouseState.IsButtonPressed(MouseButton.Right);
+            io.MouseDown[2] = AllowInput && mouseState.IsButtonPressed(MouseButton.Middle);
 
             var point = new Point((int) mouseState.Position.X, (int) mouseState.Position.Y);
-            io.MousePos = new Vector2(point.X, point.Y);
+            if(AllowInput) io.MousePos = new Vector2(point.X, point.Y);
 
             var wheel = mouseState.GetScrollWheels()[0];
-            io.MouseWheel = wheel.Y;
-            io.MouseWheelH = wheel.X;
+            io.MouseWheel = AllowInput ? wheel.Y : 0;
+            io.MouseWheelH = AllowInput ? wheel.X : 0;
 
-            foreach (var c in _pressedChars)
-            {
-                io.AddInputCharacter(c);
+            if(AllowInput) {
+                foreach (var c in _pressedChars) {
+                    io.AddInputCharacter(c);
+                }
             }
 
             _pressedChars.Clear();
 
-            io.KeyCtrl = _keyboard.IsKeyPressed(Key.ControlLeft) || _keyboard.IsKeyPressed(Key.ControlRight);
-            io.KeyAlt = _keyboard.IsKeyPressed(Key.AltLeft) || _keyboard.IsKeyPressed(Key.AltRight);
-            io.KeyShift = _keyboard.IsKeyPressed(Key.ShiftLeft) || _keyboard.IsKeyPressed(Key.ShiftRight);
-            io.KeySuper = _keyboard.IsKeyPressed(Key.SuperLeft) || _keyboard.IsKeyPressed(Key.SuperRight);
+            io.KeyCtrl  = AllowInput && (_keyboard.IsKeyPressed(Key.ControlLeft) || _keyboard.IsKeyPressed(Key.ControlRight));
+            io.KeyAlt   = AllowInput && (_keyboard.IsKeyPressed(Key.AltLeft) || _keyboard.IsKeyPressed(Key.AltRight));
+            io.KeyShift = AllowInput && (_keyboard.IsKeyPressed(Key.ShiftLeft) || _keyboard.IsKeyPressed(Key.ShiftRight));
+            io.KeySuper = AllowInput && (_keyboard.IsKeyPressed(Key.SuperLeft) || _keyboard.IsKeyPressed(Key.SuperRight));
         }
 
         internal void PressChar(char keyChar)

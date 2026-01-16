@@ -44,6 +44,7 @@ public class NewProjectModal {
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Create")) {
 				Program.NewFile(path);
+				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();

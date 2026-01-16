@@ -145,13 +145,15 @@ public static class Program {
 		
 		ImGui.ShowDemoWindow();
 		
-		tilesetsPanel.Execute();
+		// tilesetsPanel.Execute();
 		scenesPanel.Execute();
 		layersPanel.Execute();
 		objectsPanel.Execute();
 		tilePickerPanel.Execute();
 		canvasPanel.Execute();
 		newProjectModal.Execute();
+		
+		tilesetsPanel.Execute();// testing
 		
 		FileDialog.CompleteThreads();
 
@@ -205,10 +207,19 @@ public static class Program {
 	}
 
 	public static void NewFile(string filePath) {
-		// TODO
+		file?.Dispose();
+		
+		file = new File(filePath);
+		file.New();
+		
+		Program.UpdateWindowTitle();
+		
+		SetSelectedScene(null);
 	}
 
 	public static void OpenFile(string filePath) {
+		file?.Dispose();
+		
 		file = new File(filePath);
 		
 		Program.UpdateWindowTitle();
@@ -230,10 +241,6 @@ public static class Program {
 
 	public static void ReloadFile() {
 		file.Read();
-	}
-
-	public static void AllowInput(bool enabled) {
-		controller.AllowInput = enabled;
 	}
 
 	internal static void UpdateWindowTitle() {

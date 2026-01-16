@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using NativeFileDialogSharp;
+using Silk.NET.OpenGL.Extensions.ImGui;
 
 namespace L2D;
 
@@ -25,7 +26,7 @@ public class FileDialog {
 			instance.callback = onResult;
 			instance.open = false;
 		}
-		Program.AllowInput(false);
+		ImGuiController.AllowInput = false;
 		Thread myThread = new Thread(new ThreadStart(Internal));
 		myThread.Start();
 	}
@@ -40,7 +41,7 @@ public class FileDialog {
 			instance.callback = onResult;
 			instance.open = true;
 		}
-		Program.AllowInput(false);
+		ImGuiController.AllowInput = false;
 		Thread myThread = new Thread(new ThreadStart(Internal));
 		myThread.Start();
 	}
@@ -69,7 +70,7 @@ public class FileDialog {
 				} else {
 					instance.callback?.Invoke(null);
 				}
-				Program.AllowInput(true);
+				ImGuiController.AllowInput = true;
 			}
 		}
 	}
