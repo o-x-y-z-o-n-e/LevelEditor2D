@@ -8,7 +8,11 @@
     <tileset id="caves-06" group="caves" texture_file="caves_walls.png"						px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
     <tileset id="caves-07" group="caves" texture_file="caves_walls_alternative.png"			px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
     <tileset id="caves-08" group="caves" texture_file="caves_water_channels.png"			px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
-    <tileset id="caves-09" group="caves" texture_file="caves_water_channels_stone.png"		px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
+    <tileset id="caves-09" group="caves" texture_file="caves_water_channels_stone.png"		px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0">
+	  <tile num="1">
+	    <shape pos_x="0" pos_y="0" size_x="16" size_y="16" />
+	  </tile>
+	</tileset>
   </tilesets>
   <scenes>
     <scene id="test_scene_0" world_x="0" world_y="0" tile_count_x="16" tile_count_y="16">

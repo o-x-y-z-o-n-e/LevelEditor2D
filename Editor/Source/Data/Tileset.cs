@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
+using System.Drawing;
+using System.Numerics;
 using System.Xml.Linq;
-using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using StbImageSharp;
 
@@ -22,6 +23,7 @@ public class Tileset {
 
 	public string TextureFilePath {
 		get => textureFilePath;
+		set => textureFilePath = value;
 	}
 	
 	public int OffsetX {
@@ -61,9 +63,10 @@ public class Tileset {
 	private string id;
 	private string group;
 	private string textureFilePath;
-	private Vector2D<int> offset;
-	private Vector2D<int> spacing;
-	private Vector2D<int> size;
+	private Point offset;
+	private Point spacing;
+	private Point size;
+	private Dictionary<int, TileData> tileData;
 	private bool disposed;
 	private Texture texturePreview;
 	private TextureArray textureArray;
@@ -76,6 +79,7 @@ public class Tileset {
 		offset = new(0, 0);
 		spacing = new(0, 0);
 		size = new(0, 0);
+		tileData = new();
 	}
 
 	internal void Parse(XElement tilesetElement) {
@@ -134,7 +138,7 @@ public class Tileset {
 		return (texturePreview.Height - offset.Y + spacing.Y) / (size.Y + spacing.Y);
 	}
 
-	public Rectangle<int> GetTileRegion(int tileIndex) {
+	public Rectangle GetTileRegion(int tileIndex) {
 		int cx = GetTileCountX();
 		int cy = GetTileCountY();
 
@@ -149,6 +153,19 @@ public class Tileset {
 			size.X,
 			size.Y
 		);
+	}
+
+	public TileData GetTileData(int id) {
+		if(!tileData.ContainsKey(id)) return null;
+		return tileData[id];
+	}
+
+	public TileData AddTileData(int id) {
+		if(tileData.ContainsKey(id)) return tileData[id];
+		if(id < 1 || id > GetTileCount()) return null;
+		var data = new TileData(id);
+		tileData.Add(id, data);
+		return data;
 	}
 
 	public void ReloadTexture() {
@@ -217,5 +234,29 @@ public class Tileset {
 		texturePreview?.Dispose();
 		textureArray?.Dispose();
 		disposed = true;
+	}
+}
+
+public class TileData {
+	public int Tile => tile;
+	public List<TileShape> Shapes => shapes;
+	private int tile;
+	private List<TileShape> shapes;
+	public TileData(int tile) {
+		this.tile = tile;
+		this.shapes = new List<TileShape>();
+	}
+}
+
+public struct TileShape {
+	public Vector2 Position;
+	public Vector2 Size;
+	public TileShape() {
+		Position = new(0);
+		Size = new(0);
+	}
+	public TileShape(Vector2 p, Vector2 s) {
+		Position = p;
+		Size = s;
 	}
 }

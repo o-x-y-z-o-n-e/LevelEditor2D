@@ -136,6 +136,11 @@ public class World {
 		}
 	}
 
+	internal void AddTileset(Tileset tileset) {
+		if(tilesets.Contains(tileset)) return;
+		tilesets.Add(tileset);
+	}
+
 	internal void Parse(XElement worldElement) {
 		name = worldElement.Attribute("name").Value;
 		tileWidth = worldElement.Attribute("tile_width").ParseAsInt(16);

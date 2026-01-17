@@ -21,7 +21,7 @@ public class FileDialog {
 			if(instance.active) return;
 			instance.active = true;
 			instance.finished = false;
-			instance.defaultPath = defaultPath;
+			instance.defaultPath = defaultPath.Replace('/', Path.PathSeparator);
 			instance.filter = filter;
 			instance.callback = onResult;
 			instance.open = false;
@@ -36,7 +36,7 @@ public class FileDialog {
 			if(instance.active) return;
 			instance.active = true;
 			instance.finished = false;
-			instance.defaultPath = defaultPath;
+			instance.defaultPath = defaultPath.Replace('/', Path.PathSeparator);
 			instance.filter = filter;
 			instance.callback = onResult;
 			instance.open = true;
@@ -66,7 +66,7 @@ public class FileDialog {
 			if(instance.finished) {
 				instance.finished = false;
 				if(instance.result.IsOk) {
-					instance.callback?.Invoke(instance.result.Path);
+					instance.callback?.Invoke(instance.result.Path.Replace('\\', '/'));
 				} else {
 					instance.callback?.Invoke(null);
 				}

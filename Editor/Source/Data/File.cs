@@ -17,7 +17,7 @@ public class File {
 	private bool dirty;
 
 	internal File(string path) {
-		this.path = Path.GetFullPath(path);
+		this.path = Path.GetFullPath(path).Replace('\\', '/');
 		this.world = null;
 		this.dirty = false;
 	}
@@ -83,17 +83,17 @@ public class File {
 	}
 
 	public string GetPath(string localPath) {
-		return Path.GetFullPath(localPath, Path.GetDirectoryName(path));
+		return Path.GetFullPath(localPath, Path.GetDirectoryName(path)).Replace('\\', '/');
 	}
 
 	public string GetPath() => path;
 	
 	public string GetRelativePath(string fullPath) {
-		return Path.GetRelativePath(Path.GetDirectoryName(path), fullPath);
+		return Path.GetRelativePath(Path.GetDirectoryName(path), fullPath).Replace('\\', '/');
 	}
 
 	public void SetPath(string path) {
-		this.path = Path.GetFullPath(path);
+		this.path = Path.GetFullPath(path).Replace('\\', '/');
 		Program.UpdateWindowTitle();
 	}
 
