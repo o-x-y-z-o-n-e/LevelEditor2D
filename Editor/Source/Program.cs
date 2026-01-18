@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Numerics;
 using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.Input.Extensions;
@@ -127,10 +128,6 @@ public static class Program {
 				OpenFile(arg);
 			}
 		}
-
-		if(file == null) {
-			newProjectModal.Open();
-		}
 	}
 
 	private static void Render(double deltaTime) {
@@ -145,15 +142,18 @@ public static class Program {
 		
 		ImGui.ShowDemoWindow();
 		
-		// tilesetsPanel.Execute();
+		tilesetsPanel.Execute();
 		scenesPanel.Execute();
 		layersPanel.Execute();
 		objectsPanel.Execute();
 		tilePickerPanel.Execute();
 		canvasPanel.Execute();
-		newProjectModal.Execute();
+
+		if(file == null) {
+			Launcher();
+		}
 		
-		tilesetsPanel.Execute();// testing
+		newProjectModal.Execute();
 		
 		FileDialog.CompleteThreads();
 
@@ -290,6 +290,42 @@ public static class Program {
 				break;
 		}
 		input.Mice[0].Cursor.StandardCursor = cur;
+	}
+
+	private static void Launcher() {
+		var style = ImGui.GetStyle();
+		if(!ImGui.IsPopupOpen("Launch")) {
+			ImGui.OpenPopup("Launch", ImGuiPopupFlags.AnyPopupLevel);
+		}
+		ImGui.SetNextWindowSize(new Vector2(400, 500));
+		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F));
+		if(ImGui.BeginPopupModal("Launch", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoTitleBar)) {
+			ImGui.BeginChild("recent-projects", ImGui.GetContentRegionAvail() - new Vector2(0, ImGui.GetTextLineHeight() + style.FramePadding.Y * 2 + 6), ImGuiChildFlags.Borders | ImGuiChildFlags.FrameStyle);
+			// TODO: list recents
+			if(ImGui.BeginPopupContextWindow()) {
+				if(ImGui.MenuItem("Clear")) {
+					// TODO: clear recents
+				}
+				ImGui.EndPopup();
+			}
+			ImGui.EndChild();
+			
+			if(ImGui.Button("New")) {
+				newProjectModal.Open();
+			}
+			ImGui.SameLine();
+			if(ImGui.Button("Open")) {
+				FileDialog.Open("", Program.FILE_EXTENSION, result => {
+					if(result != null) Program.OpenFile(result);
+				});
+			}
+			ImGui.SameLine();
+			ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize("Quit").X - style.FramePadding.X * 2.0F);
+			if(ImGui.Button("Quit")) {
+				Close();
+			}
+			ImGui.EndPopup();
+		}
 	}
 	
 }

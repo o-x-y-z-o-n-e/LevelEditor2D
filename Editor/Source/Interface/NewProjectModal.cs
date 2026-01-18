@@ -18,7 +18,7 @@ public class NewProjectModal {
 
 	internal void Execute() {
 		if(open) {
-			ImGui.OpenPopup("New Project");
+			ImGui.OpenPopup("New Project", ImGuiPopupFlags.AnyPopup);
 			open = false;
 		}
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F, 0.5F));
