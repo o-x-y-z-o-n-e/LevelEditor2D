@@ -8,7 +8,11 @@
     <tileset id="town_building_wood" group="town" texture_file="town/exterior/town_building_wood.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
     <tileset id="town_building_stone" group="town" texture_file="town/exterior/town_building_stone.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
     <tileset id="town_building_stucco" group="town" texture_file="town/exterior/town_building_stucco.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
-    <tileset id="town_extra" group="town" texture_file="town/exterior/town_extra.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
+    <tileset id="town_extra" group="town" texture_file="town/exterior/town_extra.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0">
+      <tile num="2">
+        <shape pos_x="0" pos_y="0" size_x="9" size_y="11" />
+      </tile>
+    </tileset>
   </tilesets>
   <scenes>
     <scene id="town_center" world_x="0" world_y="0" tile_count_x="120" tile_count_y="120">

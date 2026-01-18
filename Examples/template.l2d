@@ -1,4 +1,4 @@
-<world name="test_world" tile_width="16" tile_height="16">
+<world version="0.1.0" name="test_world" tile_width="16" tile_height="16">
   <tilesets>
     <tileset id="caves-01" group="caves" texture_file="caves_cliff_edges.png"				px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>
     <tileset id="caves-02" group="caves" texture_file="caves_dirt_floor.png"				px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0"/>

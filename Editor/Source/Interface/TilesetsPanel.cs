@@ -33,6 +33,9 @@ public class TilesetsPanel : Panel {
 	private Vector2D<int> importTexels;
 	private bool reimport;
 	private Tileset reimportTileset;
+	private Vector2 colliderDragOrigin;
+	private bool colliderDrag;
+	private int colliderHighlightIndex;
 	
 	public TilesetsPanel() {
 		Title = "Tilesets";
@@ -42,6 +45,9 @@ public class TilesetsPanel : Panel {
 		lastSelectedTileset = null;
 		previewScale = 4;
 		showColliders = false;
+		colliderDragOrigin = new(0);
+		colliderDrag = false;
+		colliderHighlightIndex = -1;
 		importID = "";
 		importGroup = "";
 		importPath = "";
@@ -275,8 +281,47 @@ public class TilesetsPanel : Panel {
 			Texture texSource = tileset.GetTexturePreview();
 			Vector2 border = new(4,4);
 			if(texSource != null) {
+				Vector2 origin = ImGui.GetCursorPos();
 				Vector2 size = new Vector2(texSource.Width, texSource.Height) * previewScale;
 				ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1,1,1,1));
+				
+				int countX = tileset.GetTileCountX();
+				int countY = tileset.GetTileCountY();
+
+				bool hoveredTile = false;
+				for(int y = 0; y < countY; y++) {
+					for(int x = 0; x < countX; x++) {
+						int tileID = (y * countX + x) + 1;
+						bool selected = tileEditIndex == tileID;
+							
+						ImGui.SetCursorPos(origin + new Vector2(world.TileWidth * x, world.TileHeight * y) * previewScale);
+						ImGui.PushID(tileID);
+						Vector2 c = ImGui.GetCursorScreenPos();
+						Vector2 s = new Vector2(world.TileWidth, world.TileHeight) * previewScale;
+						if(ImGui.InvisibleButton("##tile", s)) {
+							tileEditIndex = tileID;
+							selected = true;
+						}
+						
+						if(ImGui.IsItemHovered()) {
+							ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
+							hoveredTile = true;
+						}
+						if(selected) {
+							ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
+							ImGui.GetWindowDrawList().AddRect(c, c + s, Utilities.GetPackedColor(255, 255, 255, 255));
+						}
+						ImGui.PopID();
+					}
+				}
+				if(!hoveredTile) {
+					ImGui.SetCursorPos(origin);
+					Vector2 c = ImGui.GetContentRegionAvail();
+					Vector2 s = new Vector2(float.Max(size.X, c.X), float.Max(size.Y, c.Y));
+					if(ImGui.InvisibleButton("##clear", s)) {
+						tileEditIndex = 0;
+					}
+				}
 			}
 		} else {
 			ImGui.Text("No tileset selected...");
@@ -288,7 +333,7 @@ public class TilesetsPanel : Panel {
 
 		if(tileset != lastSelectedTileset) {
 			idEditBuffer = tileset != null ? tileset.ID : "";
-			tileEditIndex = 2;
+			tileEditIndex = 0;
 		}
 
 		if(ImGui.InputText("ID", ref idEditBuffer, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
@@ -335,9 +380,7 @@ public class TilesetsPanel : Panel {
 			ImGui.Text("Texels: --");
 		}
 
-
 		TileEdit();
-		
 		
 		ImGui.EndDisabled();
 		ImGui.EndChild(); // tileset-controls
@@ -385,13 +428,45 @@ public class TilesetsPanel : Panel {
 			}
 			var tiledata = tileset.GetTileData(tileEditIndex);
 			if(tiledata != null) {
-				foreach(var shape in tiledata.Shapes) {
+				for(int i = 0; i < tiledata.Shapes.Count; i++) {
+					var shape = tiledata.Shapes[i];
 					Vector2 s0 = new(shape.Position.X / tileset.SizeX, shape.Position.Y / tileset.SizeY);
 					Vector2 s1 = new((shape.Position.X + shape.Size.X) / tileset.SizeX, (shape.Position.Y + shape.Size.Y) / tileset.SizeY);
 					Vector2 t0 = new(float.Lerp(p0.X, p1.X, s0.X), float.Lerp(p0.Y, p1.Y, s0.Y));
 					Vector2 t1 = new(float.Lerp(p0.X, p1.X, s1.X), float.Lerp(p0.Y, p1.Y, s1.Y));
-					drawList.AddRectFilled(t0, t1, Utilities.GetPackedColor(20, 20, 255, 80));
-					drawList.AddRect(t0, t1, Utilities.GetPackedColor(20, 20, 255, 200));
+					if(i == colliderHighlightIndex) {
+						drawList.AddRectFilled(t0, t1, Utilities.GetPackedColor(80, 80, 255, 80));
+						drawList.AddRect(t0, t1, Utilities.GetPackedColor(40, 40, 255, 200));
+					} else {
+						drawList.AddRectFilled(t0, t1, Utilities.GetPackedColor(30, 30, 255, 80));
+						drawList.AddRect(t0, t1, Utilities.GetPackedColor(30, 30, 255, 200));
+					}
+				}
+			}
+			if(ImGui.IsWindowFocused()) {
+				Vector2 pos = ImGui.GetMousePos();
+				bool drag = ImGui.IsMouseDragging(ImGuiMouseButton.Left, -1.0F);
+
+				if(drag && !colliderDrag) {
+					colliderDrag = true;
+					colliderDragOrigin = pos;
+				}
+				
+				Vector2 d0 = new(float.Min(pos.X, colliderDragOrigin.X), float.Min(pos.Y, colliderDragOrigin.Y));
+				Vector2 d1 = new(float.Max(pos.X, colliderDragOrigin.X), float.Max(pos.Y, colliderDragOrigin.Y));
+				Vector2 c0 = new(float.Floor(Utilities.Map(d0.X, p0.X, p1.X, 0.0F, tileset.SizeX)), float.Floor(Utilities.Map(d0.Y, p0.Y, p1.Y, 0.0F, tileset.SizeY)));
+				Vector2 c1 = new(float.Ceiling(Utilities.Map(d1.X, p0.X, p1.X, 0.0F, tileset.SizeX)), float.Ceiling(Utilities.Map(d1.Y, p0.Y, p1.Y, 0.0F, tileset.SizeY)));
+				
+				if(drag) {
+					Vector2 t0 = new(float.Lerp(p0.X, p1.X, c0.X / tileset.SizeX), float.Lerp(p0.Y, p1.Y, c0.Y / tileset.SizeY));
+					Vector2 t1 = new(float.Lerp(p0.X, p1.X, c1.X / tileset.SizeX), float.Lerp(p0.Y, p1.Y, c1.Y / tileset.SizeY));
+					ImGui.GetWindowDrawList().AddRect(t0, t1, Utilities.GetPackedColor(255, 255, 255, 255));
+				} else if(colliderDrag) {
+					colliderDrag = false;
+					if(tiledata == null) {
+						tiledata = tileset.AddTileData(tileEditIndex);
+					}
+					tiledata.Shapes.Add(new(c0, c1 - c0));
 				}
 			}
 		}
@@ -404,7 +479,7 @@ public class TilesetsPanel : Panel {
 		
 		int tileCount = tileset != null ? tileset.GetTileCount() : 0;
 		ImGui.SeparatorText("Tile Data");
-		ImGui.DragInt("Tile Index", ref tileEditIndex, 0.05F, 0, tileCount+1);
+		ImGui.DragInt("Tile ID", ref tileEditIndex, 0.05F, 0, tileCount+1);
 		
 		ImGui.BeginDisabled(tileEditIndex == 0);
 		
@@ -417,7 +492,6 @@ public class TilesetsPanel : Panel {
 
 		if(ImGui.InputInt("Shape Count", ref count, 1, 1)) {
 			if(count < 0) count = 0;
-			if(count > 8) count = 8;
 			if(data == null) {
 				data = tileset.AddTileData(tileEditIndex);
 			}
@@ -432,17 +506,26 @@ public class TilesetsPanel : Panel {
 		
 		ImGui.Separator();
 
+		colliderHighlightIndex = -1;
 		if(data != null) {
 			for(int i = 0; i < count; i++) {
 				ImGui.PushID(i);
 
 				ImGui.Text($"Shape #{i + 1}");
+				
+				if(ImGui.IsItemHovered()) {
+					colliderHighlightIndex = i;
+				}
 
 				bool changed = false;
 
 				Vector2 pos = data.Shapes[i].Position;
 				if(ImGui.DragFloat2("Shape Pos", ref pos, 1.0F)) {
 					changed = true;
+				}
+
+				if(ImGui.IsItemHovered()) {
+					colliderHighlightIndex = i;
 				}
 				
 				pos.X = float.Clamp(pos.X, 0.0F, tileset.SizeX);
@@ -451,6 +534,10 @@ public class TilesetsPanel : Panel {
 				Vector2 size = data.Shapes[i].Size;
 				if(ImGui.DragFloat2("Shape Size", ref size, 1.0F)) {
 					changed = true;
+				}
+				
+				if(ImGui.IsItemHovered()) {
+					colliderHighlightIndex = i;
 				}
 				
 				size.X = float.Clamp(size.X, 0.0F, tileset.SizeX - pos.X);
@@ -489,11 +576,12 @@ public class TilesetsPanel : Panel {
 			
 			ImGui.SetItemTooltip(fullPath);
 
+			ImGui.BeginDisabled();
+			ImGui.Text("Under construction");
 			ImGui.InputInt2("Offset", ref importOffset.X);
-				
 			ImGui.InputInt2("Spacing", ref importSpacing.X);
-			
 			ImGui.InputInt2("Texels", ref importTexels.X);
+			ImGui.EndDisabled();
 			
 			ImGui.Spacing();
 			ImGui.Spacing();
