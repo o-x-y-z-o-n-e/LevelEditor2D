@@ -16,13 +16,14 @@ public class NewProjectModal {
 		tileSize = new(16, 16);
 	}
 
-	internal void Execute() {
+	internal void Body() {
 		if(open) {
-			ImGui.OpenPopup("New Project", ImGuiPopupFlags.AnyPopup);
+			ImGui.OpenPopup("New Project");
 			open = false;
 		}
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F, 0.5F));
-		if(ImGui.BeginPopupModal("New Project", ImGuiWindowFlags.AlwaysAutoResize)) {
+		bool o = true;
+		if(ImGui.BeginPopupModal("New Project", ref o, ImGuiWindowFlags.AlwaysAutoResize)) {
 			if(ImGui.Button("Choose")) {
 				FileDialog.Save(path, Program.FILE_EXTENSION, result => {
 					if(result != null) path = result;
@@ -47,14 +48,6 @@ public class NewProjectModal {
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
-			ImGui.SameLine();
-			if(ImGui.Button("Close")) {
-				if(Program.File != null) {
-					ImGui.CloseCurrentPopup();
-				} else {
-					Program.Close();
-				}
-			}
 			ImGui.EndPopup();
 		}
 	}

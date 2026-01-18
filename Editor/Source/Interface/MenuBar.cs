@@ -160,7 +160,7 @@ public class MenuBar {
 			}
 		}
 
-		
+		Program.NewProjectModal.Body();
 	}
 	
 }

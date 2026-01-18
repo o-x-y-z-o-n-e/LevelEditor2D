@@ -87,8 +87,8 @@ public static class Program {
 	private static GL gl;
 	private static IInputContext input;
 	private static bool requestClose;
-	
-	static bool test = false;
+
+	private static List<string> recentProjects;
 	
 	public static void Main(string[] args) {
 		WindowOptions options = WindowOptions.Default with {
@@ -123,6 +123,9 @@ public static class Program {
 		tilesetsPanel = new TilesetsPanel();
 		newProjectModal = new NewProjectModal();
 
+		recentProjects = new List<string>();
+		LoadRecentProjects();
+
 		foreach(string arg in System.Environment.GetCommandLineArgs()) {
 			if(file == null && arg.EndsWith(".l2d")) {
 				OpenFile(arg);
@@ -152,8 +155,6 @@ public static class Program {
 		if(file == null) {
 			Launcher();
 		}
-		
-		newProjectModal.Execute();
 		
 		FileDialog.CompleteThreads();
 
@@ -297,14 +298,26 @@ public static class Program {
 		if(!ImGui.IsPopupOpen("Launch")) {
 			ImGui.OpenPopup("Launch", ImGuiPopupFlags.AnyPopupLevel);
 		}
-		ImGui.SetNextWindowSize(new Vector2(400, 500));
+		ImGui.SetNextWindowSize(new Vector2(600, 500));
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F));
 		if(ImGui.BeginPopupModal("Launch", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoTitleBar)) {
 			ImGui.BeginChild("recent-projects", ImGui.GetContentRegionAvail() - new Vector2(0, ImGui.GetTextLineHeight() + style.FramePadding.Y * 2 + 6), ImGuiChildFlags.Borders | ImGuiChildFlags.FrameStyle);
-			// TODO: list recents
+
+			float width = ImGui.GetContentRegionAvail().X;
+			for(int i = recentProjects.Count - 1; i >= 0; i--) {
+				ImGui.PushID(i);
+				if(ImGui.Selectable(recentProjects[i], false, ImGuiSelectableFlags.None, new Vector2(width, 24))) {
+					Program.OpenFile(recentProjects[i]);
+					break;
+				}
+				ImGui.SetItemTooltip(recentProjects[i]);
+				ImGui.PopID();
+			}
+			
 			if(ImGui.BeginPopupContextWindow()) {
 				if(ImGui.MenuItem("Clear")) {
-					// TODO: clear recents
+					recentProjects.Clear();
+					SaveRecentProjects();
 				}
 				ImGui.EndPopup();
 			}
@@ -313,6 +326,7 @@ public static class Program {
 			if(ImGui.Button("New")) {
 				newProjectModal.Open();
 			}
+			newProjectModal.Body();
 			ImGui.SameLine();
 			if(ImGui.Button("Open")) {
 				FileDialog.Open("", Program.FILE_EXTENSION, result => {
@@ -326,6 +340,17 @@ public static class Program {
 			}
 			ImGui.EndPopup();
 		}
+	}
+
+	private static void LoadRecentProjects() {
+		// TODO
+		recentProjects.Add("test1");
+		recentProjects.Add("test2");
+		recentProjects.Add("test3");
+	}
+	
+	private static void SaveRecentProjects() {
+		// TODO
 	}
 	
 }
