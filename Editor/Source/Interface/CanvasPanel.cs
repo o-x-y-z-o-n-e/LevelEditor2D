@@ -12,11 +12,18 @@ public class CanvasPanel : Panel {
 	private float zooming;
 	private bool isHovered;
 	private bool isPressed;
+	
+	public TileSelectTool TileSelect => tileSelect;
+	public TileBrushTool TileBrush => tileBrush;
+	public TileEraserTool TileEraser => tileEraser;
 
+	private TileSelectTool tileSelect;
 	private TileBrushTool tileBrush;
 	private TileEraserTool tileEraser;
 
-	private object activeTool;
+	public TileTool ActiveTool => activeTool;
+
+	private TileTool activeTool;
 
 	private bool previewSceneEnabled;
 	private Scene previewSceneExisting;
@@ -34,6 +41,7 @@ public class CanvasPanel : Panel {
 		camera = new(0, 0);
 		zooming = 0;
 		gridScenesOnly = true;
+		tileSelect = new TileSelectTool();
 		tileBrush = null;
 		tileEraser = null;
 		activeTool = null;
@@ -56,6 +64,24 @@ public class CanvasPanel : Panel {
 		var io = ImGui.GetIO();
 
 		World world = Program.File.World;
+
+		ImGui.SetNextItemWidth(150);
+		if(ImGui.BeginCombo("Active Tool", activeTool?.DisplayName ?? "None")) {
+			if(ImGui.Selectable(tileSelect.DisplayName, activeTool == tileSelect)) {
+				SetTool(tileSelect);
+			}
+			ImGui.BeginDisabled(tileBrush.IsEmpty());
+			if(ImGui.Selectable(tileBrush.DisplayName, activeTool == tileBrush)) {
+				SetTool(tileBrush);
+			}
+			ImGui.EndDisabled();
+			if(ImGui.Selectable(tileEraser.DisplayName, activeTool == tileEraser)) {
+				SetTool(tileEraser);
+			}
+			ImGui.EndCombo();
+		}
+		
+		ImGui.SameLine();
 
 		ImGui.Checkbox("Grid Scenes Only", ref gridScenesOnly);
 		
@@ -162,20 +188,22 @@ public class CanvasPanel : Panel {
 			tileEraser?.Dispose();
 			tileEraser = new TileEraserTool(activeScene);
 		}
-		
-		if(isHovered) {
-			if(activeTool == null) activeTool = tileBrush;
-			if(activeTool != null) {
-				if(ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
-					activeTool = tileEraser;
-				} else if(ImGui.IsKeyReleased(ImGuiKey.LeftShift)) {
-					activeTool = tileBrush;
-				}
-				if(tileBrush == activeTool) {
-					tileBrush.Update(drawList, transform, worldBorder, movingCamera);
-				} else if(tileEraser == activeTool) {
-					tileEraser.Update(drawList, transform, worldBorder, movingCamera);
-				}
+
+		if(tileSelect.Scene != activeScene) {
+			tileSelect.SetScene(activeScene);
+		}
+
+		if(activeTool == null) {
+			SetTool(tileSelect);
+		}
+			
+		if(activeTool != null) {
+			if(tileSelect == activeTool) {
+				tileSelect.Update(drawList, transform, worldBorder, movingCamera, isHovered);
+			} else if(tileBrush == activeTool) {
+				tileBrush.Update(drawList, transform, worldBorder, movingCamera, isHovered);
+			} else if(tileEraser == activeTool) {
+				tileEraser.Update(drawList, transform, worldBorder, movingCamera, isHovered);
 			}
 		}
 
@@ -361,10 +389,6 @@ public class CanvasPanel : Panel {
 		}
 	}
 
-	public TileBrushTool GetCurrentBrush() {
-		return tileBrush;
-	}
-
 	public void EnableScenePreview(Rectangle area, Scene existingScene = null) {
 		previewSceneEnabled = true;
 		previewSceneArea = area;
@@ -381,5 +405,22 @@ public class CanvasPanel : Panel {
 		float zoom = GetZoom();
 		Vector2 p = new(scene.WorldX + scene.TileCountX / 2.0F, scene.WorldY + scene.TileCountY / 2.0F);
 		camera = -p * new Vector2(scene.World.TileWidth, scene.World.TileHeight);
+	}
+
+	public void SetTool(TileTool tool) {
+		if(activeTool == tool) return;
+		activeTool = tool;
+		activeTool.OnActive();
+	}
+}
+
+public class TileTool {
+	public string DisplayName;
+
+	public virtual void OnActive() {
+		
+	}
+	public virtual void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera, bool isHovered) {
+		
 	}
 }

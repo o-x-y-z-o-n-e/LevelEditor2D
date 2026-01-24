@@ -1,10 +1,11 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using IconFonts;
 using ImGuiNET;
 
 namespace L2D; 
 
-public class TileEraserTool {
+public class TileEraserTool : TileTool {
 
 	public Scene Scene => scene;
 
@@ -16,14 +17,15 @@ public class TileEraserTool {
 	private bool disposed;
 	
 	public TileEraserTool(Scene scene) {
+		DisplayName = $"{Codicons.Eraser} Eraser";
 		this.scene = scene;
 		width = 1;
 		height = 1;
 	}
 
 	private void Erase(int w, int h, Point offset, int mx, int my, Tilemap tilemap) {
-		for(int y = 0; y < height; y++) {
-			for(int x = 0; x < width; x++) {
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
 				int tx = offset.X + mx - scene.WorldX + x;
 				int ty = offset.Y + my - scene.WorldY + y;
 				if(tx < 0 || ty < 0 || tx >= scene.TileCountX || ty >= scene.TileCountY) continue;
@@ -32,9 +34,13 @@ public class TileEraserTool {
 		}
 	}
 
-	public void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera) {
+	public void Erase(Rectangle region, Layer layer) {
+		Erase(region.Width, region.Height, region.Location, 0, 0, layer.Tilemap);
+	}
+
+	public override void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera, bool isHovered) {
 		Layer layer = Program.SelectedLayer;
-		if(layer == null || layer.Scene != scene) return;
+		if(layer == null || layer.Scene != scene || layer.Type != LayerType.Tiles) return;
 
 		Vector2 mousePos = ImGui.GetIO().MousePos;
 		Matrix4x4.Invert(transform, out var transformInverted);
@@ -43,8 +49,28 @@ public class TileEraserTool {
 		int mx = (int)MathF.Floor(mousePosTileCoord.X);
 		int my = (int)MathF.Floor(mousePosTileCoord.Y);
 		
-		bool remove = ImGui.IsMouseDown(ImGuiMouseButton.Left);
-		bool resize = ImGui.IsMouseDown(ImGuiMouseButton.Right);
+		Rectangle sceneRegion = new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
+		
+		if(sceneRegion.Contains(mx, my) && !movingCamera) {
+			ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+		}
+		
+		bool remove = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Left);
+		bool resize = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Right);
+		
+		if(ImGui.IsKeyPressed(ImGuiKey.Escape)) {
+			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
+			return;
+		}
+		
+		if(ImGui.IsKeyReleased(ImGuiKey.LeftShift)) {
+			if(Program.CanvasPanel.TileBrush.IsEmpty()) {
+				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
+			} else {
+				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
+			}
+			return;
+		}
 
 		if(resize) {
 			if(!resizing) {
@@ -57,6 +83,8 @@ public class TileEraserTool {
 
 			width = sx;
 			height = sy;
+			
+			ImGui.SetMouseCursor((ImGuiMouseCursor)10);
 		}
 		
 		Point offset = resizing ? new(int.Min(resizeTileOrigin.X - mx, 0), int.Min(resizeTileOrigin.Y - my, 0)) : new(-width / 2, -height / 2);
@@ -77,12 +105,6 @@ public class TileEraserTool {
 		uint fillColorValid = Utilities.GetPackedColor(255, 255, 40, 64);
 		uint borderColorInvalid = Utilities.GetPackedColor(255, 40, 40, 255);
 		uint fillColorInvalid = Utilities.GetPackedColor(255, 40, 40, 64);
-		
-		Rectangle sceneRegion = new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
-		
-		if(sceneRegion.Contains(mx, my) && !movingCamera) {
-			ImGui.SetMouseCursor((ImGuiMouseCursor)10);
-		}
 		
 		if(remove) {
 			Erase(width, height, offset, mx, my, layer.Tilemap);

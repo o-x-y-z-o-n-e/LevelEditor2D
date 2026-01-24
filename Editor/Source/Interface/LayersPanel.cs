@@ -11,11 +11,13 @@ public class LayersPanel : Panel {
 	private bool isolateLayerView;
 
 	private string layerRenameBuffer;
+	private int layerTypeOption;
 
 	public LayersPanel() {
 		Title = "Layers";
 		isolateLayerView = false;
 		layerRenameBuffer = "";
+		layerTypeOption = 0;
 	}
 
 	protected override void Update() {
@@ -42,6 +44,11 @@ public class LayersPanel : Panel {
 				
 				Layer layer = scene.Layers[i];
 				bool selected = Program.SelectedLayer == layer;
+
+				string iconTxt = layer.Type == LayerType.Entities ? Codicons.SymbolMisc : Codicons.Table;
+				Vector2 iconOrigin = ImGui.GetCursorPos();
+				ImGui.Dummy(ImGui.CalcTextSize(iconTxt));
+				ImGui.SameLine();
 				
 				if(!layer.Visible) ImGui.PushStyleColor(ImGuiCol.Text, Utilities.GetPackedColor(255, 255, 255, 128));
 				if(isolateLayerView && selected) ImGui.PushStyleColor(ImGuiCol.Text, Utilities.GetPackedColor(0, 0, 255, 255));
@@ -78,6 +85,11 @@ public class LayersPanel : Panel {
 					layer.Visible = !layer.Visible;
 				}
 				ImGui.EndDisabled();
+
+				// Vector2 selCur = ImGui.GetCursorPos();
+				ImGui.SetCursorPos(iconOrigin);
+				ImGui.Text(iconTxt);
+				// ImGui.SetCursorPos(selCur);
 				
 				ImGui.PopID();
 			}
@@ -103,9 +115,19 @@ public class LayersPanel : Panel {
 					break;
 				}
 			}
+			if(ImGui.BeginCombo("Type", layerTypeOption == 0 ? "Tiles" : "Entities")) {
+				if(ImGui.Selectable("Tiles", layerTypeOption == 0)) {
+					layerTypeOption = 0;
+				}
+				if(ImGui.Selectable("Entities", layerTypeOption == 1)) {
+					layerTypeOption = 1;
+				}
+				ImGui.EndCombo();
+			}
 			ImGui.BeginDisabled(invalidName);
 			if(ImGui.Button("Ok")) {
-				Layer layer = scene.AddLayer();
+				LayerType type = layerTypeOption == 0 ? LayerType.Tiles : LayerType.Entities;
+				Layer layer = scene.AddLayer(type);
 				layer.Name = layerRenameBuffer;
 				Program.SelectedLayer = layer;
 				ImGui.CloseCurrentPopup();

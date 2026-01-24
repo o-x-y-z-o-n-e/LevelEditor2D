@@ -133,7 +133,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             onConfigureIO?.Invoke();
 
             io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-            io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
+            // io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
             io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
             io.BackendFlags |= ImGuiBackendFlags.HasMouseCursors;
 
@@ -862,7 +862,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
 	        s.WindowPadding = new(10, 10);
 	        s.FramePadding = new(6, 4);
 	        s.ItemSpacing = new(8, 6);
-            s.TabBarOverlineSize = 0;
+            s.TabBarOverlineSize = 1;
         }
         
     }

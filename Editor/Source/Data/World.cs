@@ -72,7 +72,7 @@ public class World {
 		scene.WorldY = y;
 		scene.TileCountX = width;
 		scene.TileCountY = height;
-		if(blankLayer) scene.AddLayer();
+		if(blankLayer) scene.AddLayer(LayerType.Tiles);
 		scenes.Add(scene);
 		return scene;
 	}
@@ -108,14 +108,18 @@ public class World {
 		
 		for(int i = 0; i < srcScene.LayerCount; i++) {
 			Layer srcLayer = srcScene.Layers[i];
-			Layer newLayer = newScene.AddLayer();
+			Layer newLayer = newScene.AddLayer(srcLayer.Type);
 			
 			newLayer.Name = srcLayer.Name;
 			newLayer.Visible = srcLayer.Visible;
-			for(int ty = 0; ty < srcScene.TileCountY; ty++) {
-				for(int tx = 0; tx < srcScene.TileCountX; tx++) {
-					newLayer.Tilemap.Grid[tx, ty] = srcLayer.Tilemap.Grid[tx, ty];
+			if(srcLayer.Type == LayerType.Tiles) {
+				for(int ty = 0; ty < srcScene.TileCountY; ty++) {
+					for(int tx = 0; tx < srcScene.TileCountX; tx++) {
+						newLayer.Tilemap.Grid[tx, ty] = srcLayer.Tilemap.Grid[tx, ty];
+					}
 				}
+			} else if(srcLayer.Type == LayerType.Entities) {
+				// TODO
 			}
 		}
 		

@@ -1,10 +1,11 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using IconFonts;
 using ImGuiNET;
 
 namespace L2D; 
 
-public class TileBrushTool {
+public class TileBrushTool : TileTool {
 	
 	public Scene Scene => scene;
 	public Tilemap Tilemap => tilemap;
@@ -19,15 +20,21 @@ public class TileBrushTool {
 	private int height;
 	private bool resizing;
 	private Point resizeTileOrigin;
+	private bool clearAfterPlace;
 	private bool disposed;
 
 	public TileBrushTool(Scene scene) {
+		DisplayName = $"{Codicons.Pencil} Brush";
 		this.scene = scene;
 		tilemap = null;
 		width = 0;
 		height = 0;
 		resizing = false;
 		SetSize(1, 1, true);
+	}
+
+	public override void OnActive() {
+		clearAfterPlace = false;
 	}
 
 	public void SetSize(int w, int h, bool set = true) {
@@ -56,6 +63,18 @@ public class TileBrushTool {
 		if(resizing || x < 0 || y < 0 || x >= tilemap.Width || y >= tilemap.Height) return false;
 		return tilemap.Grid[x, y].TileID > 0 && tilemap.Grid[x, y].TilesetSlot > 0;
 	}
+	
+	public bool IsEmpty() {
+		if(tilemap == null) return true;
+		for(int x = 0; x < tilemap.Width; x++) {
+			for(int y = 0; y < tilemap.Height; y++) {
+				if(tilemap.Grid[x, y].TileID > 0 && tilemap.Grid[x, y].TilesetSlot > 0) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
 
 	public void Dispose() {
 		if(disposed) return;
@@ -63,9 +82,9 @@ public class TileBrushTool {
 		disposed = true;
 	}
 	
-	public void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera) {
+	public override void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera, bool isHovered) {
 		Layer layer = Program.SelectedLayer;
-		if(layer == null || layer.Scene != scene) return;
+		if(layer == null || layer.Scene != scene || layer.Type != LayerType.Tiles) return;
 		
 		Vector2 mousePos = ImGui.GetIO().MousePos;
 		Matrix4x4.Invert(transform, out var transformInverted);
@@ -73,9 +92,30 @@ public class TileBrushTool {
 
 		int mx = (int)MathF.Floor(mousePosTileCoord.X);
 		int my = (int)MathF.Floor(mousePosTileCoord.Y);
+
+		Rectangle sceneRegion = new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
+
+		if(sceneRegion.Contains(mx, my) && !movingCamera) {
+			ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+		}
 		
-		bool imprint = ImGui.IsMouseDown(ImGuiMouseButton.Left);
-		bool resize = ImGui.IsMouseDown(ImGuiMouseButton.Right);
+		bool imprint = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Left);
+		bool resize = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Right);
+		
+		if(IsEmpty() && !resizing && !resize) {
+			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
+			return;
+		}
+
+		if(ImGui.IsKeyPressed(ImGuiKey.Escape)) {
+			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
+			return;
+		}
+		
+		if(ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
+			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileEraser);
+			return;
+		}
 		
 		if(resize) {
 			if(!resizing) {
@@ -84,6 +124,8 @@ public class TileBrushTool {
 
 			int sx = int.Abs(mx - resizeTileOrigin.X) + 1;
 			int sy = int.Abs(my - resizeTileOrigin.Y) + 1;
+			
+			ImGui.SetMouseCursor((ImGuiMouseCursor)10);
 			
 			SetSize(sx, sy, false);
 		} else if(!resize && resizing) {
@@ -213,12 +255,6 @@ public class TileBrushTool {
 		uint fillColorValid = Utilities.GetPackedColor(40, 40, 255, 64);
 		uint borderColorInvalid = Utilities.GetPackedColor(255, 40, 40, 255);
 		uint fillColorInvalid = Utilities.GetPackedColor(255, 40, 40, 64);
-
-		Rectangle sceneRegion = new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
-
-		if(sceneRegion.Contains(mx, my) && !movingCamera) {
-			ImGui.SetMouseCursor((ImGuiMouseCursor)10);
-		}
 		
 		if(!resizing) {
 			if(imprint) {
@@ -230,6 +266,11 @@ public class TileBrushTool {
 						if(tilemap.Grid[x, y].TileID == 0 || tilemap.Grid[x, y].TilesetSlot == 0) continue;
 						layer.Tilemap.Grid[tx, ty] = tilemap.Grid[x, y];
 					}
+				}
+				if(clearAfterPlace) {
+					clearAfterPlace = false;
+					SetSize(1, 1);
+					tilemap.Grid[0, 0] = new TileRef();
 				}
 			}
 			
@@ -345,6 +386,134 @@ public class TileBrushTool {
 					}
 				}
 			}
+		}
+	}
+
+	public void MoveRegion(Rectangle region, Layer layer) {
+		CopyRegion(region, layer);
+		for(int y = 0; y < region.Height; y++) {
+			for(int x = 0; x < region.Width; x++) {
+				int tx = region.X - layer.Scene.WorldX + x;
+				int ty = region.Y - layer.Scene.WorldY + y;
+				if(tx >= 0 && ty >= 0 && tx < layer.Scene.TileCountX && ty < layer.Scene.TileCountY) {
+					layer.Tilemap.Grid[tx, ty] = new TileRef(0, 0);
+				}
+			}
+		}
+		clearAfterPlace = true;
+	}
+
+	public void CopyRegion(Rectangle region, Layer layer) {
+		int trimLeft = 0;
+		int trimRight = 0;
+		int trimTop = 0;
+		int trimBottom = 0;
+
+		// left
+		for(int x = 0; x < region.Width; x++) {
+			int tx = region.X - layer.Scene.WorldX + x;
+			if(tx < 0 || tx >= layer.Scene.TileCountX) {
+				trimLeft++;
+				continue;
+			}
+
+			bool found = false;
+			for(int y = 0; y < region.Height; y++) {
+				int ty = region.Y - layer.Scene.WorldY + y;
+				if(ty < 0 || ty >= layer.Scene.TileCountY) continue;
+				if(layer.Tilemap.Grid[tx, ty].TileID == 0 || layer.Tilemap.Grid[tx, ty].TilesetSlot == 0) continue;
+				found = true;
+				break;
+			}
+
+			if(found) break;
+			else trimLeft++;
+		}
+
+		// right
+		for(int x = region.Width - 1; x >= 0; x--) {
+			int tx = region.X - layer.Scene.WorldX + x;
+			if(tx < 0 || tx >= layer.Scene.TileCountX) {
+				trimRight++;
+				continue;
+			}
+
+			bool found = false;
+			for(int y = 0; y < region.Height; y++) {
+				int ty = region.Y - layer.Scene.WorldY + y;
+				if(ty < 0 || ty >= layer.Scene.TileCountY) continue;
+				if(layer.Tilemap.Grid[tx, ty].TileID == 0 || layer.Tilemap.Grid[tx, ty].TilesetSlot == 0) continue;
+				found = true;
+				break;
+			}
+
+			if(found) break;
+			else trimRight++;
+		}
+
+		// top
+		for(int y = 0; y < region.Height; y++) {
+			int ty = region.Y - layer.Scene.WorldY + y;
+			if(ty < 0 || ty >= layer.Scene.TileCountY) {
+				trimTop++;
+				continue;
+			}
+
+			bool found = false;
+			for(int x = 0; x < region.Width; x++) {
+				int tx = region.X - layer.Scene.WorldX + x;
+				if(tx < 0 || tx >= layer.Scene.TileCountX) continue;
+				if(layer.Tilemap.Grid[tx, ty].TileID == 0 || layer.Tilemap.Grid[tx, ty].TilesetSlot == 0) continue;
+				found = true;
+				break;
+			}
+
+			if(found) break;
+			else trimTop++;
+		}
+
+		// bottom
+		for(int y = region.Height - 1; y >= 0; y--) {
+			int ty = region.Y - layer.Scene.WorldY + y;
+			if(ty < 0 || ty >= layer.Scene.TileCountY) {
+				trimBottom++;
+				continue;
+			}
+
+			bool found = false;
+			for(int x = 0; x < region.Width; x++) {
+				int tx = region.X - layer.Scene.WorldX + x;
+				if(tx < 0 || tx >= layer.Scene.TileCountX) continue;
+				if(layer.Tilemap.Grid[tx, ty].TileID == 0 || layer.Tilemap.Grid[tx, ty].TilesetSlot == 0) continue;
+				found = true;
+				break;
+			}
+
+			if(found) break;
+			else trimBottom++;
+		}
+
+		region.Width -= trimLeft + trimRight;
+		region.Height -= trimTop + trimBottom;
+		region.X += trimLeft;
+		region.Y += trimTop;
+
+		SetSize(int.Max(1, region.Width), int.Max(1, region.Height), true);
+		
+		for(int y = 0; y < region.Height; y++) {
+			for(int x = 0; x < region.Width; x++) {
+				int tx = region.X - layer.Scene.WorldX + x;
+				int ty = region.Y - layer.Scene.WorldY + y;
+				if(tx < 0 || ty < 0 || tx >= layer.Scene.TileCountX || ty >= layer.Scene.TileCountY) {
+					tilemap.Grid[x, y] = new TileRef(0, 0);
+				} else {
+					tilemap.Grid[x, y] = layer.Tilemap.Grid[tx, ty];
+				}
+			}
+		}
+
+		if(region.Width <= 0 || region.Height <= 0) {
+			tilemap.Grid[0, 0] = new TileRef(0, 0);
 		}
 	}
 

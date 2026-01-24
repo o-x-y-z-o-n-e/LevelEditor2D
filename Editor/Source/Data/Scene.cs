@@ -119,8 +119,8 @@ public class Scene {
 		return element;
 	}
 
-	public Layer AddLayer() {
-		Layer layer = new Layer(this);
+	public Layer AddLayer(LayerType type) {
+		Layer layer = new Layer(this, type);
 		int n = layers.Count + 1;
 		bool looking = true;
 		while(looking) {
@@ -170,15 +170,18 @@ public class Scene {
 	public Layer CopyLayer(Layer srcLayer) {
 		if(srcLayer.Scene != this) return null;
 
-		Layer newLayer = AddLayer();
-
+		Layer newLayer = AddLayer(srcLayer.Type);
 		newLayer.Visible = srcLayer.Visible;
-		for(int y = 0; y < tileCountY; y++) {
-			for(int x = 0; x < tileCountX; x++) {
-				newLayer.Tilemap.Grid[x, y] = srcLayer.Tilemap.Grid[x, y];
+		if(srcLayer.Type == LayerType.Tiles) {
+			for(int y = 0; y < tileCountY; y++) {
+				for(int x = 0; x < tileCountX; x++) {
+					newLayer.Tilemap.Grid[x, y] = srcLayer.Tilemap.Grid[x, y];
+				}
 			}
+		} else if(srcLayer.Type == LayerType.Entities) {
+			// TODO
 		}
-		
+
 		return newLayer;
 	}
 

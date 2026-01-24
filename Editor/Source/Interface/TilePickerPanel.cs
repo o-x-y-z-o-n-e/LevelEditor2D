@@ -26,6 +26,11 @@ public class TilePickerPanel : Panel {
 			return;
 		}
 
+		if(Program.SelectedLayer.Type != LayerType.Tiles) {
+			ImGui.Text("Selected layer is not a tilemap...");
+			return;
+		}
+
 		int scale = 4;
 
 		Scene scene = Program.SelectedScene;
@@ -151,7 +156,8 @@ public class TilePickerPanel : Panel {
 					Vector2 size = new Vector2(texSource.Width, texSource.Height) * scale;
 					ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1,1,1,1));
 					
-					var brush = Program.CanvasPanel.GetCurrentBrush();
+					var brush = Program.CanvasPanel.TileBrush;
+					bool brushChanged = false;
 
 					int countX = tileset.GetTileCountX();
 					int countY = tileset.GetTileCountY();
@@ -196,6 +202,8 @@ public class TilePickerPanel : Panel {
 										brush.SetTile(x - minX, y - minY, tileID, link.Slot);
 									}
 								}
+
+								brushChanged = true;
 							}
 						}
 					}
@@ -224,6 +232,7 @@ public class TilePickerPanel : Panel {
 								if(brush != null) {
 									brush.SetSize(1, 1, true);
 									brush.SetTile(0, 0, tileID, link.Slot);
+									brushChanged = true;
 								}
 							}
 							
@@ -249,8 +258,14 @@ public class TilePickerPanel : Panel {
 							if(brush != null) {
 								brush.SetSize(1, 1, true);
 								brush.SetTile(0, 0, 0, 0);
+								if(Program.CanvasPanel.ActiveTool == brush) {
+									Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
+								}
 							}
 						}
+					}
+					if(brushChanged) {
+						Program.CanvasPanel.SetTool(brush);
 					}
 				} else {
 					ImGui.Text("No tileset selected...");
