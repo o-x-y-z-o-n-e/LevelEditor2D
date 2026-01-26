@@ -139,6 +139,17 @@ public class PropertyCollection {
 		}
 		return null;
 	}
+	
+	public bool Get(string name, out Property property) {
+		foreach(var entry in properties) {
+			if(entry.Name == name) {
+				property = entry;
+				return true;
+			}
+		}
+		property = null;
+		return false;
+	}
 
 	public Property Add(string name, PropertyType type) {
 		Property property = Get(name);
@@ -194,6 +205,7 @@ public class PropertyCollection {
 			string name = e.Attribute("name")?.Value ?? "";
 			if(name == "") continue;
 			Property property = new Property();
+			property.Name = name;
 			string type = e.Attribute("type")?.Value ?? "string";
 			string value = e.Attribute("value")?.Value ?? "";
 			if(type == "integer") {

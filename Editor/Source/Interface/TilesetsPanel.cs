@@ -208,7 +208,7 @@ public class TilesetsPanel : Panel {
 						selected = tileset;
 					}
 				}
-
+				ImGui.SetItemTooltip(tileset.ID);
 				if(ImGui.IsItemHovered()) {
 					drawList.AddRectFilled(p0, p1, Utilities.GetPackedColor(120, 120, 120, 40));
 				}

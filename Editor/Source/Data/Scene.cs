@@ -39,6 +39,8 @@ public class Scene {
 	
 	public List<TilesetLink> Tilesets => tilesets;
 
+	public PropertyCollection Properties => properties;
+
 	public Layer LastActiveLayer;
 
 	private File file;
@@ -50,6 +52,7 @@ public class Scene {
 	private List<TilesetLink> tilesets;
 	private List<LayerGroup> groups;
 	private List<Layer> layers;
+	private PropertyCollection properties;
 	private bool disposed;
 
 	internal Scene(File file) {
@@ -62,6 +65,7 @@ public class Scene {
 		tilesets = new();
 		groups = new();
 		layers = new();
+		properties = new();
 	}
 
 	internal void Parse(XElement sceneElement) {
@@ -88,6 +92,7 @@ public class Scene {
 			layers.Add(layer);
 		}
 
+		properties.ParseFromElement(sceneElement);
 	}
 
 	internal XElement Serialize() {
@@ -99,6 +104,8 @@ public class Scene {
 			new XAttribute("tile_count_x", tileCountX),
 			new XAttribute("tile_count_y", tileCountY)
 		);
+		
+		properties.SerializeToElement(element);
 
 		var linksParent = new XElement("links");
 		foreach(var link in tilesets) {

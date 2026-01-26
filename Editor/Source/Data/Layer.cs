@@ -87,6 +87,8 @@ public class Layer {
 			new XAttribute("visible", visible),
 			new XAttribute("type", type.ToString().ToLower())
 		);
+		
+		properties.SerializeToElement(element);
 
 		if(type == LayerType.Tiles && tilemap != null) {
 			element.Add(tilemap.Serialize());
@@ -97,7 +99,6 @@ public class Layer {
 			// TODO
 			element.Add(entitiesParent);
 		}
-		properties.SerializeToElement(element);
 		return element;
 	}
 	
