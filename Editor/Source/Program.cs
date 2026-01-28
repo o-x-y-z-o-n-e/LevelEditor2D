@@ -193,9 +193,11 @@ public static class Program {
 	}
 	
 	public static void SetSelectedLayer(Layer layer) {
-		if(selectedScene == null || (layer != null && !selectedScene.HasLayer(layer))) return;
+		if(layer != null && (selectedScene == null || !selectedScene.HasLayer(layer))) return;
 		selectedLayer = layer;
-		selectedScene.LastActiveLayer = layer;
+		if(selectedScene != null) {
+			selectedScene.LastActiveLayer = layer;
+		}
 		SetSelectedEntity(null);
 	}
 	

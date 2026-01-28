@@ -32,7 +32,7 @@ public class LayersPanel : Panel {
 		
 		Vector2 listSize = ImGui.GetContentRegionAvail();
 		listSize.Y -= 200;
-		ImGui.BeginChild("layer_list", listSize, ImGuiChildFlags.Borders);
+		ImGui.BeginChild("layer_list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY);
 
 		if(scene != null) {
 			ImGui.PushItemFlag(ImGuiItemFlags.AllowDuplicateId, true);
@@ -232,11 +232,9 @@ public class LayersPanel : Panel {
 		ImGui.EndDisabled(); // Program.SelectedLayer == null
 		ImGui.EndDisabled(); // Program.SelectedScene == null
 		
-		ImGui.SeparatorText("Layer Settings");
-
 		if(Program.SelectedLayer != null) {
 			Layer layer = Program.SelectedLayer;
-			ImGui.BeginDisabled(scene == null);
+			ImGui.SeparatorText("Layer Settings");
 			string name = layer.Name;
 			if(ImGui.InputText("Name", ref name, 256, ImGuiInputTextFlags.EnterReturnsTrue)) {
 				bool invalidName = name == "";
@@ -257,7 +255,85 @@ public class LayersPanel : Panel {
 				// TODO
 			}
 			ImGui.EndDisabled();
-			ImGui.EndDisabled();
+			
+			ImGui.SeparatorText("Custom Properties");
+
+			int pIndex = 0;
+			foreach(var p in layer.Properties.All) {
+				ImGui.PushID(pIndex);
+				if(p.Type == PropertyType.String) {
+					ImGui.InputText("##", ref p.String, 512);
+				} else if(p.Type == PropertyType.Integer) {
+					ImGui.InputInt("##", ref p.Integer);
+				} else if(p.Type == PropertyType.Float) {
+					ImGui.InputFloat("##", ref p.Float);
+				} else if(p.Type == PropertyType.Boolean) {
+					if(ImGui.BeginCombo("##", p.Boolean ? "True" : "False")) {
+						if(ImGui.Selectable("True", p.Boolean)) p.Boolean = true;
+						if(ImGui.Selectable("False", !p.Boolean)) p.Boolean = false;
+						ImGui.EndCombo();
+					}
+				}
+				ImGui.SameLine();
+				ImGui.SetCursorPosX(ImGui.GetCursorPosX() - ImGui.GetStyle().ItemInnerSpacing.X);
+				if(ImGui.Selectable(p.Name)) {
+					ImGui.OpenPopup("context");
+				}
+				bool rename = false;
+				bool convert = false;
+				if(ImGui.BeginPopup("context")) {
+					if(ImGui.MenuItem("Rename")) {
+						rename = true;
+						ImGui.CloseCurrentPopup();
+					}
+					if(ImGui.MenuItem("Convert")) {
+						convert = true;
+						ImGui.CloseCurrentPopup();
+					}
+					if(ImGui.MenuItem("Move Up")) {
+						// TODO
+					}
+					if(ImGui.MenuItem("Move Down")) {
+						// TODO
+					}
+					if(ImGui.MenuItem("Remove")) {
+						// TODO
+					}
+					ImGui.EndPopup();
+				}
+				if(rename) ImGui.OpenPopup("rename");
+				if(convert) ImGui.OpenPopup("convert");
+				if(ImGui.BeginPopup("rename")) {
+					ImGui.InputText("Name", ref p.Name, 512);
+					ImGui.EndPopup();
+				}
+				if(ImGui.BeginPopup("convert")) {
+					if(ImGui.BeginCombo("Type", p.Type.ToString())) {
+						if(ImGui.Selectable("String", p.Type == PropertyType.String)) {
+							
+						}
+						if(ImGui.Selectable("Integer", p.Type == PropertyType.Integer)) {
+							
+						}
+						if(ImGui.Selectable("Float", p.Type == PropertyType.Float)) {
+							
+						}
+						if(ImGui.Selectable("Boolean", p.Type == PropertyType.Boolean)) {
+							
+						}
+						ImGui.EndCombo();
+					}
+					ImGui.EndPopup();
+				}
+				ImGui.PopID();
+				pIndex++;
+			}
+			// if(ImGui.Button("Add", new Vector2(ImGui.GetContentRegionAvail().X, 0))) {
+			// 	
+			// }
+			if(ImGui.Button(Codicons.Add)) {
+				
+			}
 		} else {
 			ImGui.Text("No layer selected...");
 		}

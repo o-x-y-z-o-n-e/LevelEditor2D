@@ -127,6 +127,9 @@ public class Property {
 }
 
 public class PropertyCollection {
+
+	public IEnumerable<Property> All => properties;
+	
 	private List<Property> properties;
 	
 	public PropertyCollection() {
