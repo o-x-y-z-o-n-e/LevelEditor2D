@@ -32,7 +32,7 @@ public class LayersPanel : Panel {
 		
 		Vector2 listSize = ImGui.GetContentRegionAvail();
 		listSize.Y -= 200;
-		ImGui.BeginChild("layer_list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY);
+		ImGui.BeginChild("layer-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY);
 
 		if(scene != null) {
 			ImGui.PushItemFlag(ImGuiItemFlags.AllowDuplicateId, true);
@@ -234,7 +234,7 @@ public class LayersPanel : Panel {
 		
 		if(Program.SelectedLayer != null) {
 			Layer layer = Program.SelectedLayer;
-			ImGui.SeparatorText("Layer Settings");
+			ImGui.SeparatorText("Layer Options");
 			string name = layer.Name;
 			if(ImGui.InputText("Name", ref name, 256, ImGuiInputTextFlags.EnterReturnsTrue)) {
 				bool invalidName = name == "";

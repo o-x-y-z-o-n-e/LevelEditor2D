@@ -1,25 +1,25 @@
 ﻿<world version="0.1.0" name="test_world" tile_width="16" tile_height="16">
   <tilesets>
-    <tileset id="lone_forest_ground" group="lone_forest" texture_file="lone_forest/lone_forest_ground.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
-    <tileset id="lone_forest_path" group="lone_forest" texture_file="lone_forest/lone_forest_path.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
-    <tileset id="lone_forest_water_edges" group="lone_forest" texture_file="lone_forest/lone_forest_water_edges.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
-    <tileset id="lone_forest_trees" group="lone_forest" texture_file="lone_forest/lone_forest_trees.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0">
+    <tileset id="lone_forest_ground" group="lone_forest" texture_file="lone_forest/lone_forest_ground.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0" />
+    <tileset id="lone_forest_path" group="lone_forest" texture_file="lone_forest/lone_forest_path.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0" />
+    <tileset id="lone_forest_water_edges" group="lone_forest" texture_file="lone_forest/lone_forest_water_edges.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0" />
+    <tileset id="lone_forest_trees" group="lone_forest" texture_file="lone_forest/lone_forest_trees.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0">
       <tile num="13">
-        <shape pos_x="0" pos_y="0" size_x="16" size_y="16" />
+        <shape position.x="0" position.y="0" size.x="16" size.y="16" />
       </tile>
     </tileset>
-    <tileset id="lone_forest_cliff_edges" group="lone_forest" texture_file="lone_forest/lone_forest_cliff_edges.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
-    <tileset id="town_building_wood" group="town" texture_file="town/exterior/town_building_wood.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
-    <tileset id="town_building_stone" group="town" texture_file="town/exterior/town_building_stone.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
-    <tileset id="town_building_stucco" group="town" texture_file="town/exterior/town_building_stucco.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0" />
-    <tileset id="town_extra" group="town" texture_file="town/exterior/town_extra.png" px_offset_x="0" px_offset_y="0" px_spacing_x="0" px_spacing_y="0">
+    <tileset id="lone_forest_cliff_edges" group="lone_forest" texture_file="lone_forest/lone_forest_cliff_edges.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0" />
+    <tileset id="town_building_wood" group="town" texture_file="town/exterior/town_building_wood.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0" />
+    <tileset id="town_building_stone" group="town" texture_file="town/exterior/town_building_stone.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0" />
+    <tileset id="town_building_stucco" group="town" texture_file="town/exterior/town_building_stucco.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0" />
+    <tileset id="town_extra" group="town" texture_file="town/exterior/town_extra.png" px_offset.x="0" px_offset.y="0" px_spacing.x="0" px_spacing.y="0">
       <tile num="2">
-        <shape pos_x="0" pos_y="0" size_x="9" size_y="11" />
+        <shape position.x="0" position.y="0" size.x="9" size.y="11" />
       </tile>
     </tileset>
   </tilesets>
   <scenes>
-    <scene id="town_center" world_x="0" world_y="0" tile_count_x="120" tile_count_y="120">
+    <scene id="town_center" world.x="-13" world.y="0" tiles.x="120" tiles.y="120">
       <links>
         <link slot="1" tileset="lone_forest_ground" />
         <link slot="2" tileset="lone_forest_path" />
@@ -53,7 +53,9 @@
           <property name="test2" type="integer" value="3" />
           <property name="test3" type="float" value="3.2" />
           <property name="test4" type="boolean" value="true" />
-          <entities />
+          <entities>
+		    <entity name="test_entity" type="yomama" position.x="128" position.y="192" size.x="32" size.y="96" />
+		  </entities>
         </layer>
       </layers>
     </scene>

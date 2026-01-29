@@ -68,10 +68,10 @@ public class Scene {
 
 	internal void Parse(XElement sceneElement) {
 		id = sceneElement.Attribute("id").Value;
-		worldX = sceneElement.Attribute("world_x").ParseAsInt();
-		worldY = sceneElement.Attribute("world_y").ParseAsInt();
-		tileCountX = sceneElement.Attribute("tile_count_x").ParseAsInt();
-		tileCountY = sceneElement.Attribute("tile_count_y").ParseAsInt();
+		worldX = sceneElement.Attribute("world.x").ParseAsInt();
+		worldY = sceneElement.Attribute("world.y").ParseAsInt();
+		tileCountX = sceneElement.Attribute("tiles.x").ParseAsInt();
+		tileCountY = sceneElement.Attribute("tiles.y").ParseAsInt();
 
 		foreach(var linkElement in sceneElement.Element("links").Elements("link")) {
 			TilesetLink tileset = new TilesetLink(file);
@@ -97,10 +97,10 @@ public class Scene {
 		var element = new XElement("scene");
 		element.Add(
 			new XAttribute("id", id),
-			new XAttribute("world_x", worldX),
-			new XAttribute("world_y", worldY),
-			new XAttribute("tile_count_x", tileCountX),
-			new XAttribute("tile_count_y", tileCountY)
+			new XAttribute("world.x", worldX),
+			new XAttribute("world.y", worldY),
+			new XAttribute("tiles.x", tileCountX),
+			new XAttribute("tiles.y", tileCountY)
 		);
 		
 		properties.SerializeToElement(element);

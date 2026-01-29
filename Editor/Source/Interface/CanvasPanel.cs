@@ -28,6 +28,10 @@ public class CanvasPanel : Panel {
 	private bool previewSceneEnabled;
 	private Scene previewSceneExisting;
 	private Rectangle previewSceneArea;
+
+	private EntityDefinition entityHighlight;
+	private Scene entityHighlightScene;
+	private float entityHighlightOutlineTimer;
 	
 	private const float ZOOM_RANGE_MIN = -5;
 	private const float ZOOM_RANGE_MAX = 15;
@@ -166,6 +170,10 @@ public class CanvasPanel : Panel {
 			DrawScene(world.GetScene(i), drawList, transform);
 			ImGui.PopID();
 		}
+
+		if(entityHighlight != null && entityHighlightScene != null && Program.SelectedLayer != null && Program.SelectedLayer.Type == LayerType.Entities) {
+			DrawEntityHighlight(drawList, transform, entityHighlightScene, entityHighlight);
+		}
 		
 		Scene activeScene = Program.SelectedScene;
 		
@@ -197,7 +205,7 @@ public class CanvasPanel : Panel {
 			SetTool(tileSelect);
 		}
 			
-		if(activeTool != null) {
+		if(activeTool != null && Program.SelectedLayer != null && Program.SelectedLayer.Type == LayerType.Tiles) {
 			if(tileSelect == activeTool) {
 				tileSelect.Update(drawList, transform, worldBorder, movingCamera, isHovered);
 			} else if(tileBrush == activeTool) {
@@ -206,6 +214,8 @@ public class CanvasPanel : Panel {
 				tileEraser.Update(drawList, transform, worldBorder, movingCamera, isHovered);
 			}
 		}
+		
+		DrawEntityLabels(drawList, transform, world);
 
 		if(previewSceneEnabled) {
 			DrawScenePreview(drawList, transform);
@@ -300,16 +310,34 @@ public class CanvasPanel : Panel {
 		}
 		//ImGui.PopID();
 		
-		// Tilemap layers
+		// Layers
 		for(int i = 0; i < scene.LayerCount; i++) {
-			bool hide = !scene.Layers[i].Visible;
+			Layer layer = scene.Layers[i];
+			bool hide = !layer.Visible;
 			if(Program.LayersPanel.IsolateLayerView && scene == Program.SelectedScene) {
-				hide = scene.Layers[i] != Program.SelectedLayer;
+				hide = layer != Program.SelectedLayer;
 			}
-			if(hide || !scene.Layers[i].HasTilemap) continue;
-			scene.Layers[i].Tilemap.Render();
-			uint tex = scene.Layers[i].Tilemap.GetFrameBufferTexture();
-			drawList.AddImage((nint)tex, p0, p3, new(0,1), new(1,0));
+			if(hide) continue;
+			if(layer.Type == LayerType.Tiles && layer.HasTilemap) {
+				layer.Tilemap.Render();
+				uint tex = layer.Tilemap.GetFrameBufferTexture();
+				drawList.AddImage((nint)tex, p0, p3, new(0,1), new(1,0));
+			}
+			if(layer.Type == LayerType.Entities && layer.HasEntities) {
+				Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
+				Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
+				foreach(var entity in layer.Entities.All) {
+					Vector2 e0 = Vector2.Transform(offset + entity.Position * scale, transform);
+					Vector2 e1 = Vector2.Transform(offset + (entity.Position + entity.Size) * scale, transform);
+					drawList.AddRectFilled(e0, e1, Utilities.GetPackedColor(200, 200, 200, 30));
+					drawList.AddRect(e0, e1, Utilities.GetPackedColor(200, 200, 200, 180));
+
+					Vector2 pos = ImGui.GetMousePos();
+					if(pos.X >= e0.X && pos.X <= e1.X && pos.Y >= e0.Y && pos.Y <= e1.Y) {
+						ShowEntityHighlight(scene, entity);
+					}
+				}
+			}
 		}
 		
 		// Grid
@@ -365,6 +393,74 @@ public class CanvasPanel : Panel {
 		}
 	}
 
+	private void DrawEntityLabels(ImDrawListPtr drawList, Matrix4x4 transform, World world) {
+		for(int i = 0; i < world.SceneCount; i++) {
+			Scene scene = world.GetScene(i);
+			for(int j = 0; j < scene.LayerCount; j++) {
+				Layer layer = scene.Layers[j];
+				bool hide = !layer.Visible;
+				if(Program.LayersPanel.IsolateLayerView && scene == Program.SelectedScene) {
+					hide = layer != Program.SelectedLayer;
+				}
+				if(hide) continue;
+				if(layer.Type == LayerType.Entities && layer.HasEntities) {
+					Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
+					Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
+					foreach(var entity in layer.Entities.All) {
+						Vector2 e0 = Vector2.Transform(offset + entity.Position * scale, transform);
+						Vector2 e1 = Vector2.Transform(offset + (entity.Position + entity.Size) * scale, transform);
+						
+						Vector2 textSize = ImGui.CalcTextSize(entity.Name);
+						Vector2 textPos = new Vector2((e0.X + e1.X) / 2.0F, e0.Y) - (textSize / 2.0F) - new Vector2(0, 24);
+						drawList.AddRectFilled(textPos - new Vector2(2, -1), textPos + textSize + new Vector2(8, 4), Utilities.GetPackedColor(10, 10, 10, 64), 4.0F);
+						drawList.AddRectFilled(textPos - new Vector2(4, 1), textPos + textSize + new Vector2(6, 2), Utilities.GetPackedColor(180, 180, 180, 192), 4.0F);
+						drawList.AddText(textPos+ new Vector2(1), Utilities.GetPackedColor(10, 10, 10, 128), entity.Name);
+						drawList.AddText(textPos, Utilities.GetPackedColor(255, 255, 255, 255), entity.Name);
+					}
+				}
+			}
+		}
+	}
+
+	private void DrawEntityHighlight(ImDrawListPtr drawList, Matrix4x4 transform, Scene scene, EntityDefinition entity) {
+		int thick = 3;
+		float step = 8;
+		
+		Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
+		Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
+		Vector2 e0 = Vector2.Transform(offset + entity.Position * scale, transform);
+		Vector2 e1 = Vector2.Transform(offset + (entity.Position + entity.Size) * scale, transform);
+		e0.X = (int)e0.X;
+		e0.Y = (int)e0.Y;
+		e1.X = (int)e1.X;
+		e1.Y = (int)e1.Y;
+		drawList.AddRectFilled(e0, e1, Utilities.GetPackedColor(220, 220, 220, 30));
+		
+		entityHighlightOutlineTimer = (entityHighlightOutlineTimer + Program.DeltaTime) % 1.0F;
+
+		float hs = step / 2.0F;
+		float s1 = step * entityHighlightOutlineTimer;
+		float s2 = hs + s1;
+		
+		ImGui.PushClipRect(e0-new Vector2(1), e1+new Vector2(2), true);
+		drawList.AddLine(new Vector2(e0.X, e0.Y), new Vector2(e1.X, e0.Y), Utilities.GetPackedColor(230, 230, 230, 220), thick);
+		drawList.AddLine(new Vector2(e0.X, e0.Y), new Vector2(e0.X, e1.Y), Utilities.GetPackedColor(230, 230, 230, 220), thick);
+		drawList.AddLine(new Vector2(e0.X, e1.Y), new Vector2(e1.X, e1.Y), Utilities.GetPackedColor(230, 230, 230, 220), thick);
+		drawList.AddLine(new Vector2(e1.X, e0.Y), new Vector2(e1.X, e1.Y), Utilities.GetPackedColor(230, 230, 230, 220), thick);
+		for(float x = e0.X; x <= e1.X + step; x += step) {
+			drawList.AddLine(new Vector2((int)(x + s1 - step), e0.Y), new Vector2((int)(x + s2 - step), e0.Y), Utilities.GetPackedColor(40, 40, 40, 255), thick);
+			drawList.AddLine(new Vector2((int)(x - s1 + step), e1.Y), new Vector2((int)(x - s2 + step), e1.Y), Utilities.GetPackedColor(40, 40, 40, 255), thick);
+		}
+		for(float y = e0.Y; y <= e1.Y + step; y += step) {
+			drawList.AddLine(new Vector2(e0.X, (int)(y - s1 + step)), new Vector2(e0.X, (int)(y - s2 + step)), Utilities.GetPackedColor(40, 40, 40, 255), thick);
+			drawList.AddLine(new Vector2(e1.X, (int)(y + s1 - step)), new Vector2(e1.X, (int)(y + s2 - step)), Utilities.GetPackedColor(40, 40, 40, 255), thick);
+		}
+		ImGui.PopClipRect();
+
+		entityHighlight = null;
+		entityHighlightScene = null;
+	}
+
 	private void DrawScenePreview(ImDrawListPtr drawList, Matrix4x4 transform) {
 		Vector2 p0 = Vector2.Transform(new Vector2(previewSceneArea.X, previewSceneArea.Y), transform);
 		Vector2 p3 = Vector2.Transform(new Vector2(previewSceneArea.X+previewSceneArea.Width, previewSceneArea.Y+previewSceneArea.Height), transform);
@@ -399,6 +495,11 @@ public class CanvasPanel : Panel {
 		previewSceneEnabled = false;
 		previewSceneArea = default;
 		previewSceneExisting = null;
+	}
+
+	public void ShowEntityHighlight(Scene scene, EntityDefinition entity) {
+		entityHighlight = entity;
+		entityHighlightScene = scene;
 	}
 
 	public void LocateScene(Scene scene) {

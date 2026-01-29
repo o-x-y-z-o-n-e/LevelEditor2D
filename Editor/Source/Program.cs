@@ -27,12 +27,14 @@ public static class Program {
 		get => window.Title;
 		set => window.Title = value;
 	}
+
+	public static float DeltaTime => deltaTime;
 	
 	public static MenuBar MenuBar => menuBar;
 	
 	public static CanvasPanel CanvasPanel => canvasPanel;
 	public static LayersPanel LayersPanel => layersPanel;
-	public static ObjectsPanel ObjectsPanel => objectsPanel;
+	public static EntitiesPanel EntitiesPanel => entitiesPanel;
 	public static ScenesPanel ScenesPanel => scenesPanel;
 	public static TilePickerPanel TilePickerPanel => tilePickerPanel;
 	public static TilesetsPanel TilesetsPanel => tilesetsPanel;
@@ -70,7 +72,7 @@ public static class Program {
 	
 	private static CanvasPanel canvasPanel;
 	private static LayersPanel layersPanel;
-	private static ObjectsPanel objectsPanel;
+	private static EntitiesPanel entitiesPanel;
 	private static ScenesPanel scenesPanel;
 	private static TilePickerPanel tilePickerPanel;
 	private static TilesetsPanel tilesetsPanel;
@@ -87,6 +89,7 @@ public static class Program {
 	private static GL gl;
 	private static IInputContext input;
 	private static bool requestClose;
+	private static float deltaTime;
 
 	private static List<string> recentProjects;
 	
@@ -117,7 +120,7 @@ public static class Program {
 		menuBar = new MenuBar();
 		canvasPanel = new CanvasPanel();
 		layersPanel = new LayersPanel();
-		objectsPanel = new ObjectsPanel();
+		entitiesPanel = new EntitiesPanel();
 		scenesPanel = new ScenesPanel();
 		tilePickerPanel = new TilePickerPanel();
 		tilesetsPanel = new TilesetsPanel();
@@ -138,19 +141,21 @@ public static class Program {
 		gl.Viewport(window.FramebufferSize);
 		gl.ClearColor(Color.FromArgb(255, 0, 0, 0));
 		gl.Clear((uint) ClearBufferMask.ColorBufferBit);
+
+		Program.deltaTime = (float)deltaTime;
 		
 		ImGui.DockSpaceOverViewport();
 		
 		menuBar.Execute();
 		
-		ImGui.ShowDemoWindow();
+		// ImGui.ShowDemoWindow();
 		
 		tilesetsPanel.Execute();
+		canvasPanel.Execute();
 		scenesPanel.Execute();
 		layersPanel.Execute();
-		objectsPanel.Execute();
 		tilePickerPanel.Execute();
-		canvasPanel.Execute();
+		entitiesPanel.Execute();
 
 		if(file == null) {
 			Launcher();
@@ -193,7 +198,11 @@ public static class Program {
 	}
 	
 	public static void SetSelectedLayer(Layer layer) {
-		if(layer != null && (selectedScene == null || !selectedScene.HasLayer(layer))) return;
+		if(layer != null && (selectedScene == null || !selectedScene.HasLayer(layer))) {
+			selectedLayer = null;
+			SetSelectedEntity(null);
+			return;
+		}
 		selectedLayer = layer;
 		if(selectedScene != null) {
 			selectedScene.LastActiveLayer = layer;
@@ -202,7 +211,7 @@ public static class Program {
 	}
 	
 	public static void SetSelectedEntity(EntityDefinition entity) {
-		
+		selectedEntity = entity;
 	}
 	
 	public static void SetSelectedTileset(Tileset tileset) {

@@ -58,10 +58,13 @@ public class ScenesPanel : Panel {
 				}
 			}
 			
-			// ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
-			// if(ImGui.BeginPopup("context")) {
-			// 	ImGui.EndPopup();
-			// }
+			ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
+			if(ImGui.BeginPopup("context")) {
+				if(ImGui.MenuItem("Locate")) {
+					Program.CanvasPanel.LocateScene(scene);
+				}
+				ImGui.EndPopup();
+			}
 			
 			ImGui.PopID();
 		}
@@ -205,10 +208,10 @@ public class ScenesPanel : Panel {
 		}
 		
 		ImGui.EndDisabled();
-		
-		ImGui.SeparatorText("Scene Settings");
 
 		if(Program.SelectedScene != null) {
+			ImGui.SeparatorText("Scene Options");
+			
 			Scene scene = Program.SelectedScene;
 			string id = scene.ID;
 			if(ImGui.InputText("ID", ref id, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {

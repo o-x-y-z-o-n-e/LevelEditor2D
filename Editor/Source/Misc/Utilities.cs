@@ -13,6 +13,11 @@ public static class Utilities {
 		return (uint)(color.A << 24 | color.B << 16 | color.G << 8 | color.R);
 	}
 	
+	public static string ParseAsString(this XAttribute? attr, string defaultValue = "") {
+		if(attr == null) return defaultValue;
+		return attr.Value;
+	}
+	
 	public static int ParseAsInt(this XAttribute? attr, int defaultValue = 0) {
 		if(attr == null) return defaultValue;
 		if(int.TryParse(attr.Value, out int value)) {

@@ -20,7 +20,7 @@ public class Layer {
 	
 	public Tilemap Tilemap => tilemap;
 	
-	public List<EntityDefinition> Entities => entities;
+	public EntityCollection Entities => entities;
 
 	public PropertyCollection Properties => properties;
 	
@@ -34,7 +34,7 @@ public class Layer {
 	private LayerType type;
 	private LayerGroup group;
 	private Tilemap tilemap;
-	private List<EntityDefinition> entities;
+	private EntityCollection entities;
 	private PropertyCollection properties;
 	private bool disposed;
 
@@ -48,7 +48,7 @@ public class Layer {
 		if(type == LayerType.Tiles) {
 			tilemap = new Tilemap(this);
 		} else {
-			entities = new List<EntityDefinition>();
+			entities = new EntityCollection();
 		}
 	}
 	
@@ -67,7 +67,11 @@ public class Layer {
 		string type = layerElement.Attribute("type")?.Value ?? "tiles";
 		if(type == "entities") {
 			this.type = LayerType.Entities;
-			entities = new();
+			entities = new EntityCollection();
+			var entitiesElement = layerElement.Element("entities");
+			if(entitiesElement != null) {
+				entities.ParseFromElement(entitiesElement);
+			}
 		} else {
 			this.type = LayerType.Tiles;
 			tilemap = new Tilemap(this);
@@ -96,7 +100,7 @@ public class Layer {
 
 		if(type == LayerType.Entities && entities != null) {
 			var entitiesParent = new XElement("entities");
-			// TODO
+			entities.SerializeToElement(entitiesParent);
 			element.Add(entitiesParent);
 		}
 		return element;

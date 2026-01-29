@@ -86,12 +86,12 @@ public class Tileset {
 		id = tilesetElement.Attribute("id").Value;
 		group = tilesetElement.Attribute("group").Value;
 		textureFilePath =  tilesetElement.Attribute("texture_file").Value;
-		offset.X = tilesetElement.Attribute("px_offset_x").ParseAsInt();
-		offset.Y = tilesetElement.Attribute("px_offset_y").ParseAsInt();
-		spacing.X = tilesetElement.Attribute("px_spacing_x").ParseAsInt();
-		spacing.Y = tilesetElement.Attribute("px_spacing_y").ParseAsInt();
-		size.X = tilesetElement.Attribute("px_size_x").ParseAsInt(file.World.TileWidth);
-		size.Y = tilesetElement.Attribute("px_size_y").ParseAsInt(file.World.TileHeight);
+		offset.X = tilesetElement.Attribute("px_offset.x").ParseAsInt();
+		offset.Y = tilesetElement.Attribute("px_offset.y").ParseAsInt();
+		spacing.X = tilesetElement.Attribute("px_spacing.x").ParseAsInt();
+		spacing.Y = tilesetElement.Attribute("px_spacing.y").ParseAsInt();
+		size.X = tilesetElement.Attribute("px_size.x").ParseAsInt(file.World.TileWidth);
+		size.Y = tilesetElement.Attribute("px_size.y").ParseAsInt(file.World.TileHeight);
 
 		foreach(var tileElement in tilesetElement.Elements("tile")) {
 			int id = tileElement.Attribute("num").ParseAsInt();
@@ -99,10 +99,10 @@ public class Tileset {
 			foreach(var shapeElement in tileElement.Elements("shape")) {
 				Vector2 p = new(0);
 				Vector2 s = new(0);
-				p.X = shapeElement.Attribute("pos_x").ParseAsFloat();
-				p.Y = shapeElement.Attribute("pos_y").ParseAsFloat();
-				s.X = shapeElement.Attribute("size_x").ParseAsFloat();
-				s.Y = shapeElement.Attribute("size_y").ParseAsFloat();
+				p.X = shapeElement.Attribute("position.x").ParseAsFloat();
+				p.Y = shapeElement.Attribute("position.y").ParseAsFloat();
+				s.X = shapeElement.Attribute("size.x").ParseAsFloat();
+				s.Y = shapeElement.Attribute("size.y").ParseAsFloat();
 				data.Shapes.Add(new TileShape(p, s));
 			}
 			tileData.Add(id, data);
@@ -117,10 +117,10 @@ public class Tileset {
 			new XAttribute("id", id),
 			new XAttribute("group", group),
 			new XAttribute("texture_file", textureFilePath),
-			new XAttribute("px_offset_x", offset.X),
-			new XAttribute("px_offset_y", offset.Y),
-			new XAttribute("px_spacing_x", spacing.X),
-			new XAttribute("px_spacing_y", spacing.Y)
+			new XAttribute("px_offset.x", offset.X),
+			new XAttribute("px_offset.y", offset.Y),
+			new XAttribute("px_spacing.x", spacing.X),
+			new XAttribute("px_spacing.y", spacing.Y)
 			// new XAttribute("px_texels_x", size.X),
 			// new XAttribute("px_texels_y", size.Y)
 		);
@@ -130,10 +130,10 @@ public class Tileset {
 			foreach(var shape in data.Value.Shapes) {
 				XElement s = new XElement("shape");
 				s.Add(
-					new XAttribute("pos_x", shape.Position.X),
-					new XAttribute("pos_y", shape.Position.Y),
-					new XAttribute("size_x", shape.Size.X),
-					new XAttribute("size_y", shape.Size.Y)
+					new XAttribute("position.x", shape.Position.X),
+					new XAttribute("position.y", shape.Position.Y),
+					new XAttribute("size.x", shape.Size.X),
+					new XAttribute("size.y", shape.Size.Y)
 				);
 				e.Add(s);
 			}

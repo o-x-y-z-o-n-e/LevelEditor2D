@@ -16,6 +16,10 @@ public class TilePickerPanel : Panel {
 	}
 
 	protected override void Update() {
+		if(Program.File == null) {
+			return;
+		}
+		
 		if(Program.SelectedScene == null) {
 			ImGui.Text("No scene selected...");
 			return;
