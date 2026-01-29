@@ -1,6 +1,7 @@
 ﻿using System.Drawing;
 using System.Globalization;
 using System.Numerics;
+using System.Text.RegularExpressions;
 using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -16,6 +17,9 @@ public class TilesetsPanel : Panel {
 	}
 
 	private static ViewMode mode;
+	private static string search;
+	private static SortedList<int, Tileset> matchedSearchList;
+	private static int worldTilesetCount;
 	
 	// Temp editing data, controlled by Edit()
 	private static string idEditBuffer;
@@ -41,6 +45,8 @@ public class TilesetsPanel : Panel {
 		Title = "Tilesets";
 
 		mode = ViewMode.List;
+		search = "";
+		matchedSearchList = new(new DuplicateKeyComparer<int>());
 		idEditBuffer = "";
 		lastSelectedTileset = null;
 		previewScale = 4;
@@ -64,6 +70,10 @@ public class TilesetsPanel : Panel {
 		if(Program.File.World == null) {
 			ImGui.Text("No world active...");
 			return;
+		}
+		if(worldTilesetCount != Program.File.World.TilesetCount) {
+			worldTilesetCount = Program.File.World.TilesetCount;
+			MatchSearch();
 		}
 		Menu();
 		ImGui.Columns(2);
@@ -92,7 +102,6 @@ public class TilesetsPanel : Panel {
 		
 		ImGui.SameLine();
 		
-		// TODO
 		ImGui.Checkbox("Show Colliders", ref showColliders);
 
 		ImGui.SameLine();
@@ -100,14 +109,14 @@ public class TilesetsPanel : Panel {
 		ImGui.SetNextItemWidth(300);
 		ImGui.SliderInt("Preview Scale", ref previewScale, 1, 10);
 		
-		
 		ImGui.SameLine();
 		
 		var style = ImGui.GetStyle();
 		
+		float searchWidth = 300 + ImGui.CalcTextSize("Search").X + style.FramePadding.X * 2.0F;
 		float buttonWidth1 = ImGui.CalcTextSize("List").X + style.FramePadding.X * 2.0F;
 		float buttonWidth2 = ImGui.CalcTextSize("Grid").X + style.FramePadding.X * 2.0F;
-		float widthNeeded = buttonWidth1 + style.ItemSpacing.X + buttonWidth2;
+		float widthNeeded = buttonWidth1 + style.ItemSpacing.X + buttonWidth2 + searchWidth + style.FramePadding.X;
 		
 		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - widthNeeded);
 		
@@ -122,6 +131,44 @@ public class TilesetsPanel : Panel {
 			mode = ViewMode.Grid;
 		}
 		ImGui.EndDisabled();
+		ImGui.SameLine();
+		ImGui.SetNextItemWidth(300);
+		if(ImGui.InputText("Search", ref search, 512)) {
+			MatchSearch();
+		}
+		if(ImGui.BeginPopupContextItem()) {
+			if(ImGui.MenuItem("Clear")) {
+				search = "";
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndPopup();
+		}
+	}
+
+	private void MatchSearch() {
+		World world = Program.File.World;
+		
+		var regex = new Regex(Regex.Escape(search));
+		
+		matchedSearchList.Clear();
+		for(int i = 0; i < world.TilesetCount; i++) {
+			var tileset = world.GetTileset(i);
+			if(search != "") {
+				var idMatch = regex.Match(tileset.ID);
+				var groupMatch = regex.Match(tileset.Group);
+				var pathMatch = regex.Match(tileset.TextureFilePath);
+				int maxMatchLength = int.Max(int.Max(idMatch.Length, groupMatch.Length), pathMatch.Length);
+				if(idMatch.Success && idMatch.Length >= maxMatchLength) {
+					matchedSearchList.Add(idMatch.Length, tileset);
+				} else if(groupMatch.Success && groupMatch.Length >= maxMatchLength) {
+					matchedSearchList.Add(groupMatch.Length, tileset);
+				} else if(pathMatch.Success && pathMatch.Length >= maxMatchLength) {
+					matchedSearchList.Add(pathMatch.Length, tileset);
+				}
+			} else {
+				matchedSearchList.Add(i, tileset);
+			}
+		}
 	}
 
 	private Tileset Items(Tileset selected) {
@@ -132,9 +179,12 @@ public class TilesetsPanel : Panel {
 		Action displayItemList = () => {
 			Vector2 itemSize = new Vector2(ImGui.GetContentRegionAvail().X, 24);
 			Vector2 itemSpacing = new Vector2(4, 4);
-			
-			for(int i = 0; i < world.TilesetCount; i++) {
-				Tileset tileset = world.GetTileset(i);
+
+			int i = 0;
+			foreach(var entry in matchedSearchList) {
+				var tileset = entry.Value;
+                
+				// Tileset tileset = world.GetTileset(i);
 				
 				ImGui.TableNextRow();
 				ImGui.TableNextColumn();
@@ -145,10 +195,24 @@ public class TilesetsPanel : Panel {
 						selected = tileset;
 					}
 				}
+				
+				if(ImGui.BeginItemTooltip()) {
+					if(tileset.TexturePreview != null) {
+						ImGui.Image((IntPtr)tileset.TexturePreview.Handle, new Vector2(tileset.TexturePreview.Width, tileset.TexturePreview.Height));
+					} else {
+						ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+						ImGui.Text("Preview image could not be loaded!");
+						ImGui.PopStyleColor();
+					}
+					ImGui.EndTooltip();
+				}
+				
 				ImGui.TableNextColumn();
 				ImGui.Text(tileset.Group);
 				ImGui.TableNextColumn();
 				ImGui.Text(tileset.TextureFilePath);
+
+				i++;
 			}
 		};
 		
@@ -293,11 +357,27 @@ public class TilesetsPanel : Panel {
 					for(int x = 0; x < countX; x++) {
 						int tileID = (y * countX + x) + 1;
 						bool selected = tileEditIndex == tileID;
-							
+						
 						ImGui.SetCursorPos(origin + new Vector2(world.TileWidth * x, world.TileHeight * y) * previewScale);
 						ImGui.PushID(tileID);
 						Vector2 c = ImGui.GetCursorScreenPos();
 						Vector2 s = new Vector2(world.TileWidth, world.TileHeight) * previewScale;
+						
+						if(showColliders) {
+							var tiledata = tileset.GetTileData(tileID);
+							if(tiledata != null) {
+								for(int i = 0; i < tiledata.Shapes.Count; i++) {
+									var shape = tiledata.Shapes[i];
+									Vector2 s0 = new(shape.Position.X / tileset.SizeX, shape.Position.Y / tileset.SizeY);
+									Vector2 s1 = new((shape.Position.X + shape.Size.X) / tileset.SizeX, (shape.Position.Y + shape.Size.Y) / tileset.SizeY);
+									Vector2 t0 = new(float.Lerp(c.X, c.X + s.X, s0.X), float.Lerp(c.Y, c.Y + s.Y, s0.Y));
+									Vector2 t1 = new(float.Lerp(c.X, c.X + s.X, s1.X), float.Lerp(c.Y, c.Y + s.Y, s1.Y));
+									ImGui.GetWindowDrawList().AddRectFilled(t0, t1, Utilities.GetPackedColor(80, 80, 255, 60));
+									ImGui.GetWindowDrawList().AddRect(t0, t1, Utilities.GetPackedColor(40, 40, 255, 200));
+								}
+							}
+						}
+						
 						if(ImGui.InvisibleButton("##tile", s)) {
 							tileEditIndex = tileID;
 							selected = true;
@@ -322,6 +402,15 @@ public class TilesetsPanel : Panel {
 						tileEditIndex = 0;
 					}
 				}
+				if(ImGui.IsWindowHovered()) {
+					if(ImGui.IsMouseClicked(ImGuiMouseButton.Right)) {
+						tileEditIndex = 0;
+					}
+				}
+			} else {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				ImGui.Text("Error: Image source could not be loaded!");
+				ImGui.PopStyleColor();
 			}
 		} else {
 			ImGui.Text("No tileset selected...");
@@ -628,6 +717,7 @@ public class TilesetsPanel : Panel {
 				tileset.ReloadTexture();
 				Program.File.World.AddTileset(tileset);
 				ImGui.CloseCurrentPopup();
+				MatchSearch();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -648,10 +738,11 @@ public class TilesetsPanel : Panel {
 		if(ImGui.BeginPopupModal("Select Tileset", ref open)) {
 			Vector2 area = ImGui.GetContentRegionAvail();
 			var style = ImGui.GetStyle();
-			
+
+			float searchWidth = 300 + ImGui.CalcTextSize("Search").X + style.FramePadding.X * 2.0F;
 			float buttonWidth1 = ImGui.CalcTextSize("List").X + style.FramePadding.X * 2.0F;
 			float buttonWidth2 = ImGui.CalcTextSize("Grid").X + style.FramePadding.X * 2.0F;
-			float widthNeeded = buttonWidth1 + style.ItemSpacing.X + buttonWidth2;
+			float widthNeeded = buttonWidth1 + style.ItemSpacing.X + buttonWidth2 + searchWidth + style.FramePadding.X;
 		
 			ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - widthNeeded);
 		
@@ -666,6 +757,18 @@ public class TilesetsPanel : Panel {
 				mode = ViewMode.Grid;
 			}
 			ImGui.EndDisabled();
+			ImGui.SameLine();
+			ImGui.SetNextItemWidth(300);
+			if(ImGui.InputText("Search", ref search, 512)) {
+				MatchSearch();
+			}
+			if(ImGui.BeginPopupContextItem()) {
+				if(ImGui.MenuItem("Clear")) {
+					search = "";
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.EndPopup();
+			}
             
 			result = Items(null);
 			if(result != null) {
@@ -678,6 +781,17 @@ public class TilesetsPanel : Panel {
 		}
 		if(!open) {
 			onFinish?.Invoke(selected, result);
+		}
+	}
+	
+	public class DuplicateKeyComparer<TKey> : IComparer<TKey> where TKey : IComparable {
+		public int Compare(TKey x, TKey y) {
+			int result = x.CompareTo(y);
+
+			if (result == 0)
+				return 1; // Handle equality as being greater. Note: this will break Remove(key) or
+			else          // IndexOfKey(key) since the comparer never returns 0 to signal key equality
+				return result;
 		}
 	}
 	

@@ -30,7 +30,7 @@ public class ScenesPanel : Panel {
 
 		Vector2 listSize = ImGui.GetContentRegionAvail();
 		listSize.Y -= 200;
-		ImGui.BeginChild("scene_list", listSize, ImGuiChildFlags.Borders);
+		ImGui.BeginChild("scene-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY);
 		
 		ImGui.PushItemFlag(ImGuiItemFlags.AllowDuplicateId, true);
 		
@@ -294,7 +294,7 @@ public class ScenesPanel : Panel {
 				
 				ImGui.BeginDisabled(!valid);
 				if(ImGui.Button("Confirm")) {
-					// TODO
+					scene.Resize(sceneResizeVar.X, sceneResizeVar.Y);
 					ImGui.CloseCurrentPopup();
 				}
 				ImGui.EndDisabled();
@@ -306,6 +306,8 @@ public class ScenesPanel : Panel {
 				}
 				ImGui.EndPopup();
 			}
+			
+			PropertyView.Run(scene.Properties);
 		} else {
 			ImGui.Text("No scene selected...");
 		}

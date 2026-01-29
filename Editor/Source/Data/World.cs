@@ -63,15 +63,12 @@ public class World {
 	}
 
 	public Scene CreateScene(string id, int width, int height, int x, int y, bool blankLayer = true) {
-		foreach(var s in scenes)
-			if(s.ID == id)
-				return null;
+		foreach(var s in scenes) if(s.ID == id) return null;
 		Scene scene = new Scene(file);
 		scene.ID = id;
 		scene.WorldX = x;
 		scene.WorldY = y;
-		scene.TileCountX = width;
-		scene.TileCountY = height;
+		scene.Resize(width, height);
 		if(blankLayer) scene.AddLayer(LayerType.Tiles);
 		scenes.Add(scene);
 		return scene;

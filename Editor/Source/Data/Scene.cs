@@ -25,12 +25,10 @@ public class Scene {
 
 	public int TileCountX {
 		get => tileCountX;
-		set => tileCountX = value;
 	}
 
 	public int TileCountY {
 		get => tileCountY;
-		set => tileCountY = value;
 	}
 
 	public int LayerCount => layers.Count;
@@ -194,6 +192,16 @@ public class Scene {
 
 	public bool HasLayer(Layer layer) {
 		return layers.Contains(layer);
+	}
+
+	public void Resize(int tilesX, int tilesY) {
+		tileCountX = tilesX;
+		tileCountY = tilesY;
+		foreach(var layer in layers) {
+			if(layer.Type == LayerType.Tiles) {
+				layer.Tilemap?.Resize(tileCountX, tileCountY);
+			}
+		}
 	}
 
 	public void Dispose() {
