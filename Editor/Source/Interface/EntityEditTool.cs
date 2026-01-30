@@ -7,9 +7,15 @@ namespace L2D;
 
 public class EntityEditTool : CanvasTool {
 
+	private Entity dragEntity;
+	private EntityEditMode dragMode;
+	private Vector2 dragOrigin;
+
 	public EntityEditTool() {
 		DisplayName = $"{Codicons.Layout} Entities";
 		LayerType = LayerType.Entities;
+		dragEntity = null;
+		dragMode = EntityEditMode.Move;
 	}
 
 	public override void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera, bool isHovered) {
@@ -18,9 +24,16 @@ public class EntityEditTool : CanvasTool {
 		
 		if(!layer.Visible) return;
 
+		Matrix4x4 invertedTransform;
+		Matrix4x4.Invert(transform, out invertedTransform);
+		
 		Scene scene = layer.Scene;
 		
 		ImGui.PushID("entity-edit");
+		
+		Vector2 mPos = ImGui.GetMousePos();
+
+		float zoom = Program.CanvasPanel.GetZoom();
 		
 		Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
 		Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
@@ -32,7 +45,7 @@ public class EntityEditTool : CanvasTool {
 			Vector2 size = entity.Size;
 			
 			if(entity.IsPoint) {
-				size = new Vector2(Entity.POINT_HANDLE_SIZE * 2.0F / Program.CanvasPanel.GetZoom());
+				size = new Vector2(Entity.POINT_HANDLE_SIZE * 2.0F / zoom);
 				pos = pos - size / 2;
 			}
 			
@@ -60,9 +73,21 @@ public class EntityEditTool : CanvasTool {
 				
 				// TODO: move & resize
 				
-				Vector2 mPos = ImGui.GetMousePos();
 				if(mPos.X >= e0.X && mPos.X <= e1.X && mPos.Y >= e0.Y && mPos.Y <= e1.Y) {
 					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
+					
+					// Vector2 drag = ImGui.GetMouseDragDelta(ImGuiMouseButton.Left, 0);
+					// entity.Position += Vector2.Transform(drag, invertedTransform) * new Vector2(scene.World.TileWidth, scene.World.TileHeight);
+					// drag /= new Vector2(scene.World.TileWidth, scene.World.TileHeight);
+					// drag /= Program.CanvasPanel.GetZoom();
+					// entity.Position += drag;
+					// entity.Position += ImGui.GetIO().MouseDelta / Program.CanvasPanel.GetZoom();
+
+					if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+						dragEntity = entity;
+						dragMode = EntityEditMode.Move;
+						dragOrigin = mPos;
+					}
 				}
 
 				// ImGui.SetCursorScreenPos(new Vector2(e0.X + edgeBorder, e0.Y + edgeBorder));
@@ -85,6 +110,11 @@ public class EntityEditTool : CanvasTool {
 						drawList.AddRectFilled(min, max, c, r);
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
+							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+								dragEntity = entity;
+								dragMode = EntityEditMode.ResizeLeft;
+								dragOrigin = mPos;
+							}
 						}
 					}
 
@@ -95,6 +125,11 @@ public class EntityEditTool : CanvasTool {
 						drawList.AddRectFilled(min, max, c, r);
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
+							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+								dragEntity = entity;
+								dragMode = EntityEditMode.ResizeRight;
+								dragOrigin = mPos;
+							}
 						}
 					}
 
@@ -105,6 +140,11 @@ public class EntityEditTool : CanvasTool {
 						drawList.AddRectFilled(min, max, c, r);
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
+							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+								dragEntity = entity;
+								dragMode = EntityEditMode.ResizeTop;
+								dragOrigin = mPos;
+							}
 						}
 					}
 
@@ -115,6 +155,11 @@ public class EntityEditTool : CanvasTool {
 						drawList.AddRectFilled(min, max, c, r);
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
+							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+								dragEntity = entity;
+								dragMode = EntityEditMode.ResizeBottom;
+								dragOrigin = mPos;
+							}
 						}
 					}
 
@@ -125,6 +170,11 @@ public class EntityEditTool : CanvasTool {
 						drawList.AddRectFilled(min, max, c, r);
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
+							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+								dragEntity = entity;
+								dragMode = EntityEditMode.ResizeLeftTop;
+								dragOrigin = mPos;
+							}
 						}
 					}
 
@@ -135,6 +185,11 @@ public class EntityEditTool : CanvasTool {
 						drawList.AddRectFilled(min, max, c, r);
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
+							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+								dragEntity = entity;
+								dragMode = EntityEditMode.ResizeRightTop;
+								dragOrigin = mPos;
+							}
 						}
 					}
 
@@ -145,6 +200,11 @@ public class EntityEditTool : CanvasTool {
 						drawList.AddRectFilled(min, max, c, r);
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
+							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+								dragEntity = entity;
+								dragMode = EntityEditMode.ResizeLeftBottom;
+								dragOrigin = mPos;
+							}
 						}
 					}
 
@@ -155,6 +215,11 @@ public class EntityEditTool : CanvasTool {
 						drawList.AddRectFilled(min, max, c, r);
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
+							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
+								dragEntity = entity;
+								dragMode = EntityEditMode.ResizeRightBottom;
+								dragOrigin = mPos;
+							}
 						}
 					}
 				}
@@ -164,7 +229,163 @@ public class EntityEditTool : CanvasTool {
 			i++;
 		}
 		
+		if(dragEntity != null) {
+			Vector2 drag = (mPos - dragOrigin) / zoom;
+			if(!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
+				dragEntity = null;
+			} else {
+				if(dragMode == EntityEditMode.Move) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
+					dragEntity.Position += drag;
+					Vector2 leftOver = new Vector2(dragEntity.Position.X % 1.0F, dragEntity.Position.Y % 1.0F);
+					dragEntity.Position = new Vector2((int)dragEntity.Position.X, (int)dragEntity.Position.Y);
+					dragOrigin = mPos - leftOver * zoom;
+				}
+				if(dragMode == EntityEditMode.ResizeLeft) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
+					float p = dragEntity.Position.X + drag.X;
+					float leftOver = p % 1.0F;
+					p = float.Floor(p);
+					dragEntity.Size.X += dragEntity.Position.X - p;
+					dragEntity.Position.X = p;
+					dragOrigin = mPos - new Vector2(leftOver * zoom, 0);
+					if(dragEntity.Size.X < 0) {
+						dragEntity.Size.X = 0;
+						dragEntity = null;
+					}
+				}
+				if(dragMode == EntityEditMode.ResizeRight) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
+					dragEntity.Size.X += drag.X;
+					float leftOver = dragEntity.Size.X % 1.0F;
+					dragEntity.Size.X = (int)dragEntity.Size.X;
+					dragOrigin = mPos - new Vector2(leftOver * zoom, 0);
+					if(dragEntity.Size.X < 0) {
+						dragEntity.Size.X = 0;
+						dragEntity = null;
+					}
+				}
+				if(dragMode == EntityEditMode.ResizeTop) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
+					float p = dragEntity.Position.Y + drag.Y;
+					float leftOver = p % 1.0F;
+					p = float.Floor(p);
+					dragEntity.Size.Y += dragEntity.Position.Y - p;
+					dragEntity.Position.Y = p;
+					dragOrigin = mPos - new Vector2(0, leftOver * zoom);
+					if(dragEntity.Size.Y < 0) {
+						dragEntity.Size.Y = 0;
+						dragEntity = null;
+					}
+				}
+				if(dragMode == EntityEditMode.ResizeBottom) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
+					dragEntity.Size.Y += drag.Y;
+					float leftOver = dragEntity.Size.Y % 1.0F;
+					dragEntity.Size.Y = (int)dragEntity.Size.Y;
+					dragOrigin = mPos - new Vector2(0, leftOver * zoom);
+					if(dragEntity.Size.Y < 0) {
+						dragEntity.Size.Y = 0;
+						dragEntity = null;
+					}
+				}
+				if(dragMode == EntityEditMode.ResizeLeftTop) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
+					Vector2 p = dragEntity.Position + drag;
+					Vector2 leftOver = new(p.X % 1.0F, p.Y % 1.0F);
+					p.X = float.Floor(p.X);
+					p.Y = float.Floor(p.Y);
+					dragEntity.Size += dragEntity.Position - p;
+					dragEntity.Position = p;
+					dragOrigin = mPos - leftOver * zoom;
+					bool clear = false;
+					if(dragEntity.Size.X < 0) {
+						dragEntity.Size.X = 0;
+						clear = true;
+					}
+					if(dragEntity.Size.Y < 0) {
+						dragEntity.Size.Y = 0;
+						clear = true;
+					}
+					if(clear) dragEntity = null;
+				}
+				if(dragMode == EntityEditMode.ResizeRightTop) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
+					float p = dragEntity.Position.Y + drag.Y;
+					float s = dragEntity.Size.X + drag.X;
+					Vector2 leftOver = new(s % 1.0F, p % 1.0F);
+					p = float.Floor(p);
+					s = float.Floor(s);
+					dragEntity.Size.X = s;
+					dragEntity.Size.Y += dragEntity.Position.Y - p;
+					dragEntity.Position.Y = p;
+					dragOrigin = mPos - leftOver * zoom;
+					bool clear = false;
+					if(dragEntity.Size.X < 0) {
+						dragEntity.Size.X = 0;
+						clear = true;
+					}
+					if(dragEntity.Size.Y < 0) {
+						dragEntity.Size.Y = 0;
+						clear = true;
+					}
+					if(clear) dragEntity = null;
+				}
+				if(dragMode == EntityEditMode.ResizeLeftBottom) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
+					float p = dragEntity.Position.X + drag.X;
+					float s = dragEntity.Size.Y + drag.Y;
+					Vector2 leftOver = new(p % 1.0F, s % 1.0F);
+					p = float.Floor(p);
+					s = float.Floor(s);
+					dragEntity.Size.Y = s;
+					dragEntity.Size.X += dragEntity.Position.X - p;
+					dragEntity.Position.X = p;
+					dragOrigin = mPos - leftOver * zoom;
+					bool clear = false;
+					if(dragEntity.Size.X < 0) {
+						dragEntity.Size.X = 0;
+						clear = true;
+					}
+					if(dragEntity.Size.Y < 0) {
+						dragEntity.Size.Y = 0;
+						clear = true;
+					}
+					if(clear) dragEntity = null;
+				}
+				if(dragMode == EntityEditMode.ResizeRightBottom) {
+					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
+					dragEntity.Size += drag;
+					Vector2 leftOver = new Vector2(dragEntity.Size.X % 1.0F, dragEntity.Size.Y % 1.0F);
+					dragEntity.Size = new Vector2((int)dragEntity.Size.X, (int)dragEntity.Size.Y);
+					dragOrigin = mPos - leftOver * zoom;
+					bool clear = false;
+					if(dragEntity.Size.X < 0) {
+						dragEntity.Size.X = 0;
+						clear = true;
+					}
+					if(dragEntity.Size.Y < 0) {
+						dragEntity.Size.Y = 0;
+						clear = true;
+					}
+					if(clear) dragEntity = null;
+				}
+			}	
+		}
+		
 		ImGui.PopID();
 	}
 
+}
+
+public enum EntityEditMode {
+	Move,
+	ResizeLeft,
+	ResizeRight,
+	ResizeTop,
+	ResizeBottom,
+	ResizeLeftTop,
+	ResizeRightTop,
+	ResizeLeftBottom,
+	ResizeRightBottom
 }

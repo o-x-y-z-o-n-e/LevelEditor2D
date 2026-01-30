@@ -458,6 +458,7 @@ public class CanvasPanel : Panel {
 							}
 							if(ImGui.IsItemHovered()) {
 								ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+								ShowEntityHighlight(entity);
 							}
 						}
 						ImGui.PopID();
