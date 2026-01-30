@@ -5,7 +5,7 @@ using ImGuiNET;
 
 namespace L2D; 
 
-public class TileBrushTool : TileTool {
+public class TileBrushTool : CanvasTool {
 	
 	public Scene Scene => scene;
 	public Tilemap Tilemap => tilemap;
@@ -25,6 +25,7 @@ public class TileBrushTool : TileTool {
 
 	public TileBrushTool(Scene scene) {
 		DisplayName = $"{Codicons.Pencil} Brush";
+		LayerType = LayerType.Tiles;
 		this.scene = scene;
 		tilemap = null;
 		width = 0;

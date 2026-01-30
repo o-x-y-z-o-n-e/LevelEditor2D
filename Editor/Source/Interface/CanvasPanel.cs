@@ -16,22 +16,26 @@ public class CanvasPanel : Panel {
 	public TileSelectTool TileSelect => tileSelect;
 	public TileBrushTool TileBrush => tileBrush;
 	public TileEraserTool TileEraser => tileEraser;
+	public EntityEditTool EntityEdit => entityEdit;
 
+	public Entity EntityHighlight => entityHighlight;
+
+	private EntityEditTool entityEdit;
 	private TileSelectTool tileSelect;
 	private TileBrushTool tileBrush;
 	private TileEraserTool tileEraser;
 
-	public TileTool ActiveTool => activeTool;
+	public CanvasTool ActiveTool => activeTool;
 
-	private TileTool activeTool;
+	private CanvasTool activeTool;
 
 	private bool previewSceneEnabled;
 	private Scene previewSceneExisting;
 	private Rectangle previewSceneArea;
 
-	private EntityDefinition entityHighlight;
-	private Scene entityHighlightScene;
-	private float entityHighlightOutlineTimer;
+	private Entity entityHighlight;
+	private Entity entitySelect;
+	private float entityOutlineTimer;
 	
 	private const float ZOOM_RANGE_MIN = -5;
 	private const float ZOOM_RANGE_MAX = 15;
@@ -40,18 +44,19 @@ public class CanvasPanel : Panel {
 	public CanvasPanel() {
 		Title = "Canvas";
 
-		flags |= ImGuiWindowFlags.NoScrollWithMouse;
+		flags |= ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar;
 		
 		camera = new(0, 0);
 		zooming = 0;
 		gridScenesOnly = true;
+		entityEdit = new EntityEditTool();
 		tileSelect = new TileSelectTool();
 		tileBrush = null;
 		tileEraser = null;
 		activeTool = null;
 	}
 
-	private float GetZoom() {
+	public float GetZoom() {
 		return MathF.Exp(zooming * ZOOM_RANGE_SCALE);
 	}
 
@@ -69,8 +74,11 @@ public class CanvasPanel : Panel {
 
 		World world = Program.File.World;
 
+		Layer selectedLayer = Program.SelectedLayer;
+		
 		ImGui.SetNextItemWidth(150);
 		if(ImGui.BeginCombo("Active Tool", activeTool?.DisplayName ?? "None")) {
+			ImGui.BeginDisabled(selectedLayer == null || selectedLayer.Type == LayerType.Entities);
 			if(ImGui.Selectable(tileSelect.DisplayName, activeTool == tileSelect)) {
 				SetTool(tileSelect);
 			}
@@ -82,6 +90,12 @@ public class CanvasPanel : Panel {
 			if(ImGui.Selectable(tileEraser.DisplayName, activeTool == tileEraser)) {
 				SetTool(tileEraser);
 			}
+			ImGui.EndDisabled();
+			ImGui.BeginDisabled(selectedLayer == null || selectedLayer.Type == LayerType.Tiles);
+			if(ImGui.Selectable(entityEdit.DisplayName, activeTool == entityEdit)) {
+				SetTool(entityEdit);
+			}
+			ImGui.EndDisabled();
 			ImGui.EndCombo();
 		}
 		
@@ -100,6 +114,8 @@ public class CanvasPanel : Panel {
 			}
 			ImGui.EndPopup();
 		}
+
+		ImGui.BeginChild("view", ImGui.GetContentRegionAvail(), ImGuiChildFlags.None, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 		
 		Vector2 canvas_p0 = ImGui.GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
 		Vector2 canvas_sz = ImGui.GetContentRegionAvail();   // Resize canvas to what's available
@@ -171,8 +187,14 @@ public class CanvasPanel : Panel {
 			ImGui.PopID();
 		}
 
-		if(entityHighlight != null && entityHighlightScene != null && Program.SelectedLayer != null && Program.SelectedLayer.Type == LayerType.Entities) {
-			DrawEntityHighlight(drawList, transform, entityHighlightScene, entityHighlight);
+		if(entityHighlight != null && entityHighlight != entitySelect) {
+			DrawEntityOutline(drawList, transform, entityHighlight, false);
+			entityHighlight = null;
+		}
+		
+		if(entitySelect != null) {
+			DrawEntityOutline(drawList, transform, entitySelect, true);
+			entitySelect = null;
 		}
 		
 		Scene activeScene = Program.SelectedScene;
@@ -201,19 +223,19 @@ public class CanvasPanel : Panel {
 			tileSelect.SetScene(activeScene);
 		}
 
-		if(activeTool == null) {
-			SetTool(tileSelect);
-		}
-			
-		if(activeTool != null && Program.SelectedLayer != null && Program.SelectedLayer.Type == LayerType.Tiles) {
-			if(tileSelect == activeTool) {
-				tileSelect.Update(drawList, transform, worldBorder, movingCamera, isHovered);
-			} else if(tileBrush == activeTool) {
-				tileBrush.Update(drawList, transform, worldBorder, movingCamera, isHovered);
-			} else if(tileEraser == activeTool) {
-				tileEraser.Update(drawList, transform, worldBorder, movingCamera, isHovered);
+		if(selectedLayer == null) {
+			SetTool(null);
+		} else if(selectedLayer.Type == LayerType.Tiles) {
+			if(activeTool == null || activeTool.LayerType != LayerType.Tiles) {
+				SetTool(tileSelect);
+			}
+		} else if(selectedLayer.Type == LayerType.Entities) {
+			if(activeTool == null || activeTool.LayerType != LayerType.Entities) {
+				SetTool(entityEdit);
 			}
 		}
+		
+		activeTool?.Update(drawList, transform, worldBorder, movingCamera, isHovered);
 		
 		DrawEntityLabels(drawList, transform, world);
 
@@ -222,6 +244,8 @@ public class CanvasPanel : Panel {
 		}
 		
 		drawList.PopClipRect();
+		
+		ImGui.EndChild();
 	}
 
 	private Rectangle DrawWorldBorder(World world, ImDrawListPtr drawList, Matrix4x4 transform) {
@@ -302,9 +326,6 @@ public class CanvasPanel : Panel {
 		if(ImGui.InvisibleButton("select-scene", idTextSize)) {
 			Program.SetSelectedScene(scene);
 		}
-		// if(ImGui.Selectable(scene.ID, Program.SelectedScene == scene, ImGuiSelectableFlags.AllowOverlap, idTextSize)) {
-		// 	Program.SetSelectedScene(scene);
-		// }
 		if(ImGui.IsItemHovered()) {
 			ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
 		}
@@ -327,14 +348,19 @@ public class CanvasPanel : Panel {
 				Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
 				Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
 				foreach(var entity in layer.Entities.All) {
+					uint fillColor = Utilities.GetPackedColor(200, 200, 200, 30);
+					uint borderColor = Utilities.GetPackedColor(200, 200, 200, 180);
 					Vector2 e0 = Vector2.Transform(offset + entity.Position * scale, transform);
 					Vector2 e1 = Vector2.Transform(offset + (entity.Position + entity.Size) * scale, transform);
-					drawList.AddRectFilled(e0, e1, Utilities.GetPackedColor(200, 200, 200, 30));
-					drawList.AddRect(e0, e1, Utilities.GetPackedColor(200, 200, 200, 180));
-
-					Vector2 pos = ImGui.GetMousePos();
-					if(pos.X >= e0.X && pos.X <= e1.X && pos.Y >= e0.Y && pos.Y <= e1.Y) {
-						ShowEntityHighlight(scene, entity);
+					if(entity.IsPoint) {
+						float size = Entity.POINT_HANDLE_SIZE;
+						drawList.AddCircleFilled(e0, size, fillColor);
+						drawList.AddCircle(e0, size, borderColor);
+						drawList.AddLine(e0 + new Vector2(-size/3, 0), e0 + new Vector2(size/3, 0), borderColor);
+						drawList.AddLine(e0 + new Vector2(0, -size/3), e0 + new Vector2(0, size/3), borderColor);
+					} else {
+						drawList.AddRectFilled(e0, e1, fillColor);
+						drawList.AddRect(e0, e1, borderColor);
 					}
 				}
 			}
@@ -395,8 +421,10 @@ public class CanvasPanel : Panel {
 
 	private void DrawEntityLabels(ImDrawListPtr drawList, Matrix4x4 transform, World world) {
 		for(int i = 0; i < world.SceneCount; i++) {
+			ImGui.PushID(i);
 			Scene scene = world.GetScene(i);
 			for(int j = 0; j < scene.LayerCount; j++) {
+				ImGui.PushID(j);
 				Layer layer = scene.Layers[j];
 				bool hide = !layer.Visible;
 				if(Program.LayersPanel.IsolateLayerView && scene == Program.SelectedScene) {
@@ -406,59 +434,97 @@ public class CanvasPanel : Panel {
 				if(layer.Type == LayerType.Entities && layer.HasEntities) {
 					Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
 					Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
+					int e = 0;
 					foreach(var entity in layer.Entities.All) {
+						ImGui.PushID(e);
 						Vector2 e0 = Vector2.Transform(offset + entity.Position * scale, transform);
 						Vector2 e1 = Vector2.Transform(offset + (entity.Position + entity.Size) * scale, transform);
-						
 						Vector2 textSize = ImGui.CalcTextSize(entity.Name);
-						Vector2 textPos = new Vector2((e0.X + e1.X) / 2.0F, e0.Y) - (textSize / 2.0F) - new Vector2(0, 24);
-						drawList.AddRectFilled(textPos - new Vector2(2, -1), textPos + textSize + new Vector2(8, 4), Utilities.GetPackedColor(10, 10, 10, 64), 4.0F);
-						drawList.AddRectFilled(textPos - new Vector2(4, 1), textPos + textSize + new Vector2(6, 2), Utilities.GetPackedColor(180, 180, 180, 192), 4.0F);
-						drawList.AddText(textPos+ new Vector2(1), Utilities.GetPackedColor(10, 10, 10, 128), entity.Name);
-						drawList.AddText(textPos, Utilities.GetPackedColor(255, 255, 255, 255), entity.Name);
+						Vector2 textPos = new Vector2((e0.X + e1.X) / 2.0F, e0.Y) - (textSize / 2.0F) - new Vector2(0, 16);
+						if(textSize.X > 0 && textPos.Y > 0) {
+							if(entity.IsPoint) textPos.Y -= Entity.POINT_HANDLE_SIZE;
+							else if(entity == Program.SelectedEntity) textPos.Y -= 14;
+							drawList.AddRectFilled(textPos - new Vector2(2, -1), textPos + textSize + new Vector2(8, 4), Utilities.GetPackedColor(10, 10, 10, 64), 4.0F);
+							drawList.AddRectFilled(textPos - new Vector2(4, 1), textPos + textSize + new Vector2(6, 2), Utilities.GetPackedColor(180, 180, 180, 192), 4.0F);
+							drawList.AddText(textPos + new Vector2(1), Utilities.GetPackedColor(10, 10, 10, 128), entity.Name);
+							drawList.AddText(textPos, Utilities.GetPackedColor(255, 255, 255, 255), entity.Name);
+							
+							ImGui.SetCursorScreenPos(textPos);
+							
+							if(ImGui.InvisibleButton("select-entity", textSize)) {
+								Program.SetSelectedScene(entity.Layer.Scene);
+								Program.SetSelectedLayer(entity.Layer);
+								Program.SetSelectedEntity(entity);
+							}
+							if(ImGui.IsItemHovered()) {
+								ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+							}
+						}
+						ImGui.PopID();
+						e++;
 					}
 				}
+				ImGui.PopID();
 			}
+			ImGui.PopID();
 		}
 	}
 
-	private void DrawEntityHighlight(ImDrawListPtr drawList, Matrix4x4 transform, Scene scene, EntityDefinition entity) {
+	private void DrawEntityOutline(ImDrawListPtr drawList, Matrix4x4 transform, Entity entity, bool selected) {
 		int thick = 3;
 		float step = 8;
+
+		uint fillColor = Utilities.GetPackedColor(220, 220, 220, 30);
+		uint lineBaseColor = Utilities.GetPackedColor(230, 230, 230, 220);
+		uint lineDashColor = Utilities.GetPackedColor(80, 80, 80, 255);
+
+		Scene scene = entity.Layer.Scene;
 		
 		Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
 		Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
-		Vector2 e0 = Vector2.Transform(offset + entity.Position * scale, transform);
-		Vector2 e1 = Vector2.Transform(offset + (entity.Position + entity.Size) * scale, transform);
+
+		Vector2 pos = entity.Position;
+		Vector2 size = entity.Size;
+		
+		if(entity.IsPoint) {
+			size = new Vector2(Entity.POINT_HANDLE_SIZE * 2 / GetZoom());
+			pos = pos - size / 2.0F;
+		}
+		
+		Vector2 e0 = Vector2.Transform(offset + pos * scale, transform);
+		Vector2 e1 = Vector2.Transform(offset + (pos + size) * scale, transform);
 		e0.X = (int)e0.X;
 		e0.Y = (int)e0.Y;
 		e1.X = (int)e1.X;
 		e1.Y = (int)e1.Y;
-		drawList.AddRectFilled(e0, e1, Utilities.GetPackedColor(220, 220, 220, 30));
+		drawList.AddRectFilled(e0, e1, fillColor);
 		
-		entityHighlightOutlineTimer = (entityHighlightOutlineTimer + Program.DeltaTime) % 1.0F;
+		float t = 0.0F;
+
+		if(selected) {
+			entityOutlineTimer = (entityOutlineTimer + Program.DeltaTime) % 1.0F;
+			t = entityOutlineTimer;
+			lineDashColor = Utilities.GetPackedColor(40, 40, 40, 255);
+		}
 
 		float hs = step / 2.0F;
-		float s1 = step * entityHighlightOutlineTimer;
+		float s1 = step * t;
 		float s2 = hs + s1;
 		
 		ImGui.PushClipRect(e0-new Vector2(1), e1+new Vector2(2), true);
-		drawList.AddLine(new Vector2(e0.X, e0.Y), new Vector2(e1.X, e0.Y), Utilities.GetPackedColor(230, 230, 230, 220), thick);
-		drawList.AddLine(new Vector2(e0.X, e0.Y), new Vector2(e0.X, e1.Y), Utilities.GetPackedColor(230, 230, 230, 220), thick);
-		drawList.AddLine(new Vector2(e0.X, e1.Y), new Vector2(e1.X, e1.Y), Utilities.GetPackedColor(230, 230, 230, 220), thick);
-		drawList.AddLine(new Vector2(e1.X, e0.Y), new Vector2(e1.X, e1.Y), Utilities.GetPackedColor(230, 230, 230, 220), thick);
+		drawList.AddLine(new Vector2(e0.X, e0.Y), new Vector2(e1.X, e0.Y), lineBaseColor, thick);
+		drawList.AddLine(new Vector2(e0.X, e0.Y), new Vector2(e0.X, e1.Y), lineBaseColor, thick);
+		drawList.AddLine(new Vector2(e0.X, e1.Y), new Vector2(e1.X, e1.Y), lineBaseColor, thick);
+		drawList.AddLine(new Vector2(e1.X, e0.Y), new Vector2(e1.X, e1.Y), lineBaseColor, thick);
 		for(float x = e0.X; x <= e1.X + step; x += step) {
-			drawList.AddLine(new Vector2((int)(x + s1 - step), e0.Y), new Vector2((int)(x + s2 - step), e0.Y), Utilities.GetPackedColor(40, 40, 40, 255), thick);
-			drawList.AddLine(new Vector2((int)(x - s1 + step), e1.Y), new Vector2((int)(x - s2 + step), e1.Y), Utilities.GetPackedColor(40, 40, 40, 255), thick);
+			drawList.AddLine(new Vector2((int)(x + s1 - step), e0.Y), new Vector2((int)(x + s2 - step), e0.Y), lineDashColor, thick);
+			drawList.AddLine(new Vector2((int)(x - s1 + step), e1.Y), new Vector2((int)(x - s2 + step), e1.Y), lineDashColor, thick);
 		}
 		for(float y = e0.Y; y <= e1.Y + step; y += step) {
-			drawList.AddLine(new Vector2(e0.X, (int)(y - s1 + step)), new Vector2(e0.X, (int)(y - s2 + step)), Utilities.GetPackedColor(40, 40, 40, 255), thick);
-			drawList.AddLine(new Vector2(e1.X, (int)(y + s1 - step)), new Vector2(e1.X, (int)(y + s2 - step)), Utilities.GetPackedColor(40, 40, 40, 255), thick);
+			drawList.AddLine(new Vector2(e0.X, (int)(y - s1 + step)), new Vector2(e0.X, (int)(y - s2 + step)), lineDashColor, thick);
+			drawList.AddLine(new Vector2(e1.X, (int)(y + s1 - step)), new Vector2(e1.X, (int)(y + s2 - step)), lineDashColor, thick);
 		}
 		ImGui.PopClipRect();
-
-		entityHighlight = null;
-		entityHighlightScene = null;
 	}
 
 	private void DrawScenePreview(ImDrawListPtr drawList, Matrix4x4 transform) {
@@ -497,9 +563,12 @@ public class CanvasPanel : Panel {
 		previewSceneExisting = null;
 	}
 
-	public void ShowEntityHighlight(Scene scene, EntityDefinition entity) {
+	public void ShowEntityHighlight(Entity entity) {
 		entityHighlight = entity;
-		entityHighlightScene = scene;
+	}
+	
+	public void ShowEntitySelect(Entity entity) {
+		entitySelect = entity;
 	}
 
 	public void LocateScene(Scene scene) {
@@ -508,15 +577,24 @@ public class CanvasPanel : Panel {
 		camera = -p * new Vector2(scene.World.TileWidth, scene.World.TileHeight);
 	}
 
-	public void SetTool(TileTool tool) {
+	public void LocateEntity(Entity entity) {
+		Scene scene = entity.Layer.Scene;
+		float zoom = GetZoom();
+		Vector2 p = entity.Position + entity.Size / 2.0F;
+		p += new Vector2(scene.WorldX * scene.World.TileWidth, scene.WorldY * scene.World.TileHeight);
+		camera = -p;
+	}
+
+	public void SetTool(CanvasTool tool) {
 		if(activeTool == tool) return;
 		activeTool = tool;
-		activeTool.OnActive();
+		activeTool?.OnActive();
 	}
 }
 
-public class TileTool {
+public class CanvasTool {
 	public string DisplayName;
+	public LayerType LayerType;
 
 	public virtual void OnActive() {
 		

@@ -208,20 +208,23 @@ public class LayersPanel : Panel {
 		}
 		
 		ImGui.SameLine();
-		
-		if(ImGui.Button(Codicons.ChevronUp)) {
-			if(Program.SelectedLayer != null) {
-				int i = scene.Layers.IndexOf(Program.SelectedLayer);
-				scene.SwapLayers(i, i-1);
-			}
+
+		int layerIndex = -1;
+		if(Program.SelectedLayer != null) {
+			layerIndex = scene.Layers.IndexOf(Program.SelectedLayer);
 		}
+		
+		ImGui.BeginDisabled(layerIndex <= 0);
+		if(ImGui.Button(Codicons.ChevronUp)) {
+			scene.SwapLayers(layerIndex, layerIndex-1);
+		}
+		ImGui.EndDisabled();
+		ImGui.BeginDisabled(layerIndex >= scene.LayerCount - 1);
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.ChevronDown)) {
-			if(Program.SelectedLayer != null) {
-				int i = scene.Layers.IndexOf(Program.SelectedLayer);
-				scene.SwapLayers(i, i+1);
-			}
+			scene.SwapLayers(layerIndex, layerIndex+1);
 		}
+		ImGui.EndDisabled();
 		
 		ImGui.SameLine();
 		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X -ImGui.CalcTextSize(isolateLayerView ? Codicons.GoToSearch : Codicons.SearchFuzzy).X - 12);

@@ -31,29 +31,52 @@ public class EntitiesPanel : Panel {
 		}
 
 		Layer layer = Program.SelectedLayer;
-		EntityDefinition selected = Program.SelectedEntity;
+		Entity selected = Program.SelectedEntity;
 		
 		Vector2 listSize = ImGui.GetContentRegionAvail();
 		listSize.Y -= 200;
 		ImGui.BeginChild("entity-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY);
 
+		int copyIndex = -1;
+		int deleteIndex = -1;
+		int moveUpIndex = -1;
+		int moveDownIndex = -1;
+
 		int index = 0;
 		foreach(var entity in layer.Entities.All) {
 			ImGui.PushID(index);
-			if(ImGui.Selectable(entity.Name, entity == selected)) {
+
+			bool canvasHighlighted = entity == Program.CanvasPanel.EntityHighlight;
+			
+			if(canvasHighlighted) ImGui.PushStyleColor(ImGuiCol.Header, ImGui.GetStyle().Colors[(int)ImGuiCol.HeaderHovered]);
+			if(ImGui.Selectable(entity.Name, entity == selected || canvasHighlighted)) {
 				if(entity != selected) {
 					Program.SetSelectedEntity(entity);
 				} else {
 					Program.SetSelectedEntity(null);
 				}
 			}
+			if(canvasHighlighted) ImGui.PopStyleColor();
+			
 			if(ImGui.IsItemHovered()) {
-				Program.CanvasPanel.ShowEntityHighlight(Program.SelectedScene, entity);
+				Program.CanvasPanel.ShowEntityHighlight(entity);
 			}
 			ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
 			if(ImGui.BeginPopup("context")) {
+				if(ImGui.MenuItem("Copy")) {
+					copyIndex = index;
+				}
+				if(ImGui.MenuItem("Delete")) {
+					deleteIndex = index;
+				}
+				if(ImGui.MenuItem("Move Up")) {
+					moveUpIndex = index;
+				}
+				if(ImGui.MenuItem("Move Down")) {
+					moveDownIndex = index;
+				}
 				if(ImGui.MenuItem("Locate")) {
-					// TODO
+					Program.CanvasPanel.LocateEntity(entity);
 				}
 				ImGui.EndPopup();
 			}
@@ -64,36 +87,66 @@ public class EntitiesPanel : Panel {
 		ImGui.EndChild();
 		
 		if(ImGui.Button(Codicons.DiffAdded)) {
+			ImGui.OpenPopup("add-entity");
+		}
+
+		if(ImGui.BeginPopup("add-entity")) {
 			// TODO
+			ImGui.EndPopup();
 		}
 		
 		ImGui.SameLine();
 		ImGui.BeginDisabled(Program.SelectedEntity == null);
 		
 		if(ImGui.Button(Codicons.Copy)) {
-			// TODO
+			copyIndex = layer.Entities.IndexOf(Program.SelectedEntity);
+		}
+
+		if(copyIndex >= 0 && copyIndex < layer.Entities.Count) {
+			Entity newEntity = layer.Entities.Copy(copyIndex);
+			newEntity.Position += new Vector2(newEntity.Size.X + 16, 0);
 		}
 		
 		ImGui.SameLine();
 		
 		if(ImGui.Button(Codicons.Trash)) {
-			// TODO
+			deleteIndex = layer.Entities.IndexOf(Program.SelectedEntity);
+		}
+
+		if(deleteIndex >= 0 && deleteIndex < layer.Entities.Count) {
+			layer.Entities.Remove(deleteIndex);
 		}
 		
 		ImGui.SameLine();
 		
-		if(ImGui.Button(Codicons.ChevronUp)) {
-			// TODO
+		int selectedEntityIndex = -1;
+		if(Program.SelectedEntity != null) {
+			selectedEntityIndex = layer.Entities.IndexOf(Program.SelectedEntity);
 		}
+		ImGui.BeginDisabled(selectedEntityIndex <= 0);
+		if(ImGui.Button(Codicons.ChevronUp)) {
+			moveUpIndex = layer.Entities.IndexOf(Program.SelectedEntity);
+		}
+		ImGui.EndDisabled();
+		ImGui.BeginDisabled(selectedEntityIndex >= layer.Entities.Count - 1);
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.ChevronDown)) {
-			// TODO
+			moveDownIndex = layer.Entities.IndexOf(Program.SelectedEntity);
+		}
+		ImGui.EndDisabled();
+
+		if(moveUpIndex >= 1 && moveUpIndex < layer.Entities.Count) {
+			layer.Entities.Move(moveUpIndex, moveUpIndex - 1);
+		}
+		
+		if(moveDownIndex >= 0 && moveDownIndex < layer.Entities.Count - 1) {
+			layer.Entities.Move(moveDownIndex, moveDownIndex + 1);
 		}
 		
 		ImGui.SameLine();
 		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(Codicons.OpenInProduct).X - 12);
 		if(ImGui.Button(Codicons.OpenInProduct)) {
-			// TODO
+			Program.CanvasPanel.LocateEntity(Program.SelectedEntity);
 		}
 		
 		ImGui.EndDisabled();

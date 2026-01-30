@@ -19,6 +19,18 @@
     </tileset>
   </tilesets>
   <scenes>
+    <scene id="entity_test" world.x="-8" world.y="-19" tiles.x="16" tiles.y="16">
+      <links />
+      <groups />
+      <layers>
+        <layer name="test_layer" group="" visible="true" type="entities">
+          <entities>
+            <entity name="test_entity_1" type="yomama" position.x="32" position.y="32" size.x="32" size.y="96" />
+            <entity name="test_entity_2" type="yomama" position.x="128" position.y="64" size.x="0" size.y="0" />
+          </entities>
+        </layer>
+      </layers>
+    </scene>
     <scene id="town_center" world.x="-13" world.y="0" tiles.x="120" tiles.y="120">
       <links>
         <link slot="1" tileset="lone_forest_ground" />
@@ -54,8 +66,8 @@
           <property name="test3" type="float" value="3.2" />
           <property name="test4" type="boolean" value="true" />
           <entities>
-		    <entity name="test_entity" type="yomama" position.x="128" position.y="192" size.x="32" size.y="96" />
-		  </entities>
+            <entity name="test_entity" type="yomama" position.x="128" position.y="192" size.x="32" size.y="96" />
+          </entities>
         </layer>
       </layers>
     </scene>

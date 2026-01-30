@@ -5,7 +5,7 @@ using ImGuiNET;
 
 namespace L2D; 
 
-public class TileEraserTool : TileTool {
+public class TileEraserTool : CanvasTool {
 
 	public Scene Scene => scene;
 
@@ -18,6 +18,7 @@ public class TileEraserTool : TileTool {
 	
 	public TileEraserTool(Scene scene) {
 		DisplayName = $"{Codicons.Eraser} Eraser";
+		LayerType = LayerType.Tiles;
 		this.scene = scene;
 		width = 1;
 		height = 1;

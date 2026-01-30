@@ -50,7 +50,7 @@ public static class Program {
 		set => SetSelectedLayer(value);
 	}
 	
-	public static EntityDefinition SelectedEntity {
+	public static Entity SelectedEntity {
 		get => selectedEntity;
 		set => SetSelectedEntity(value);
 	}
@@ -81,7 +81,7 @@ public static class Program {
 	private static File file;
 	private static Scene selectedScene;
 	private static Layer selectedLayer;
-	private static EntityDefinition selectedEntity;
+	private static Entity selectedEntity;
 	private static Tileset selectedTileset;
 
 	private static IWindow window;
@@ -210,7 +210,7 @@ public static class Program {
 		SetSelectedEntity(null);
 	}
 	
-	public static void SetSelectedEntity(EntityDefinition entity) {
+	public static void SetSelectedEntity(Entity entity) {
 		selectedEntity = entity;
 	}
 	

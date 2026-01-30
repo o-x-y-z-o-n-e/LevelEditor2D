@@ -190,16 +190,22 @@ public class ScenesPanel : Panel {
 		}
 		
 		ImGui.SameLine();
-		
+
+		int sceneIndex = -1;
+		if(Program.SelectedScene != null) {
+			sceneIndex = world.GetSceneIndex(Program.SelectedScene);
+		}
+		ImGui.BeginDisabled(sceneIndex <= 0);
 		if(ImGui.Button(Codicons.ChevronUp)) {
-			int i = world.GetSceneIndex(Program.SelectedScene);
-			world.SwapScenes(i, i-1);
+			world.SwapScenes(sceneIndex, sceneIndex-1);
 		}
+		ImGui.EndDisabled();
 		ImGui.SameLine();
+		ImGui.BeginDisabled(sceneIndex >= world.SceneCount - 1);
 		if(ImGui.Button(Codicons.ChevronDown)) { 
-			int i = world.GetSceneIndex(Program.SelectedScene);
-			world.SwapScenes(i, i+1);
+			world.SwapScenes(sceneIndex, sceneIndex+1);
 		}
+		ImGui.EndDisabled();
 		
 		ImGui.SameLine();
 		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(Codicons.OpenInProduct).X - 12);

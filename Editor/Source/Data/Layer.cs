@@ -48,7 +48,7 @@ public class Layer {
 		if(type == LayerType.Tiles) {
 			tilemap = new Tilemap(this);
 		} else {
-			entities = new EntityCollection();
+			entities = new EntityCollection(this);
 		}
 	}
 	
@@ -67,7 +67,7 @@ public class Layer {
 		string type = layerElement.Attribute("type")?.Value ?? "tiles";
 		if(type == "entities") {
 			this.type = LayerType.Entities;
-			entities = new EntityCollection();
+			entities = new EntityCollection(this);
 			var entitiesElement = layerElement.Element("entities");
 			if(entitiesElement != null) {
 				entities.ParseFromElement(entitiesElement);

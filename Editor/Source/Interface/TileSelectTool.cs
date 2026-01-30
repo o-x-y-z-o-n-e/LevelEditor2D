@@ -5,7 +5,7 @@ using ImGuiNET;
 
 namespace L2D; 
 
-public class TileSelectTool : TileTool {
+public class TileSelectTool : CanvasTool {
 	
 	public Scene Scene => scene;
 	
@@ -17,6 +17,7 @@ public class TileSelectTool : TileTool {
 
 	public TileSelectTool() {
 		DisplayName = $"{Codicons.ScreenFull} Select";
+		LayerType = LayerType.Tiles;
 		selection = new(0, 0, 0, 0);
 	}
 
@@ -67,10 +68,10 @@ public class TileSelectTool : TileTool {
 				int.Abs(my - resizeTileOrigin.Y) + 1
 			);
 		} else if(!resize && resizing) {
-			int left = int.Clamp(selection.Left, 0, scene.TileCountX);
-			int right = int.Clamp(selection.Right, 0, scene.TileCountX);
-			int top = int.Clamp(selection.Top, 0, scene.TileCountY);
-			int bottom = int.Clamp(selection.Bottom, 0, scene.TileCountY);
+			int left = int.Clamp(selection.Left, scene.WorldX, scene.WorldX + scene.TileCountX);
+			int right = int.Clamp(selection.Right, scene.WorldX, scene.WorldX + scene.TileCountX);
+			int top = int.Clamp(selection.Top, scene.WorldY, scene.WorldY + scene.TileCountY);
+			int bottom = int.Clamp(selection.Bottom, scene.WorldY, scene.WorldY + scene.TileCountY);
 			selection = new Rectangle(left, top, right - left, bottom - top);
 			resizing = false;
 		}
