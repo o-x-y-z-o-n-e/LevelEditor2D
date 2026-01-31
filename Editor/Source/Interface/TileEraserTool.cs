@@ -219,7 +219,6 @@ public class TileEraserTool : CanvasTool {
 
 	public void Dispose() {
 		if(disposed) return;
-		// TODO
 		disposed = true;
 	}
 	

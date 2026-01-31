@@ -116,7 +116,20 @@ public class World {
 					}
 				}
 			} else if(srcLayer.Type == LayerType.Entities) {
-				// TODO
+				foreach(var srcEntity in srcLayer.Entities.All) {
+					var newEntity = newLayer.Entities.Add();
+					newEntity.Name = srcEntity.Name;
+					newEntity.Type = srcEntity.Type;
+					newEntity.Position = srcEntity.Position;
+					newEntity.Size = srcEntity.Size;
+					foreach(var p in srcEntity.Properties.All) {
+						var newP = newEntity.Properties.Add(p.Name, p.Type);
+						newP.String = p.String;
+						newP.Integer = p.Integer;
+						newP.Float = p.Float;
+						newP.Boolean = p.Boolean;
+					}
+				}
 			}
 		}
 		
