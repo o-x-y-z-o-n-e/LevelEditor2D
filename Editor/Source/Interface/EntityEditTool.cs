@@ -71,32 +71,15 @@ public class EntityEditTool : CanvasTool {
 			} else {
 				Program.CanvasPanel.ShowEntitySelect(entity);
 				
-				// TODO: move & resize
-				
 				if(mPos.X >= e0.X && mPos.X <= e1.X && mPos.Y >= e0.Y && mPos.Y <= e1.Y) {
 					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
 					
-					// Vector2 drag = ImGui.GetMouseDragDelta(ImGuiMouseButton.Left, 0);
-					// entity.Position += Vector2.Transform(drag, invertedTransform) * new Vector2(scene.World.TileWidth, scene.World.TileHeight);
-					// drag /= new Vector2(scene.World.TileWidth, scene.World.TileHeight);
-					// drag /= Program.CanvasPanel.GetZoom();
-					// entity.Position += drag;
-					// entity.Position += ImGui.GetIO().MouseDelta / Program.CanvasPanel.GetZoom();
-
 					if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && dragEntity == null) {
 						dragEntity = entity;
 						dragMode = EntityEditMode.Move;
 						dragOrigin = mPos;
 					}
 				}
-
-				// ImGui.SetCursorScreenPos(new Vector2(e0.X + edgeBorder, e0.Y + edgeBorder));
-				// if(ImGui.InvisibleButton("move", new Vector2(e1.X - e0.X - edgeBorder * 2, e1.Y - e0.Y - edgeBorder * 2))) {
-				// 	
-				// }
-				// if(ImGui.IsItemHovered()) {
-				// 	
-				// }
 
 				if(!entity.IsPoint) {
 					uint c = Utilities.GetPackedColor(255, 255, 255, 128);
@@ -370,6 +353,7 @@ public class EntityEditTool : CanvasTool {
 					}
 					if(clear) dragEntity = null;
 				}
+				Program.File.MarkDirty();
 			}	
 		}
 		

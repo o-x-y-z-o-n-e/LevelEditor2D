@@ -121,6 +121,7 @@ public class TilePickerPanel : Panel {
 						atLeastOneOption = true;
 						if(ImGui.Selectable($"Slot: {s}")) {
 							link.Slot = s;
+							Program.File.MarkDirty();
 						}
 					}
 					if(!atLeastOneOption) {
@@ -138,6 +139,7 @@ public class TilePickerPanel : Panel {
 					Program.TilesetsPanel.SelectTilesetModal((selected, tileset) => {
 						if(selected) link.Tileset = tileset;
 						tilesetLinkTarget = -1;
+						Program.File.MarkDirty();
 					});
 				}
 
@@ -305,6 +307,7 @@ public class TilePickerPanel : Panel {
 		ImGui.BeginDisabled(nextSlotAvailable > maxTilesetSlots);
 		if(ImGui.Button("Add", new Vector2(region.X, 0))) {
 			scene.Tilesets.Add(new TilesetLink(scene.File, nextSlotAvailable, null));
+			Program.File.MarkDirty();
 		}
 		ImGui.EndDisabled();
 		

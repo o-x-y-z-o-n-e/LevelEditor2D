@@ -67,6 +67,7 @@ public class LayersPanel : Panel {
 					if(n_next >= 0 && n_next < scene.Layers.Count) {
 						scene.SwapLayers(i, n_next);
 						ImGui.ResetMouseDragDelta();
+						Program.File.MarkDirty();
 					}
 				}
 				
@@ -74,6 +75,7 @@ public class LayersPanel : Panel {
 				if(ImGui.BeginPopup("context")) {
 					if(ImGui.MenuItem(layer.Visible ? "Hide" : "Show")) {
 						layer.Visible = !layer.Visible;
+						Program.File.MarkDirty();
 					}
 					ImGui.EndPopup();
 				}
@@ -83,6 +85,7 @@ public class LayersPanel : Panel {
 				ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(layer.Visible ? Codicons.Eye : Codicons.EyeClosed).X - 6);
 				if(ImGui.SmallButton(layer.Visible ? Codicons.Eye : Codicons.EyeClosed)) {
 					layer.Visible = !layer.Visible;
+					Program.File.MarkDirty();
 				}
 				ImGui.EndDisabled();
 
@@ -132,6 +135,7 @@ public class LayersPanel : Panel {
 				Program.SelectedLayer = layer;
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
+				Program.File.MarkDirty();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -166,6 +170,7 @@ public class LayersPanel : Panel {
 				Program.SetSelectedLayer(layer);
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
+				Program.File.MarkDirty();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -195,6 +200,7 @@ public class LayersPanel : Panel {
 				}
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
+				Program.File.MarkDirty();
 			}
 			ImGui.SameLine();
 			ImGui.Dummy(new Vector2(80, 0));
@@ -217,12 +223,14 @@ public class LayersPanel : Panel {
 		ImGui.BeginDisabled(layerIndex <= 0);
 		if(ImGui.Button(Codicons.ChevronUp)) {
 			scene.SwapLayers(layerIndex, layerIndex-1);
+			Program.File.MarkDirty();
 		}
 		ImGui.EndDisabled();
 		ImGui.BeginDisabled(layerIndex >= scene.LayerCount - 1);
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.ChevronDown)) {
 			scene.SwapLayers(layerIndex, layerIndex+1);
+			Program.File.MarkDirty();
 		}
 		ImGui.EndDisabled();
 		
@@ -250,12 +258,14 @@ public class LayersPanel : Panel {
 				if(!invalidName) {
 					layer.Name = name;
 				}
+				Program.File.MarkDirty();
 			}
 			
 			ImGui.BeginDisabled();
 			string group = "--unused--";
 			if(ImGui.InputText("Group", ref group, 256)) {
 				// TODO
+				Program.File.MarkDirty();
 			}
 			ImGui.EndDisabled();
 			

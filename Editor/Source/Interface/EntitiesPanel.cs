@@ -91,6 +91,7 @@ public class EntitiesPanel : Panel {
 			entity.Name = "New Entity";
 			entity.Position = -Program.CanvasPanel.Camera - new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight);
 			Program.SetSelectedEntity(entity);
+			Program.File.MarkDirty();
 		}
 		
 		ImGui.SameLine();
@@ -103,6 +104,7 @@ public class EntitiesPanel : Panel {
 		if(copyIndex >= 0 && copyIndex < layer.Entities.Count) {
 			Entity newEntity = layer.Entities.Copy(copyIndex);
 			newEntity.Position += new Vector2(newEntity.Size.X + 16, 0);
+			Program.File.MarkDirty();
 		}
 		
 		ImGui.SameLine();
@@ -120,6 +122,7 @@ public class EntitiesPanel : Panel {
 			} else {
 				Program.SetSelectedEntity(layer.Entities.Get(deleteIndex));
 			}
+			Program.File.MarkDirty();
 		}
 		
 		ImGui.SameLine();
@@ -142,10 +145,12 @@ public class EntitiesPanel : Panel {
 
 		if(moveUpIndex >= 1 && moveUpIndex < layer.Entities.Count) {
 			layer.Entities.Move(moveUpIndex, moveUpIndex - 1);
+			Program.File.MarkDirty();
 		}
 		
 		if(moveDownIndex >= 0 && moveDownIndex < layer.Entities.Count - 1) {
 			layer.Entities.Move(moveDownIndex, moveDownIndex + 1);
+			Program.File.MarkDirty();
 		}
 		
 		ImGui.SameLine();
@@ -158,12 +163,19 @@ public class EntitiesPanel : Panel {
 
 		if(selected != null) {
 			ImGui.SeparatorText("Entity Options");
-			ImGui.InputText("Name", ref selected.Name, 512);
-			ImGui.InputText("Type", ref selected.Type, 512);
-			ImGui.DragFloat2("Position", ref selected.Position);
+			if(ImGui.InputText("Name", ref selected.Name, 512)) {
+				Program.File.MarkDirty();    
+            }
+			if(ImGui.InputText("Type", ref selected.Type, 512)) {
+				Program.File.MarkDirty();    
+            }
+			if(ImGui.DragFloat2("Position", ref selected.Position)) {
+				Program.File.MarkDirty();
+			}
 			if(ImGui.DragFloat2("Size", ref selected.Size)) {
 				if(selected.Size.X < 0) selected.Size.X = 0;
 				if(selected.Size.Y < 0) selected.Size.Y = 0;
+				Program.File.MarkDirty();
 			}
 			PropertyView.Run(selected.Properties);
 		} else {

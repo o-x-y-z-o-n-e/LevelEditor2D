@@ -170,6 +170,18 @@ public static class Program {
 
 		controller.Render();
 
+		if(ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
+			if(ImGui.IsKeyPressed(ImGuiKey.S)) {
+				SaveFile();
+			}
+			if(ImGui.IsKeyPressed(ImGuiKey.Q)) {
+				// TODO
+			}
+			if(ImGui.IsKeyPressed(ImGuiKey.O)) {
+				// TODO
+			}
+		}
+
 		UpdateMouseCursor();
 		
 		if(requestClose) {

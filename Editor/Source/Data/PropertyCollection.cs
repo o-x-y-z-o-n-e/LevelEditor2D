@@ -169,15 +169,21 @@ public static class PropertyView {
 		foreach(var p in collection.All) {
 			ImGui.PushID(pIndex);
 			if(p.Type == PropertyType.String) {
-				ImGui.InputText("##", ref p.String, 512);
+				if(ImGui.InputText("##", ref p.String, 512)) Program.File.MarkDirty();
 			} else if(p.Type == PropertyType.Integer) {
-				ImGui.InputInt("##", ref p.Integer);
+				if(ImGui.InputInt("##", ref p.Integer)) Program.File.MarkDirty();
 			} else if(p.Type == PropertyType.Float) {
-				ImGui.InputFloat("##", ref p.Float);
+				if(ImGui.InputFloat("##", ref p.Float)) Program.File.MarkDirty();
 			} else if(p.Type == PropertyType.Boolean) {
 				if(ImGui.BeginCombo("##", p.Boolean ? "True" : "False")) {
-					if(ImGui.Selectable("True", p.Boolean)) p.Boolean = true;
-					if(ImGui.Selectable("False", !p.Boolean)) p.Boolean = false;
+					if(ImGui.Selectable("True", p.Boolean)) {
+						p.Boolean = true;
+						Program.File.MarkDirty();
+					}
+					if(ImGui.Selectable("False", !p.Boolean)) {
+						p.Boolean = false;
+						Program.File.MarkDirty();
+					}
 					ImGui.EndCombo();
 				}
 			}
@@ -224,8 +230,9 @@ public static class PropertyView {
 
 			if(rename) ImGui.OpenPopup("rename");
 			if(convert) ImGui.OpenPopup("convert");
+			
 			if(ImGui.BeginPopup("rename")) {
-				ImGui.InputText("Name", ref p.Name, 512);
+				if(ImGui.InputText("Name", ref p.Name, 512)) Program.File.MarkDirty();
 				ImGui.EndPopup();
 			}
 
@@ -244,6 +251,7 @@ public static class PropertyView {
 						}
 						p.Type = PropertyType.String;
 						close = true;
+						Program.File.MarkDirty();
 					}
 					if(ImGui.Selectable("Integer", p.Type == PropertyType.Integer)) {
 						if(p.Type == PropertyType.String) {
@@ -257,6 +265,7 @@ public static class PropertyView {
 						}
 						p.Type = PropertyType.Integer;
 						close = true;
+						Program.File.MarkDirty();
 					}
 					if(ImGui.Selectable("Float", p.Type == PropertyType.Float)) {
 						if(p.Type == PropertyType.String) {
@@ -270,6 +279,7 @@ public static class PropertyView {
 						}
 						p.Type = PropertyType.Float;
 						close = true;
+						Program.File.MarkDirty();
 					}
 
 					if(ImGui.Selectable("Boolean", p.Type == PropertyType.Boolean)) {
@@ -284,6 +294,7 @@ public static class PropertyView {
 						}
 						p.Type = PropertyType.Boolean;
 						close = true;
+						Program.File.MarkDirty();
 					}
 
 					ImGui.EndCombo();
@@ -300,8 +311,10 @@ public static class PropertyView {
 
 		if(pDelete >= 0) {
 			collection.Remove(pDelete);
+			Program.File.MarkDirty();
 		} else if(pMoveSrc >= 0 && pMoveDst >= 0) {
 			collection.Move(pMoveSrc, pMoveDst);
+			Program.File.MarkDirty();
 		}
 
 		if(ImGui.Button(Codicons.Add)) {
@@ -362,6 +375,7 @@ public static class PropertyView {
 				if(newPropertyType == PropertyType.Float) property.Float = newPropertyFloat;
 				if(newPropertyType == PropertyType.Boolean) property.Boolean = newPropertyBoolean;
 				ImGui.CloseCurrentPopup();
+				Program.File.MarkDirty();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();

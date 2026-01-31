@@ -55,6 +55,7 @@ public class ScenesPanel : Panel {
 				if(n_next >= 0 && n_next < count) {
 					world.SwapScenes(i, n_next);
 					ImGui.ResetMouseDragDelta();
+					Program.File.MarkDirty();
 				}
 			}
 			
@@ -107,6 +108,7 @@ public class ScenesPanel : Panel {
 				var newScene = world.CreateScene(sceneRenameBuffer, sceneResizeVar.X, sceneResizeVar.Y, sceneReposVar.X, sceneReposVar.Y);
 				Program.SetSelectedScene(newScene);
 				ImGui.CloseCurrentPopup();
+				Program.File.MarkDirty();
 			}
 			ImGui.EndDisabled();
 			
@@ -156,6 +158,7 @@ public class ScenesPanel : Panel {
 				Scene newScene = world.CopyScene(src, sceneRenameBuffer, sceneReposVar.X, sceneReposVar.Y);
 				Program.SetSelectedScene(newScene);
 				ImGui.CloseCurrentPopup();
+				Program.File.MarkDirty();
 			}
 			ImGui.EndDisabled();
 			
@@ -183,6 +186,7 @@ public class ScenesPanel : Panel {
 					Program.SetSelectedScene(null);
 				}
 				ImGui.CloseCurrentPopup();
+				Program.File.MarkDirty();
 			}
 			ImGui.SameLine();
 			ImGui.Dummy(new Vector2(80, 0));
@@ -203,12 +207,14 @@ public class ScenesPanel : Panel {
 		ImGui.BeginDisabled(sceneIndex <= 0);
 		if(ImGui.Button(Codicons.ChevronUp)) {
 			world.SwapScenes(sceneIndex, sceneIndex-1);
+			Program.File.MarkDirty();
 		}
 		ImGui.EndDisabled();
 		ImGui.SameLine();
 		ImGui.BeginDisabled(sceneIndex >= world.SceneCount - 1);
 		if(ImGui.Button(Codicons.ChevronDown)) { 
 			world.SwapScenes(sceneIndex, sceneIndex+1);
+			Program.File.MarkDirty();
 		}
 		ImGui.EndDisabled();
 		
@@ -234,6 +240,7 @@ public class ScenesPanel : Panel {
 					}
 				}
 				if(valid) scene.ID = id;
+				Program.File.MarkDirty();
 			}
 			
 			if(ImGui.Button($"{scene.WorldX}, {scene.WorldY}", new Vector2(ImGui.CalcItemWidth(), 0))) {
@@ -266,6 +273,7 @@ public class ScenesPanel : Panel {
 					scene.WorldX = sceneReposVar.X;
 					scene.WorldY = sceneReposVar.Y;
 					ImGui.CloseCurrentPopup();
+					Program.File.MarkDirty();
 				}
 				ImGui.EndDisabled();
 				
@@ -310,6 +318,7 @@ public class ScenesPanel : Panel {
 				if(ImGui.Button("Confirm")) {
 					scene.Resize(sceneResizeVar.X, sceneResizeVar.Y);
 					ImGui.CloseCurrentPopup();
+					Program.File.MarkDirty();
 				}
 				ImGui.EndDisabled();
 				
@@ -329,8 +338,5 @@ public class ScenesPanel : Panel {
 		if(!scenePreviewShown) {
 			Program.CanvasPanel.DisableScenePreview();
 		}
-		
-		// TODO: local tool bar for actions; new, up, down, copy, delete
-		// TODO: drag selectables
 	}
 }

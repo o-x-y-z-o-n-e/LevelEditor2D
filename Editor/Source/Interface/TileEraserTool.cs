@@ -33,6 +33,7 @@ public class TileEraserTool : CanvasTool {
 				tilemap.Grid[tx, ty] = new TileRef(0, 0);
 			}
 		}
+		Program.File.MarkDirty();
 	}
 
 	public void Erase(Rectangle region, Layer layer) {

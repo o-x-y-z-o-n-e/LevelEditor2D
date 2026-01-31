@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 using System.Numerics;
 using IconFonts;
 using ImGuiNET;
@@ -273,6 +274,7 @@ public class TileBrushTool : CanvasTool {
 					SetSize(1, 1);
 					tilemap.Grid[0, 0] = new TileRef();
 				}
+				Program.File.MarkDirty();
 			}
 			
 			tilemap.Render();
@@ -402,6 +404,7 @@ public class TileBrushTool : CanvasTool {
 			}
 		}
 		clearAfterPlace = true;
+		Program.File.MarkDirty();
 	}
 
 	public void CopyRegion(Rectangle region, Layer layer) {
@@ -528,6 +531,7 @@ public class TileBrushTool : CanvasTool {
 				tilemap.Set(x, tilemap.Height - y - 1, tile1, tileset1);
 			}
 		}
+		Program.File.MarkDirty();
 	}
 
 	public void FlipHorizontal() {
@@ -540,6 +544,7 @@ public class TileBrushTool : CanvasTool {
 				tilemap.Set(tilemap.Width - x - 1, y, tile1, tileset1);
 			}
 		}
+		Program.File.MarkDirty();
 	}
 
 	public void RotateLeft() {
@@ -558,6 +563,7 @@ public class TileBrushTool : CanvasTool {
 				tilemap.Grid[x, y] = grid[w - y - 1, x];
 			}
 		}
+		Program.File.MarkDirty();
 	}
 	
 	public void RotateRight() {
@@ -576,6 +582,7 @@ public class TileBrushTool : CanvasTool {
 				tilemap.Grid[x, y] = grid[y, h - x - 1];
 			}
 		}
+		Program.File.MarkDirty();
 	}
 
 }

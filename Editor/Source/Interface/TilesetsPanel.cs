@@ -438,11 +438,13 @@ public class TilesetsPanel : Panel {
 			} else {
 				idEditBuffer = tileset.ID;
 			}
+			Program.File.MarkDirty();
 		}
 
 		string group = tileset != null ? tileset.Group : "";
 		if(ImGui.InputText("Group", ref group, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
 			tileset.Group = group;
+			Program.File.MarkDirty();
 		}
 		
 		if(ImGui.Button("Reimport")) {
@@ -556,6 +558,7 @@ public class TilesetsPanel : Panel {
 						tiledata = tileset.AddTileData(tileEditIndex);
 					}
 					tiledata.Shapes.Add(new(c0, c1 - c0));
+					Program.File.MarkDirty();
 				}
 			}
 		}
@@ -591,6 +594,7 @@ public class TilesetsPanel : Panel {
 					data.Shapes.Add(new TileShape());
 				}
 			}
+			Program.File.MarkDirty();
 		}
 		
 		ImGui.Separator();
@@ -632,7 +636,10 @@ public class TilesetsPanel : Panel {
 				size.X = float.Clamp(size.X, 0.0F, tileset.SizeX - pos.X);
 				size.Y = float.Clamp(size.Y, 0.0F, tileset.SizeY - pos.Y);
 
-				if(changed) data.Shapes[i] = new TileShape(pos, size);
+				if(changed) {
+					data.Shapes[i] = new TileShape(pos, size);
+					Program.File.MarkDirty();
+				}
 
 				ImGui.PopID();
 			}
@@ -717,6 +724,7 @@ public class TilesetsPanel : Panel {
 				tileset.ReloadTexture();
 				Program.File.World.AddTileset(tileset);
 				ImGui.CloseCurrentPopup();
+				Program.File.MarkDirty();
 				MatchSearch();
 			}
 			ImGui.EndDisabled();

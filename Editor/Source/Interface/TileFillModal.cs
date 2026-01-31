@@ -255,6 +255,7 @@ public class TileFillModal {
 				}
 			}
 		}
+		Program.File.MarkDirty();
 	}
 	
 }

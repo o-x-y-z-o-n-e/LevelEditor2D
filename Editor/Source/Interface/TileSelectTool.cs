@@ -77,6 +77,24 @@ public class TileSelectTool : CanvasTool {
 			resizing = false;
 		}
 
+		if(selection.Width > 0 && selection.Height > 0) {
+			if(ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
+				if(ImGui.IsKeyPressed(ImGuiKey.X)) {
+					Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
+					Program.CanvasPanel.TileBrush.MoveRegion(selection, layer);
+					Program.File.MarkDirty();
+				}
+				if(ImGui.IsKeyPressed(ImGuiKey.C)) {
+					Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
+					Program.CanvasPanel.TileBrush.CopyRegion(selection, layer);
+				}
+			}
+			if(ImGui.IsKeyPressed(ImGuiKey.Delete)) {
+				Program.CanvasPanel.TileEraser.Erase(selection, layer);
+				Program.File.MarkDirty();
+			}
+		}
+
 		bool inPopup = false;
 		Vector2 drag_delta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Right);
 		if(isHovered && drag_delta.X == 0.0f && drag_delta.Y == 0.0f) {
