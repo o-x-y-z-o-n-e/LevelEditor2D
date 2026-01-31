@@ -87,12 +87,10 @@ public class EntitiesPanel : Panel {
 		ImGui.EndChild();
 		
 		if(ImGui.Button(Codicons.DiffAdded)) {
-			ImGui.OpenPopup("add-entity");
-		}
-
-		if(ImGui.BeginPopup("add-entity")) {
-			// TODO
-			ImGui.EndPopup();
+			Entity entity = layer.Entities.Add();
+			entity.Name = "New Entity";
+			entity.Position = -Program.CanvasPanel.Camera - new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight);
+			Program.SetSelectedEntity(entity);
 		}
 		
 		ImGui.SameLine();
@@ -115,6 +113,13 @@ public class EntitiesPanel : Panel {
 
 		if(deleteIndex >= 0 && deleteIndex < layer.Entities.Count) {
 			layer.Entities.Remove(deleteIndex);
+			if(layer.Entities.Count == 0) {
+				Program.SetSelectedEntity(null);
+			} else if(deleteIndex >= layer.Entities.Count) {
+				Program.SetSelectedEntity(layer.Entities.Get(layer.Entities.Count - 1));
+			} else {
+				Program.SetSelectedEntity(layer.Entities.Get(deleteIndex));
+			}
 		}
 		
 		ImGui.SameLine();

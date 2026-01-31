@@ -38,6 +38,7 @@ public static class Program {
 	public static ScenesPanel ScenesPanel => scenesPanel;
 	public static TilePickerPanel TilePickerPanel => tilePickerPanel;
 	public static TilesetsPanel TilesetsPanel => tilesetsPanel;
+	public static TileFillModal TileFillModal => tileFillModal;
 	public static NewProjectModal NewProjectModal => newProjectModal;
 	
 	public static Scene SelectedScene {
@@ -76,6 +77,7 @@ public static class Program {
 	private static ScenesPanel scenesPanel;
 	private static TilePickerPanel tilePickerPanel;
 	private static TilesetsPanel tilesetsPanel;
+	private static TileFillModal tileFillModal;
 	private static NewProjectModal newProjectModal;
 
 	private static File file;
@@ -124,6 +126,7 @@ public static class Program {
 		scenesPanel = new ScenesPanel();
 		tilePickerPanel = new TilePickerPanel();
 		tilesetsPanel = new TilesetsPanel();
+		tileFillModal = new TileFillModal();
 		newProjectModal = new NewProjectModal();
 
 		recentProjects = new List<string>();
@@ -156,6 +159,8 @@ public static class Program {
 		layersPanel.Execute();
 		tilePickerPanel.Execute();
 		entitiesPanel.Execute();
+		
+		tileFillModal.Body();
 
 		if(file == null) {
 			Launcher();

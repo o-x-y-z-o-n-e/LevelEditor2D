@@ -138,6 +138,10 @@ public class Entity {
 	public Entity(Layer layer) {
 		this.layer = layer;
 		properties = new();
+		Name = "";
+		Type = "";
+		Position = Vector2.Zero;
+		Size = Vector2.Zero;
 	}
 
 }

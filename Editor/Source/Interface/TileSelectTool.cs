@@ -8,6 +8,7 @@ namespace L2D;
 public class TileSelectTool : CanvasTool {
 	
 	public Scene Scene => scene;
+	public Rectangle Selection => selection;
 	
 	private Scene scene;
 	private Rectangle selection;
@@ -115,6 +116,9 @@ public class TileSelectTool : CanvasTool {
 				// TODO
 			}
 			ImGui.EndDisabled();
+			if(ImGui.MenuItem("Fill")) {
+				Program.TileFillModal.Open(layer);
+			}
 			if(ImGui.MenuItem("Erase")) {
 				Program.CanvasPanel.TileEraser.Erase(selection, layer);
 			}

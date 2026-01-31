@@ -177,6 +177,11 @@ public class ScenesPanel : Panel {
 			ImGui.Text("Delete scene?");
 			if(ImGui.Button("Confirm")) {
 				world.DeleteScene(Program.SelectedScene);
+				if(world.SceneCount > 0) {
+					Program.SetSelectedScene(world.GetScene(0));
+				} else {
+					Program.SetSelectedScene(null);
+				}
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.SameLine();

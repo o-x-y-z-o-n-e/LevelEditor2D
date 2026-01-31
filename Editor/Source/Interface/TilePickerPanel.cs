@@ -82,6 +82,8 @@ public class TilePickerPanel : Panel {
 			
 			ImGui.OpenPopupOnItemClick("menu", ImGuiPopupFlags.MouseButtonRight);
 			if(ImGui.BeginPopup("menu")) {
+				
+				ImGui.BeginDisabled();// TODO
 				if(ImGui.MenuItem("Move Up")) {
 					// TODO
 				}
@@ -91,6 +93,8 @@ public class TilePickerPanel : Panel {
 				if(ImGui.MenuItem("Remove")) {
 					// TODO
 				}
+				ImGui.EndDisabled();
+				
 				ImGui.EndPopup();
 			}
 			
@@ -143,12 +147,12 @@ public class TilePickerPanel : Panel {
 				Texture texSource = tileset?.GetTexturePreview();
 				
 				Vector2 areaPos = ImGui.GetCursorScreenPos();
-				Vector2 areaSize = new(region.X, texSource?.Height * scale + 20 ?? region.X);
+				Vector2 areaSize = new(region.X, texSource?.Height * scale + 34 ?? region.X);
 				ImGui.BeginChild(
 					"tileset-picker",
 					areaSize,
 					ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders,
-					ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.HorizontalScrollbar
+					ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.AlwaysHorizontalScrollbar
 				);
 				Vector2 p0 = areaPos;
 				Vector2 p1 = p0 + areaSize - new Vector2(16);

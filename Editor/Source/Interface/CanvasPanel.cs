@@ -7,6 +7,8 @@ namespace L2D;
 public class CanvasPanel : Panel {
 	
 	private bool gridScenesOnly;
+
+	public Vector2 Camera => camera;
 	
 	private Vector2 camera;
 	private float zooming;

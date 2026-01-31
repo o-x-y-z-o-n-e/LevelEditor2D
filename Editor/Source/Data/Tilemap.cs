@@ -91,6 +91,16 @@ public class Tilemap : IDisposable {
 		grid = newGrid;
 	}
 
+	public void Set(int x, int y, int tile, int tileset) {
+		grid[x, y].TileID = tile;
+		grid[x, y].TilesetSlot = tileset;
+	}
+	
+	public void Get(int x, int y, out int tile, out int tileset) {
+		tile = grid[x, y].TileID;
+		tileset = grid[x, y].TilesetSlot;
+	}
+
 	public uint GetFrameBufferTexture() {
 		return frameBufferTextureHandle;
 	}
