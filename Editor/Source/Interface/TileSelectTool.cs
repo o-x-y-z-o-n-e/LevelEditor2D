@@ -102,20 +102,26 @@ public class TileSelectTool : CanvasTool {
 				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
 				Program.CanvasPanel.TileBrush.MoveRegion(selection, layer);
 			}
-			ImGui.BeginDisabled(); // TODO
 			if(ImGui.MenuItem("Flip (Horizontal)")) {
-				// TODO
+				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
+				Program.CanvasPanel.TileBrush.MoveRegion(selection, layer);
+				Program.CanvasPanel.TileBrush.FlipHorizontal();
 			}
 			if(ImGui.MenuItem("Flip (Vertical)")) {
-				// TODO
+				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
+				Program.CanvasPanel.TileBrush.MoveRegion(selection, layer);
+				Program.CanvasPanel.TileBrush.FlipVertical();
 			}
-			if(ImGui.MenuItem("Rotate (Left)")) {
-				// TODO
+			if(ImGui.MenuItem("Rotate (-90)")) {
+				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
+				Program.CanvasPanel.TileBrush.MoveRegion(selection, layer);
+				Program.CanvasPanel.TileBrush.RotateLeft();
 			}
-			if(ImGui.MenuItem("Rotate (Right)")) {
-				// TODO
+			if(ImGui.MenuItem("Rotate (+90)")) {
+				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
+				Program.CanvasPanel.TileBrush.MoveRegion(selection, layer);
+				Program.CanvasPanel.TileBrush.RotateRight();
 			}
-			ImGui.EndDisabled();
 			if(ImGui.MenuItem("Fill")) {
 				Program.TileFillModal.Open(layer);
 			}

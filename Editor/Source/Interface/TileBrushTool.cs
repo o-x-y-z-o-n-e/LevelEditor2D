@@ -518,4 +518,64 @@ public class TileBrushTool : CanvasTool {
 		}
 	}
 
+	public void FlipVertical() {
+		if(tilemap == null || tilemap.Height <= 1) return;
+		for(int x = 0; x < tilemap.Width; x++) {
+			for(int y = 0; y < tilemap.Height / 2; y++) {
+				tilemap.Get(x, y, out int tile1, out int tileset1);
+				tilemap.Get(x, tilemap.Height - y - 1, out int tile2, out int tileset2);
+				tilemap.Set(x, y, tile2, tileset2);
+				tilemap.Set(x, tilemap.Height - y - 1, tile1, tileset1);
+			}
+		}
+	}
+
+	public void FlipHorizontal() {
+		if(tilemap == null || tilemap.Width <= 1) return;
+		for(int y = 0; y < tilemap.Height; y++) {
+			for(int x = 0; x < tilemap.Width / 2; x++) {
+				tilemap.Get(x, y, out int tile1, out int tileset1);
+				tilemap.Get(tilemap.Width - x - 1, y, out int tile2, out int tileset2);
+				tilemap.Set(x, y, tile2, tileset2);
+				tilemap.Set(tilemap.Width - x - 1, y, tile1, tileset1);
+			}
+		}
+	}
+
+	public void RotateLeft() {
+		if(tilemap == null || (tilemap.Width <= 1 && tilemap.Height <= 1)) return;
+		int w = tilemap.Width;
+		int h = tilemap.Height;
+		var grid = new TileRef[w, h];
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				grid[x, y] = tilemap.Grid[x, y];
+			}
+		}
+		SetSize(h, w);
+		for(int y = 0; y < w; y++) {
+			for(int x = 0; x < h; x++) {
+				tilemap.Grid[x, y] = grid[w - y - 1, x];
+			}
+		}
+	}
+	
+	public void RotateRight() {
+		if(tilemap == null || (tilemap.Width <= 1 && tilemap.Height <= 1)) return;
+		int w = tilemap.Width;
+		int h = tilemap.Height;
+		var grid = new TileRef[w, h];
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				grid[x, y] = tilemap.Grid[x, y];
+			}
+		}
+		SetSize(h, w);
+		for(int y = 0; y < w; y++) {
+			for(int x = 0; x < h; x++) {
+				tilemap.Grid[x, y] = grid[y, h - x - 1];
+			}
+		}
+	}
+
 }
