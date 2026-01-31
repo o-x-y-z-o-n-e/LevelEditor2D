@@ -15,11 +15,19 @@ public class File {
 	private string path;
 	private World world;
 	private bool dirty;
+	private bool writingToDisk;
+
+	private FileSystemWatcher watcher;
 
 	internal File(string path) {
 		this.path = Path.GetFullPath(path).Replace('\\', '/');
-		this.world = null;
-		this.dirty = false;
+		world = null;
+		dirty = false;
+		writingToDisk = false;
+		watcher = new FileSystemWatcher(Path.GetDirectoryName(this.path));
+		watcher.Filter = "*.l2d";
+		watcher.EnableRaisingEvents = true;
+		watcher.Changed += OnChanged;
 	}
 
 	public bool Read() {
@@ -59,9 +67,11 @@ public class File {
 			settings.CloseOutput = false;
 			settings.Indent = true;
 			writer = XmlTextWriter.Create(stream, settings);
+			writingToDisk = true;
 			document.Save(writer);
 			writer.Close();
 			stream.Close();
+			writingToDisk = false;
 			return true;
 		} catch(Exception e) {
 			Console.ForegroundColor = ConsoleColor.Red;
@@ -94,6 +104,7 @@ public class File {
 
 	public void SetPath(string path) {
 		this.path = Path.GetFullPath(path).Replace('\\', '/');
+		watcher.Path = Path.GetDirectoryName(this.path);
 		Program.UpdateWindowTitle();
 	}
 
@@ -113,6 +124,14 @@ public class File {
 
 	public void Dispose() {
 		world?.Dispose();
+	}
+	
+	private void OnChanged(object sender, FileSystemEventArgs e) {
+		if(e.ChangeType != WatcherChangeTypes.Changed) {
+			return;
+		}
+		if(writingToDisk) return;
+		Console.WriteLine($"Changed: {e.FullPath}");
 	}
 
 }

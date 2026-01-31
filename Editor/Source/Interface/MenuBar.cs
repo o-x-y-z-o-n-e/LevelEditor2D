@@ -10,27 +10,28 @@ public class MenuBar {
 	}
 	
 	internal void Execute() {
-		bool confirmNew = false;
-		bool confirmQuit = false;
-		bool confirmOpen = false;
-		bool confirmReload = false;
-		
 		if(ImGui.BeginMainMenuBar()) {
 			if(ImGui.BeginMenu("File")) {
 				if(ImGui.MenuItem("New")) {
 					if(Program.File != null && Program.File.UnsavedChanges) {
-						confirmNew = true;
+						Program.ConfirmModal.Open(
+							"Confirm New File",
+							"You have unsaved changes.\nAre you sure you want to create a new file?",
+							Program.NewProjectModal.Open
+						);
 					} else {
 						Program.NewProjectModal.Open();
 					}
 				}
 				if(ImGui.MenuItem("Open", "Ctrl+O")) {
 					if(Program.File != null && Program.File.UnsavedChanges) {
-						confirmOpen = true;
+						Program.ConfirmModal.Open(
+							"Confirm Open",
+							"You have unsaved changes.\nAre you sure you want to open another file?",
+							Program.OpenFileDialog
+						);
 					} else {
-						FileDialog.Open(Program.File.GetPath(), Program.FILE_EXTENSION, result => {
-							if(result != null) Program.OpenFile(result);
-						});
+						Program.OpenFileDialog();
 					}
 				}
 
@@ -41,15 +42,15 @@ public class MenuBar {
 					Program.SaveFile();
 				}
 				if(ImGui.MenuItem("Save as..", "Ctrl+Shift+S")) {
-					FileDialog.Save(Program.File.GetPath(), Program.FILE_EXTENSION, result => {
-						if(result != null) {
-							Program.SaveFile(result);
-						}
-					});
+					Program.SaveFileDialog();
 				}
 				if(ImGui.MenuItem("Reload", "Ctrl+R")) {
-					if(Program.File.UnsavedChanges) {
-						confirmReload = true;
+					if(Program.File != null && Program.File.UnsavedChanges) {
+						Program.ConfirmModal.Open(
+							"Confirm Reload",
+							"You have unsaved changes.\nAre you sure you want to reload file from disk?",
+							Program.ReloadFile
+						);
 					} else {
 						Program.ReloadFile();
 					}
@@ -58,7 +59,11 @@ public class MenuBar {
 				
 				if(ImGui.MenuItem("Quit", "Ctrl+Q")) {
 					if(Program.File != null && Program.File.UnsavedChanges) {
-						confirmQuit = true;
+						Program.ConfirmModal.Open(
+							"Confirm Quit",
+							"You have unsaved changes.\nAre you sure you want to quit?",
+							Program.Close
+						);
 					} else {
 						Program.Close();
 					}
@@ -104,63 +109,7 @@ public class MenuBar {
 			}
 
 			ImGui.EndMainMenuBar();
-			
-			if(confirmNew) ImGui.OpenPopup("Confirm New File");
-			if(ImGui.BeginPopupModal("Confirm New File", ImGuiWindowFlags.AlwaysAutoResize)) {
-				ImGui.Text("You have unsaved changes. Are you sure you want to create a new file?");
-				if(ImGui.Button("Yes")) {
-					Program.NewProjectModal.Open();
-				}
-				ImGui.SameLine();
-				if(ImGui.Button("No")) {
-					ImGui.CloseCurrentPopup();
-				}
-				ImGui.EndPopup();
-			}
-			
-			if(confirmQuit) ImGui.OpenPopup("Confirm Quit");
-			if(ImGui.BeginPopupModal("Confirm Quit", ImGuiWindowFlags.AlwaysAutoResize)) {
-				ImGui.Text("You have unsaved changes. Are you sure you want to quit?");
-				if(ImGui.Button("Yes")) {
-					Program.Close();
-				}
-				ImGui.SameLine();
-				if(ImGui.Button("No")) {
-					ImGui.CloseCurrentPopup();
-				}
-				ImGui.EndPopup();
-			}
-			
-			if(confirmOpen) ImGui.OpenPopup("Confirm Open");
-			if(ImGui.BeginPopupModal("Confirm Open", ImGuiWindowFlags.AlwaysAutoResize)) {
-				ImGui.Text("You have unsaved changes. Are you sure you want to open another file?");
-				if(ImGui.Button("Yes")) {
-					FileDialog.Open(Program.File.GetPath(), Program.FILE_EXTENSION, result => {
-						if(result != null) Program.OpenFile(result);
-					});
-				}
-				ImGui.SameLine();
-				if(ImGui.Button("No")) {
-					ImGui.CloseCurrentPopup();
-				}
-				ImGui.EndPopup();
-			}
-			
-			if(confirmReload) ImGui.OpenPopup("Confirm Reload");
-			if(ImGui.BeginPopupModal("Confirm Reload", ImGuiWindowFlags.AlwaysAutoResize)) {
-				ImGui.Text("You have unsaved changes. Are you sure you want to reload file from disk?");
-				if(ImGui.Button("Yes")) {
-					Program.ReloadFile();
-				}
-				ImGui.SameLine();
-				if(ImGui.Button("No")) {
-					ImGui.CloseCurrentPopup();
-				}
-				ImGui.EndPopup();
-			}
 		}
-
-		Program.NewProjectModal.Body();
 	}
 	
 }

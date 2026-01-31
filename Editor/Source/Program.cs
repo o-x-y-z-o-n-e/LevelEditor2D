@@ -39,6 +39,7 @@ public static class Program {
 	public static TilePickerPanel TilePickerPanel => tilePickerPanel;
 	public static TilesetsPanel TilesetsPanel => tilesetsPanel;
 	public static TileFillModal TileFillModal => tileFillModal;
+	public static ConfirmModal ConfirmModal => confirmModal;
 	public static NewProjectModal NewProjectModal => newProjectModal;
 	
 	public static Scene SelectedScene {
@@ -78,6 +79,7 @@ public static class Program {
 	private static TilePickerPanel tilePickerPanel;
 	private static TilesetsPanel tilesetsPanel;
 	private static TileFillModal tileFillModal;
+	private static ConfirmModal confirmModal;
 	private static NewProjectModal newProjectModal;
 
 	private static File file;
@@ -127,6 +129,7 @@ public static class Program {
 		tilePickerPanel = new TilePickerPanel();
 		tilesetsPanel = new TilesetsPanel();
 		tileFillModal = new TileFillModal();
+		confirmModal = new ConfirmModal();
 		newProjectModal = new NewProjectModal();
 
 		recentProjects = new List<string>();
@@ -157,10 +160,46 @@ public static class Program {
 		canvasPanel.Execute();
 		scenesPanel.Execute();
 		layersPanel.Execute();
-		tilePickerPanel.Execute();
 		entitiesPanel.Execute();
+		tilePickerPanel.Execute();
 		
+		if(ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
+			if(ImGui.IsKeyPressed(ImGuiKey.S)) {
+				SaveFile();
+			}
+			if(ImGui.IsKeyPressed(ImGuiKey.Q)) {
+				Program.ConfirmModal.Open(
+					"Confirm Quit",
+					"You have unsaved changes.\nAre you sure you want to quit?",
+					Close
+				);
+			}
+			if(ImGui.IsKeyPressed(ImGuiKey.O)) {
+				Program.ConfirmModal.Open(
+					"Confirm Open",
+					"You have unsaved changes.\nAre you sure you want to open another file?",
+					OpenFileDialog
+				);
+			}
+			if(ImGui.IsKeyPressed(ImGuiKey.R)) {
+				Program.ConfirmModal.Open(
+					"Confirm Reload",
+					"You have unsaved changes.\nAre you sure you want to reload file from disk?",
+					ReloadFile
+				);
+			}
+			if(ImGui.IsKeyPressed(ImGuiKey.N)) {
+				Program.ConfirmModal.Open(
+					"Confirm New File",
+					"You have unsaved changes.\nAre you sure you want to create a new file?",
+					newProjectModal.Open
+				);
+			}
+		}
+		
+		confirmModal.Body();
 		tileFillModal.Body();
+		newProjectModal.Body();
 
 		if(file == null) {
 			Launcher();
@@ -169,18 +208,6 @@ public static class Program {
 		FileDialog.CompleteThreads();
 
 		controller.Render();
-
-		if(ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
-			if(ImGui.IsKeyPressed(ImGuiKey.S)) {
-				SaveFile();
-			}
-			if(ImGui.IsKeyPressed(ImGuiKey.Q)) {
-				// TODO
-			}
-			if(ImGui.IsKeyPressed(ImGuiKey.O)) {
-				// TODO
-			}
-		}
 
 		UpdateMouseCursor();
 		
@@ -235,18 +262,20 @@ public static class Program {
 		selectedTileset = tileset;
 	}
 
-	public static void NewFile(string filePath) {
+	public static void NewFile(string filePath) {		
+		SetSelectedScene(null);
+		
 		file?.Dispose();
 		
 		file = new File(filePath);
 		file.New();
 		
 		Program.UpdateWindowTitle();
-		
-		SetSelectedScene(null);
 	}
 
 	public static void OpenFile(string filePath) {
+		SetSelectedScene(null);
+		
 		file?.Dispose();
 		
 		file = new File(filePath);
@@ -259,9 +288,21 @@ public static class Program {
 		}
 	}
 
+	public static void OpenFileDialog() {
+		FileDialog.Open(Path.GetDirectoryName(Program.File.GetPath()), Program.FILE_EXTENSION, result => {
+			if(result != null) Program.OpenFile(result);
+		});
+	}
+
 	public static void SaveFile(string filePath) {
 		file.SetPath(filePath);
 		file.Write();
+	}
+
+	public static void SaveFileDialog() {
+		FileDialog.Save(Path.GetDirectoryName(Program.File.GetPath()), Program.FILE_EXTENSION, result => {
+			if(result != null) Program.SaveFile(result);
+		});
 	}
 
 	public static void SaveFile() {
@@ -269,6 +310,7 @@ public static class Program {
 	}
 
 	public static void ReloadFile() {
+		SetSelectedScene(null);
 		file.Read();
 	}
 
