@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Numerics;
+using System.Reflection;
 using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.Input.Extensions;
@@ -95,7 +96,7 @@ public static class Program {
 	private static bool requestClose;
 	private static float deltaTime;
 
-	private static List<string> recentProjects;
+	private static List<ProjectInfoState> recentProjects;
 	
 	public static void Main(string[] args) {
 		WindowOptions options = WindowOptions.Default with {
@@ -132,7 +133,7 @@ public static class Program {
 		confirmModal = new ConfirmModal();
 		newProjectModal = new NewProjectModal();
 
-		recentProjects = new List<string>();
+		recentProjects = new List<ProjectInfoState>();
 		LoadRecentProjects();
 
 		foreach(string arg in System.Environment.GetCommandLineArgs()) {
@@ -164,36 +165,54 @@ public static class Program {
 		tilePickerPanel.Execute();
 		
 		if(ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
-			if(ImGui.IsKeyPressed(ImGuiKey.S)) {
-				SaveFile();
+			if(file != null) {
+				if(ImGui.IsKeyPressed(ImGuiKey.S)) {
+					SaveFile();
+				}
 			}
 			if(ImGui.IsKeyPressed(ImGuiKey.Q)) {
-				Program.ConfirmModal.Open(
-					"Confirm Quit",
-					"You have unsaved changes.\nAre you sure you want to quit?",
-					Close
-				);
+				if(file != null && file.UnsavedChanges) {
+					Program.ConfirmModal.Open(
+						"Confirm Quit",
+						"You have unsaved changes.\nAre you sure you want to quit?",
+						Close
+					);
+				} else {
+					Close();
+				}
 			}
 			if(ImGui.IsKeyPressed(ImGuiKey.O)) {
-				Program.ConfirmModal.Open(
-					"Confirm Open",
-					"You have unsaved changes.\nAre you sure you want to open another file?",
-					OpenFileDialog
-				);
+				if(file != null && file.UnsavedChanges) {
+					Program.ConfirmModal.Open(
+						"Confirm Open",
+						"You have unsaved changes.\nAre you sure you want to open another file?",
+						OpenFileDialog
+					);
+				} else {
+					OpenFileDialog();
+				}
 			}
 			if(ImGui.IsKeyPressed(ImGuiKey.R)) {
-				Program.ConfirmModal.Open(
-					"Confirm Reload",
-					"You have unsaved changes.\nAre you sure you want to reload file from disk?",
-					ReloadFile
-				);
+				if(file != null && file.UnsavedChanges) {
+					Program.ConfirmModal.Open(
+						"Confirm Reload",
+						"You have unsaved changes.\nAre you sure you want to reload file from disk?",
+						ReloadFile
+					);
+				} else {
+					ReloadFile();
+				}
 			}
 			if(ImGui.IsKeyPressed(ImGuiKey.N)) {
-				Program.ConfirmModal.Open(
-					"Confirm New File",
-					"You have unsaved changes.\nAre you sure you want to create a new file?",
-					newProjectModal.Open
-				);
+				if(file != null && file.UnsavedChanges) {
+					Program.ConfirmModal.Open(
+						"Confirm New File",
+						"You have unsaved changes.\nAre you sure you want to create a new file?",
+						newProjectModal.Open
+					);
+				} else {
+					newProjectModal.Open();
+				}
 			}
 		}
 		
@@ -220,6 +239,12 @@ public static class Program {
 		controller?.Dispose();
 		input?.Dispose();
 		gl?.Dispose();
+
+		if(file != null) {
+			UpdateProjectInfo(file);
+		}
+		
+		SaveRecentProjects();
 	}
 
 	public static void Close() {
@@ -262,7 +287,11 @@ public static class Program {
 		selectedTileset = tileset;
 	}
 
-	public static void NewFile(string filePath) {		
+	public static void NewFile(string filePath) {
+		if(file != null) {
+			UpdateProjectInfo(file);
+		}
+		
 		SetSelectedScene(null);
 		
 		file?.Dispose();
@@ -271,9 +300,15 @@ public static class Program {
 		file.New();
 		
 		Program.UpdateWindowTitle();
+
+		UpdateProjectInfo(file);
 	}
 
 	public static void OpenFile(string filePath) {
+		if(file != null) {
+			UpdateProjectInfo(file);
+		}
+		
 		SetSelectedScene(null);
 		
 		file?.Dispose();
@@ -286,6 +321,8 @@ public static class Program {
 			file.Read();
 			SetSelectedScene(file?.World?.GetScene(0));
 		}
+		
+		UpdateProjectInfo(file);
 	}
 
 	public static void OpenFileDialog() {
@@ -295,21 +332,28 @@ public static class Program {
 	}
 
 	public static void SaveFile(string filePath) {
+		if(file == null) return;
 		file.SetPath(filePath);
 		file.Write();
+		UpdateProjectInfo(file);
 	}
 
 	public static void SaveFileDialog() {
+		if(file == null) return;
 		FileDialog.Save(Path.GetDirectoryName(Program.File.GetPath()), Program.FILE_EXTENSION, result => {
 			if(result != null) Program.SaveFile(result);
 		});
 	}
 
 	public static void SaveFile() {
+		if(file == null) return;
 		file.Write();
+		UpdateProjectInfo(file);
 	}
 
 	public static void ReloadFile() {
+		if(file == null) return;
+		UpdateProjectInfo(file);
 		SetSelectedScene(null);
 		file.Read();
 	}
@@ -376,11 +420,11 @@ public static class Program {
 			float width = ImGui.GetContentRegionAvail().X;
 			for(int i = recentProjects.Count - 1; i >= 0; i--) {
 				ImGui.PushID(i);
-				if(ImGui.Selectable(recentProjects[i], false, ImGuiSelectableFlags.None, new Vector2(width, 24))) {
-					Program.OpenFile(recentProjects[i]);
-					break;
+				string fileName = Path.GetFileName(recentProjects[i].Path);
+				if(ImGui.Selectable(fileName, false, ImGuiSelectableFlags.None, new Vector2(width, 24))) {
+					Program.OpenFile(recentProjects[i].Path);
 				}
-				ImGui.SetItemTooltip(recentProjects[i]);
+				ImGui.SetItemTooltip(recentProjects[i].Path);
 				ImGui.PopID();
 			}
 			
@@ -412,15 +456,135 @@ public static class Program {
 		}
 	}
 
+	private static string GetAppDataDirectory() {
+		string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "L2D");
+		if(!Directory.Exists(appDataDir)) {
+			Directory.CreateDirectory(appDataDir);
+		}
+		return appDataDir;
+	}
+
 	private static void LoadRecentProjects() {
-		// TODO
-		recentProjects.Add("test1");
-		recentProjects.Add("test2");
-		recentProjects.Add("test3");
+		string appDataDir = GetAppDataDirectory();
+		string projectInfoFile = Path.Combine(appDataDir, "projects.dat");
+
+		if(!System.IO.File.Exists(projectInfoFile)) return;
+
+		StreamReader reader = System.IO.File.OpenText(projectInfoFile);
+
+		ProjectInfoState info = null;
+
+		string line = null;
+		while((line = reader.ReadLine()) != null) {
+			string trimmed = line.Trim();
+			if(trimmed.StartsWith('<') && trimmed.EndsWith('>')) {
+				string path = Path.GetFullPath(trimmed.Trim('<', '>')).Replace('\\', '/');
+				info = new ProjectInfoState(path);
+				recentProjects.Add(info);
+			} else {
+				if(info == null) continue;
+				string[] split = trimmed.Split('=');
+				if(split.Length < 2) continue;
+				switch(split[0]) {
+					case "LastOpened":
+						if(!DateTime.TryParse(split[1], out info.LastOpened)) {
+							Console.WriteLine("Failed to parse DateTime");
+						}
+						break;
+					case "CameraPosition.X":
+						float.TryParse(split[1], out info.CameraPosition.X);
+						break;
+					case "CameraPosition.Y":
+						float.TryParse(split[1], out info.CameraPosition.Y);
+						break;
+					case "SelectedScene":
+						if(!int.TryParse(split[1], out info.SelectedScene)) {
+							info.SelectedScene = -1;
+						}
+						break;
+					case "SelectedLayer":
+						if(!int.TryParse(split[1], out info.SelectedLayer)) {
+							info.SelectedLayer = -1;
+						}
+						break;
+				}
+			}
+		}
+		
+		reader.Close();
 	}
 	
 	private static void SaveRecentProjects() {
-		// TODO
+		string appDataDir = GetAppDataDirectory();
+		string projectInfoFile = Path.Combine(appDataDir, "projects.dat");
+
+		StreamWriter writer = System.IO.File.CreateText(projectInfoFile);
+		
+		foreach(var p in recentProjects) {
+			writer.WriteLine($"<{p.Path}>");
+			writer.WriteLine($"LastOpened={p.LastOpened}");
+			writer.WriteLine($"CameraPosition.X={p.CameraPosition.X}");
+			writer.WriteLine($"CameraPosition.Y={p.CameraPosition.Y}");
+			writer.WriteLine($"SelectedScene={p.SelectedScene}");
+			writer.WriteLine($"SelectedLayer={p.SelectedLayer}");
+		}
+		
+		writer.Close();
+	}
+
+	private static ProjectInfoState GetProjectInfo(string path) {
+		foreach(var p in recentProjects) {
+			if(p.Path == path) return p;
+		}
+		return null;
 	}
 	
+	private static ProjectInfoState UpdateProjectInfo(File file) {
+		string path = file.GetPath();
+		ProjectInfoState info = null;
+		foreach(var p in recentProjects) {
+			if(p.Path == path) {
+				info = p;
+				break;
+			}
+		}
+		
+		if(info == null) {
+			info = new ProjectInfoState(path);
+		} else {
+			recentProjects.Remove(info);
+		}
+		recentProjects.Insert(0, info);
+		
+		info.LastOpened = DateTime.Now;
+		info.CameraPosition = canvasPanel.Camera;
+		if(selectedScene != null) {
+			info.SelectedScene = selectedScene.World.GetSceneIndex(selectedScene);
+		} else {
+			info.SelectedScene = -1;
+		}
+		if(selectedLayer != null) {
+			info.SelectedLayer = selectedLayer.Scene.GetLayerIndex(selectedLayer);
+		} else {
+			info.SelectedLayer = -1;
+		}
+		
+		return info;
+	}
+	
+}
+
+public class ProjectInfoState {
+	public string Path;
+	public DateTime LastOpened;
+	public Vector2 CameraPosition;
+	public int SelectedScene;
+	public int SelectedLayer;
+	public ProjectInfoState(string path) {
+		Path = path;
+		LastOpened = DateTime.Now;
+		CameraPosition = Vector2.Zero;
+		SelectedScene = -1;
+		SelectedLayer = -1;
+	}
 }

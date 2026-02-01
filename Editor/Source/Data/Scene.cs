@@ -146,6 +146,10 @@ public class Scene {
 	public Layer GetLayer(int index) {
 		return layers[index];
 	}
+	
+	public int GetLayerIndex(Layer layer) {
+		return layers.IndexOf(layer);
+	}
 
 	public void SwapLayers(int index1, int index2) {
 		if(index1 < 0 || index1 >= layers.Count || index2 < 0 || index2 >= layers.Count) return;

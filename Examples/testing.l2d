@@ -23,7 +23,7 @@
     </tileset>
   </tilesets>
   <scenes>
-    <scene id="town_center" world.x="-13" world.y="0" tiles.x="120" tiles.y="120">
+    <scene id="town_center" world.x="0" world.y="0" tiles.x="120" tiles.y="120">
       <links>
         <link slot="1" tileset="lone_forest_ground" />
         <link slot="2" tileset="lone_forest_path" />
@@ -63,7 +63,7 @@
         </layer>
       </layers>
     </scene>
-    <scene id="entity_test" world.x="-8" world.y="-19" tiles.x="16" tiles.y="16">
+    <scene id="entity_test" world.x="0" world.y="-19" tiles.x="16" tiles.y="16">
       <links />
       <groups />
       <layers>
