@@ -226,7 +226,7 @@ public class LayersPanel : Panel {
 			Program.File.MarkDirty();
 		}
 		ImGui.EndDisabled();
-		ImGui.BeginDisabled(layerIndex >= scene.LayerCount - 1);
+		ImGui.BeginDisabled(scene == null || layerIndex >= scene.LayerCount - 1);
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.ChevronDown)) {
 			scene.SwapLayers(layerIndex, layerIndex+1);

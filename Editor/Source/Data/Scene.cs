@@ -144,6 +144,7 @@ public class Scene {
 	}
 	
 	public Layer GetLayer(int index) {
+		if(index < 0 || index >= layers.Count) return null;
 		return layers[index];
 	}
 	

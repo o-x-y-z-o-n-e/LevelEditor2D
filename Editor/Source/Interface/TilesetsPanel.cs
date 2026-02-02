@@ -714,14 +714,13 @@ public class TilesetsPanel : Panel {
 					tileset.ID = importID;
 					tileset.Group = importGroup;
 				}
-				tileset.TextureFilePath = importPath;
 				tileset.OffsetX = importOffset.X;
 				tileset.OffsetY = importOffset.Y;
 				tileset.SpacingX = importSpacing.X;
 				tileset.SpacingY = importSpacing.Y;
 				tileset.SizeX = importTexels.X;
 				tileset.SizeY = importTexels.Y;
-				tileset.ReloadTexture();
+				tileset.TextureFilePath = importPath;
 				Program.File.World.AddTileset(tileset);
 				ImGui.CloseCurrentPopup();
 				Program.File.MarkDirty();

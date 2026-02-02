@@ -19,6 +19,8 @@ public static class Program {
 	public const int VERSION_PATCH = 0;
 	
 	public static readonly string VERSION_STRING = $"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}";
+
+	public static readonly object ThreadLock = new object();
 	
 	public const string FILE_EXTENSION = "l2d";
 
@@ -41,6 +43,7 @@ public static class Program {
 	public static TilesetsPanel TilesetsPanel => tilesetsPanel;
 	public static TileFillModal TileFillModal => tileFillModal;
 	public static ConfirmModal ConfirmModal => confirmModal;
+	public static ReloadFileModal ReloadFileModal => reloadFileModal;
 	public static NewProjectModal NewProjectModal => newProjectModal;
 	
 	public static Scene SelectedScene {
@@ -81,6 +84,7 @@ public static class Program {
 	private static TilesetsPanel tilesetsPanel;
 	private static TileFillModal tileFillModal;
 	private static ConfirmModal confirmModal;
+	private static ReloadFileModal reloadFileModal;
 	private static NewProjectModal newProjectModal;
 
 	private static File file;
@@ -96,7 +100,7 @@ public static class Program {
 	private static bool requestClose;
 	private static float deltaTime;
 
-	private static List<ProjectInfoState> recentProjects;
+	private static List<ProjectEditorState> recentProjects;
 	
 	public static void Main(string[] args) {
 		WindowOptions options = WindowOptions.Default with {
@@ -131,9 +135,10 @@ public static class Program {
 		tilesetsPanel = new TilesetsPanel();
 		tileFillModal = new TileFillModal();
 		confirmModal = new ConfirmModal();
+		reloadFileModal = new ReloadFileModal();
 		newProjectModal = new NewProjectModal();
 
-		recentProjects = new List<ProjectInfoState>();
+		recentProjects = new List<ProjectEditorState>();
 		LoadRecentProjects();
 
 		foreach(string arg in System.Environment.GetCommandLineArgs()) {
@@ -219,6 +224,7 @@ public static class Program {
 		confirmModal.Body();
 		tileFillModal.Body();
 		newProjectModal.Body();
+		reloadFileModal.Body();
 
 		if(file == null) {
 			Launcher();
@@ -241,7 +247,7 @@ public static class Program {
 		gl?.Dispose();
 
 		if(file != null) {
-			UpdateProjectInfo(file);
+			UpdateProjectState(file);
 		}
 		
 		SaveRecentProjects();
@@ -277,6 +283,14 @@ public static class Program {
 			selectedScene.LastActiveLayer = layer;
 		}
 		SetSelectedEntity(null);
+
+		if(selectedLayer != null) {
+			if(selectedLayer.Type == LayerType.Entities) {
+				entitiesPanel.Focus();
+			} else if(selectedLayer.Type == LayerType.Tiles) {
+				tilePickerPanel.Focus();
+			}
+		}
 	}
 	
 	public static void SetSelectedEntity(Entity entity) {
@@ -289,7 +303,7 @@ public static class Program {
 
 	public static void NewFile(string filePath) {
 		if(file != null) {
-			UpdateProjectInfo(file);
+			UpdateProjectState(file);
 		}
 		
 		SetSelectedScene(null);
@@ -301,12 +315,12 @@ public static class Program {
 		
 		Program.UpdateWindowTitle();
 
-		UpdateProjectInfo(file);
+		UpdateProjectState(file);
 	}
 
 	public static void OpenFile(string filePath) {
 		if(file != null) {
-			UpdateProjectInfo(file);
+			UpdateProjectState(file);
 		}
 		
 		SetSelectedScene(null);
@@ -317,12 +331,10 @@ public static class Program {
 		
 		Program.UpdateWindowTitle();
 		
-		if(file != null) {
-			file.Read();
-			SetSelectedScene(file?.World?.GetScene(0));
-		}
-		
-		UpdateProjectInfo(file);
+		file.Read();
+
+		ApplyProjectState(file);
+		UpdateProjectState(file);
 	}
 
 	public static void OpenFileDialog() {
@@ -335,7 +347,7 @@ public static class Program {
 		if(file == null) return;
 		file.SetPath(filePath);
 		file.Write();
-		UpdateProjectInfo(file);
+		UpdateProjectState(file);
 	}
 
 	public static void SaveFileDialog() {
@@ -348,14 +360,15 @@ public static class Program {
 	public static void SaveFile() {
 		if(file == null) return;
 		file.Write();
-		UpdateProjectInfo(file);
+		UpdateProjectState(file);
 	}
 
 	public static void ReloadFile() {
 		if(file == null) return;
-		UpdateProjectInfo(file);
+		UpdateProjectState(file);
 		SetSelectedScene(null);
 		file.Read();
+		ApplyProjectState(file);
 	}
 
 	internal static void UpdateWindowTitle() {
@@ -469,79 +482,102 @@ public static class Program {
 		string projectInfoFile = Path.Combine(appDataDir, "projects.dat");
 
 		if(!System.IO.File.Exists(projectInfoFile)) return;
+		StreamReader reader = null;
+		try {
+			reader = System.IO.File.OpenText(projectInfoFile);
 
-		StreamReader reader = System.IO.File.OpenText(projectInfoFile);
+			ProjectEditorState info = null;
 
-		ProjectInfoState info = null;
-
-		string line = null;
-		while((line = reader.ReadLine()) != null) {
-			string trimmed = line.Trim();
-			if(trimmed.StartsWith('<') && trimmed.EndsWith('>')) {
-				string path = Path.GetFullPath(trimmed.Trim('<', '>')).Replace('\\', '/');
-				info = new ProjectInfoState(path);
-				recentProjects.Add(info);
-			} else {
-				if(info == null) continue;
-				string[] split = trimmed.Split('=');
-				if(split.Length < 2) continue;
-				switch(split[0]) {
-					case "LastOpened":
-						if(!DateTime.TryParse(split[1], out info.LastOpened)) {
-							Console.WriteLine("Failed to parse DateTime");
-						}
-						break;
-					case "CameraPosition.X":
-						float.TryParse(split[1], out info.CameraPosition.X);
-						break;
-					case "CameraPosition.Y":
-						float.TryParse(split[1], out info.CameraPosition.Y);
-						break;
-					case "SelectedScene":
-						if(!int.TryParse(split[1], out info.SelectedScene)) {
-							info.SelectedScene = -1;
-						}
-						break;
-					case "SelectedLayer":
-						if(!int.TryParse(split[1], out info.SelectedLayer)) {
-							info.SelectedLayer = -1;
-						}
-						break;
+			string line = null;
+			while((line = reader.ReadLine()) != null) {
+				string trimmed = line.Trim();
+				if(trimmed.StartsWith('<') && trimmed.EndsWith('>')) {
+					string path = Path.GetFullPath(trimmed.Trim('<', '>')).Replace('\\', '/');
+					info = new ProjectEditorState(path);
+					recentProjects.Add(info);
+				} else {
+					if(info == null) continue;
+					string[] split = trimmed.Split('=');
+					if(split.Length < 2) continue;
+					switch(split[0]) {
+						case "LastOpened":
+							if(!DateTime.TryParse(split[1], out info.LastOpened)) {
+								Console.WriteLine("Failed to parse DateTime");
+							}
+							break;
+						case "CameraPosition.X":
+							float.TryParse(split[1], out info.CameraPosition.X);
+							break;
+						case "CameraPosition.Y":
+							float.TryParse(split[1], out info.CameraPosition.Y);
+							break;
+						case "CameraZoom":
+							float.TryParse(split[1], out info.CameraZoom);
+							break;
+						case "SelectedScene":
+							if(!int.TryParse(split[1], out info.SelectedScene)) {
+								info.SelectedScene = -1;
+							}
+							break;
+						case "SelectedLayer":
+							if(!int.TryParse(split[1], out info.SelectedLayer)) {
+								info.SelectedLayer = -1;
+							}
+							break;
+					}
 				}
 			}
+		} catch(Exception e) {
+			Console.Error.WriteLine(e);
 		}
-		
-		reader.Close();
+		reader?.Close();
 	}
 	
 	private static void SaveRecentProjects() {
 		string appDataDir = GetAppDataDirectory();
 		string projectInfoFile = Path.Combine(appDataDir, "projects.dat");
 
-		StreamWriter writer = System.IO.File.CreateText(projectInfoFile);
-		
-		foreach(var p in recentProjects) {
-			writer.WriteLine($"<{p.Path}>");
-			writer.WriteLine($"LastOpened={p.LastOpened}");
-			writer.WriteLine($"CameraPosition.X={p.CameraPosition.X}");
-			writer.WriteLine($"CameraPosition.Y={p.CameraPosition.Y}");
-			writer.WriteLine($"SelectedScene={p.SelectedScene}");
-			writer.WriteLine($"SelectedLayer={p.SelectedLayer}");
+		StreamWriter writer = null;
+
+		try {
+			writer = System.IO.File.CreateText(projectInfoFile);
+			foreach(var p in recentProjects) {
+				writer.WriteLine($"<{p.Path}>");
+				writer.WriteLine($"LastOpened={p.LastOpened}");
+				writer.WriteLine($"CameraPosition.X={p.CameraPosition.X}");
+				writer.WriteLine($"CameraPosition.Y={p.CameraPosition.Y}");
+				writer.WriteLine($"CameraZoom={p.CameraZoom}");
+				writer.WriteLine($"SelectedScene={p.SelectedScene}");
+				writer.WriteLine($"SelectedLayer={p.SelectedLayer}");
+			}
+		} catch(Exception e) {
+			Console.Error.WriteLine(e);
 		}
-		
-		writer.Close();
+
+		writer?.Close();
 	}
 
-	private static ProjectInfoState GetProjectInfo(string path) {
+	private static ProjectEditorState GetProjectState(string path) {
 		foreach(var p in recentProjects) {
 			if(p.Path == path) return p;
 		}
 		return null;
 	}
+
+	private static void ApplyProjectState(File file) {
+		var info = GetProjectState(file.GetPath());
+		if(info != null) {
+			SetSelectedScene(file?.World?.GetScene(info.SelectedScene));
+			SetSelectedLayer(selectedScene?.GetLayer(info.SelectedLayer));
+			canvasPanel.Camera = info.CameraPosition;
+			canvasPanel.ZoomFactor = info.CameraZoom;
+			info.LastOpened = DateTime.Now;
+		}
+	}
 	
-	private static ProjectInfoState UpdateProjectInfo(File file) {
+	private static ProjectEditorState UpdateProjectState(File file) {
 		string path = file.GetPath();
-		ProjectInfoState info = null;
+		ProjectEditorState info = null;
 		foreach(var p in recentProjects) {
 			if(p.Path == path) {
 				info = p;
@@ -550,7 +586,7 @@ public static class Program {
 		}
 		
 		if(info == null) {
-			info = new ProjectInfoState(path);
+			info = new ProjectEditorState(path);
 		} else {
 			recentProjects.Remove(info);
 		}
@@ -558,6 +594,7 @@ public static class Program {
 		
 		info.LastOpened = DateTime.Now;
 		info.CameraPosition = canvasPanel.Camera;
+		info.CameraZoom = canvasPanel.ZoomFactor;
 		if(selectedScene != null) {
 			info.SelectedScene = selectedScene.World.GetSceneIndex(selectedScene);
 		} else {
@@ -574,16 +611,18 @@ public static class Program {
 	
 }
 
-public class ProjectInfoState {
+public class ProjectEditorState {
 	public string Path;
 	public DateTime LastOpened;
 	public Vector2 CameraPosition;
+	public float CameraZoom;
 	public int SelectedScene;
 	public int SelectedLayer;
-	public ProjectInfoState(string path) {
+	public ProjectEditorState(string path) {
 		Path = path;
 		LastOpened = DateTime.Now;
 		CameraPosition = Vector2.Zero;
+		CameraZoom = 0;
 		SelectedScene = -1;
 		SelectedLayer = -1;
 	}

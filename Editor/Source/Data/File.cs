@@ -15,7 +15,6 @@ public class File {
 	private string path;
 	private World world;
 	private bool dirty;
-	private bool writingToDisk;
 
 	private FileSystemWatcher watcher;
 
@@ -23,8 +22,8 @@ public class File {
 		this.path = Path.GetFullPath(path).Replace('\\', '/');
 		world = null;
 		dirty = false;
-		writingToDisk = false;
 		watcher = new FileSystemWatcher(Path.GetDirectoryName(this.path));
+		watcher.NotifyFilter = NotifyFilters.LastWrite;
 		watcher.Filter = "*.l2d";
 		watcher.EnableRaisingEvents = true;
 		watcher.Changed += OnChanged;
@@ -57,6 +56,7 @@ public class File {
 	public bool Write() {
 		XmlWriter writer = null;
 		FileStream stream = null;
+		watcher.EnableRaisingEvents = false;
 		try {
 			stream = System.IO.File.Create(path);
 			XDocument document = new XDocument();
@@ -67,11 +67,9 @@ public class File {
 			settings.CloseOutput = false;
 			settings.Indent = true;
 			writer = XmlTextWriter.Create(stream, settings);
-			writingToDisk = true;
 			document.Save(writer);
 			writer.Close();
 			stream.Close();
-			writingToDisk = false;
 			return true;
 		} catch(Exception e) {
 			Console.ForegroundColor = ConsoleColor.Red;
@@ -80,6 +78,8 @@ public class File {
 			writer?.Close();
 			stream?.Close();
 			return false;
+		} finally {
+			watcher.EnableRaisingEvents = true;
 		}
 	}
 
@@ -124,14 +124,21 @@ public class File {
 
 	public void Dispose() {
 		world?.Dispose();
+		watcher?.Dispose();
 	}
 	
 	private void OnChanged(object sender, FileSystemEventArgs e) {
 		if(e.ChangeType != WatcherChangeTypes.Changed) {
 			return;
 		}
-		if(writingToDisk) return;
-		Console.WriteLine($"Changed: {e.FullPath}");
+		// Console.WriteLine($"Changed: {e.FullPath}");
+		string p = e.FullPath.Replace('\\', '/');
+		lock(Program.ThreadLock) {
+			if(p == path) {
+				MarkDirty();
+				Program.ReloadFileModal.Open();
+			}
+		}
 	}
 
 }

@@ -23,9 +23,12 @@ public class Tileset {
 
 	public string TextureFilePath {
 		get => textureFilePath;
-		set => textureFilePath = value;
+		set {
+			textureFilePath = value;
+			OnTextureFilePathChanged();
+		}
 	}
-	
+
 	public int OffsetX {
 		get => offset.X;
 		set => offset.X = value;
@@ -70,16 +73,21 @@ public class Tileset {
 	private bool disposed;
 	private Texture texturePreview;
 	private TextureArray textureArray;
+	
+	private string textureFileFullPath;
+	private FileSystemWatcher textureFileWatcher;
 
 	internal Tileset(File file) {
 		this.file = file;
 		
 		id = "new_tileset";
 		textureFilePath = "";
+		textureFileFullPath = "";
 		offset = new(0, 0);
 		spacing = new(0, 0);
 		size = new(0, 0);
 		tileData = new();
+		textureFileWatcher = null;
 	}
 
 	internal void Parse(XElement tilesetElement) {
@@ -108,7 +116,7 @@ public class Tileset {
 			tileData.Add(id, data);
 		}
 		
-		ReloadTexture();
+		OnTextureFilePathChanged();
 	}
 
 	internal XElement Serialize() {
@@ -140,6 +148,27 @@ public class Tileset {
 			element.Add(e);
 		}
 		return element;
+	}
+
+	private void OnTextureFilePathChanged() {
+		if(textureFilePath == null) textureFilePath = "";
+		textureFileFullPath = file.GetPath(textureFilePath);
+		if(textureFileWatcher == null) {
+			textureFileWatcher = new FileSystemWatcher();
+			textureFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+			textureFileWatcher.Changed += OnTextureFileChanged;
+		}
+		textureFileWatcher.Path = Path.GetDirectoryName(textureFileFullPath).Replace('\\', '/');
+		textureFileWatcher.Filter = Path.GetFileName(textureFilePath);
+		textureFileWatcher.EnableRaisingEvents = textureFilePath != "";
+		
+		ReloadTexture();
+	}
+
+	private void OnTextureFileChanged(object sender, FileSystemEventArgs e) {
+		// lock(Program.ThreadLock) {
+		// 	ReloadTexture();
+		// }
 	}
 
 	public Texture GetTexturePreview() => texturePreview;
@@ -204,14 +233,12 @@ public class Tileset {
 		}
 
 		GL gl = Program.GL;
-
-		string path = file.GetPath(textureFilePath);
 		
-		texturePreview = Texture.LoadFromFile(path);
+		texturePreview = Texture.LoadFromFile(textureFileFullPath);
 		
 		// temp
 		try {
-			byte[] raw = System.IO.File.ReadAllBytes(path);
+			byte[] raw = System.IO.File.ReadAllBytes(textureFileFullPath);
 
 			ImageResult image = ImageResult.FromMemory(raw, ColorComponents.RedGreenBlueAlpha);
 
@@ -263,6 +290,7 @@ public class Tileset {
 		if(disposed) return;
 		texturePreview?.Dispose();
 		textureArray?.Dispose();
+		textureFileWatcher?.Dispose();
 		disposed = true;
 	}
 }

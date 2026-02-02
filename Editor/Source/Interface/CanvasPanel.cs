@@ -8,7 +8,15 @@ public class CanvasPanel : Panel {
 	
 	private bool gridScenesOnly;
 
-	public Vector2 Camera => camera;
+	public Vector2 Camera {
+		get => camera;
+		set => camera = value;
+	}
+
+	public float ZoomFactor {
+		get => zooming;
+		set => zooming = float.Clamp(value, ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
+	}
 	
 	private Vector2 camera;
 	private float zooming;
@@ -426,13 +434,13 @@ public class CanvasPanel : Panel {
 			ImGui.PushID(i);
 			Scene scene = world.GetScene(i);
 			for(int j = 0; j < scene.LayerCount; j++) {
-				ImGui.PushID(j);
 				Layer layer = scene.Layers[j];
 				bool hide = !layer.Visible;
 				if(Program.LayersPanel.IsolateLayerView && scene == Program.SelectedScene) {
 					hide = layer != Program.SelectedLayer;
 				}
 				if(hide) continue;
+				ImGui.PushID(j);
 				if(layer.Type == LayerType.Entities && layer.HasEntities) {
 					Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
 					Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
