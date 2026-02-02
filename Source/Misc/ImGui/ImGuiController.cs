@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using IconFonts;
 using ImGuiNET;
@@ -45,6 +46,8 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         private int _windowWidth;
         private int _windowHeight;
 
+        private string iniPath;
+
         public IntPtr Context;
 
         public static bool AllowInput;
@@ -76,19 +79,35 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         public unsafe ImGuiController(GL gl, IView view, IInputContext input, ImGuiFontConfig? imGuiFontConfig = null, Action onConfigureIO = null)
         {
             Init(gl, view, input);
+            
+            iniPath = Path.Combine(L2D.Program.GetAppDataDirectory(), "imgui.ini");
+            
+            var io = ImGuiNET.ImGui.GetIO();
+            io.WantSaveIniSettings = false;
+            ImGuiNET.ImGui.LoadIniSettingsFromDisk(iniPath);
 
             AllowInput = true;
             
-            imGuiFontConfig = new ImGuiFontConfig("Fonts/JetBrainsMono-Medium.ttf", 18);
+            // imGuiFontConfig = new ImGuiFontConfig("Fonts/JetBrainsMono-Medium.ttf", 18);
+            // if (imGuiFontConfig is not null)
+            // {
+            //     var glyphRange = imGuiFontConfig.Value.GetGlyphRange?.Invoke(io) ?? default;
+            //     io.Fonts.AddFontFromFileTTF(imGuiFontConfig.Value.FontPath, imGuiFontConfig.Value.FontSize, null, glyphRange);
+            // }
 
-            var io = ImGuiNET.ImGui.GetIO();
-            if (imGuiFontConfig is not null)
+            float fontSize = 18.0F;
+
             {
-                var glyphRange = imGuiFontConfig.Value.GetGlyphRange?.Invoke(io) ?? default;
-
-                io.Fonts.AddFontFromFileTTF(imGuiFontConfig.Value.FontPath, imGuiFontConfig.Value.FontSize, null, glyphRange);
+                Assembly assembly = typeof(L2D.Program).Assembly;
+                Stream stream = assembly.GetManifestResourceStream("L2D.Fonts.JetBrainsMono-Medium.ttf");
+                byte[] buffer = new byte[stream.Length];
+                stream.Read(buffer);
+                stream.Close();
+                fixed(void* data = buffer) {
+                    io.Fonts.AddFontFromMemoryTTF((IntPtr)data, buffer.Length, fontSize);
+                }
             }
-            
+
             ImFontConfig config = new ImFontConfig();
             
             config.FontData = null;
@@ -117,12 +136,20 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             GCHandle rangeHandle = GCHandle.Alloc(iconRanges, GCHandleType.Pinned);
             try
             {
-                io.Fonts.AddFontFromFileTTF(
-                    "Fonts/Codicons.ttf",
-                    18.0f,
-                    &config, 
-                    rangeHandle.AddrOfPinnedObject()
-                );
+                // io.Fonts.AddFontFromFileTTF(
+                //     "Fonts/Codicons.ttf",
+                //     fontSize,
+                //     &config, 
+                //     rangeHandle.AddrOfPinnedObject()
+                // );
+                Assembly assembly = typeof(L2D.Program).Assembly;
+                Stream stream = assembly.GetManifestResourceStream("L2D.Fonts.Codicons.ttf");
+                byte[] buffer = new byte[stream.Length];
+                stream.Read(buffer);
+                stream.Close();
+                fixed(void* data = buffer) {
+                    io.Fonts.AddFontFromMemoryTTF((IntPtr)data, buffer.Length, fontSize, &config, rangeHandle.AddrOfPinnedObject());
+                }
             }
             finally
             {
@@ -144,6 +171,14 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             SetStyle();
 
             BeginFrame();
+        }
+
+        public void LoadSettings() {
+            ImGuiNET.ImGui.LoadIniSettingsFromDisk(iniPath);
+        }
+
+        public void SaveSettings() {
+            ImGuiNET.ImGui.SaveIniSettingsToDisk(iniPath);
         }
 
         public void MakeCurrent()
@@ -780,8 +815,9 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
 
             _fontTexture.Dispose();
             _shader.Dispose();
-
-            ImGuiNET.ImGui.DestroyContext(Context);
+            
+            // BUG: crashes
+            // ImGuiNET.ImGui.DestroyContext(Context);
         }
 
         private void SetStyle() {

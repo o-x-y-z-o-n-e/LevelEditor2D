@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Numerics;
 using System.Reflection;
+using IconFonts;
 using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.Input.Extensions;
@@ -102,7 +103,7 @@ public static class Program {
 
 	private static List<ProjectEditorState> recentProjects;
 	
-	public static void Main(string[] args) {
+	public static int Main(string[] args) {
 		WindowOptions options = WindowOptions.Default with {
 			WindowState = WindowState.Maximized,
 			Title = "L2D",
@@ -118,6 +119,8 @@ public static class Program {
 		
 		window.Run();
 		window.Dispose();
+
+		return 0;
 	}
 
 	private static unsafe void Load() {
@@ -242,15 +245,16 @@ public static class Program {
 	}
 
 	private static void Closing() {
-		controller?.Dispose();
-		input?.Dispose();
-		gl?.Dispose();
-
 		if(file != null) {
 			UpdateProjectState(file);
 		}
-		
 		SaveRecentProjects();
+		
+		controller?.SaveSettings();
+		
+		controller?.Dispose();
+		input?.Dispose();
+		gl?.Dispose();
 	}
 
 	public static void Close() {
@@ -425,20 +429,50 @@ public static class Program {
 		if(!ImGui.IsPopupOpen("Launch")) {
 			ImGui.OpenPopup("Launch", ImGuiPopupFlags.AnyPopupLevel);
 		}
-		ImGui.SetNextWindowSize(new Vector2(600, 500));
+		ImGui.SetNextWindowSize(new Vector2(500, 500));
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F));
 		if(ImGui.BeginPopupModal("Launch", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoTitleBar)) {
+			ImGui.Text("Level Editor 2D"); // TODO: logo
+			ImGui.Spacing();
+			ImGui.Spacing();
+			ImGui.Spacing();
+			ImGui.Spacing();
+			ImGui.SeparatorText("Recent Projects");
 			ImGui.BeginChild("recent-projects", ImGui.GetContentRegionAvail() - new Vector2(0, ImGui.GetTextLineHeight() + style.FramePadding.Y * 2 + 6), ImGuiChildFlags.Borders | ImGuiChildFlags.FrameStyle);
 
+			int removeIndex = -1;
+			
 			float width = ImGui.GetContentRegionAvail().X;
 			for(int i = recentProjects.Count - 1; i >= 0; i--) {
 				ImGui.PushID(i);
 				string fileName = Path.GetFileName(recentProjects[i].Path);
-				if(ImGui.Selectable(fileName, false, ImGuiSelectableFlags.None, new Vector2(width, 24))) {
+				Vector2 cur = ImGui.GetCursorPos();
+				ImGui.PushStyleVar(ImGuiStyleVar.SelectableTextAlign, new Vector2(0, 0.5F));
+				if(ImGui.Selectable(fileName, false, ImGuiSelectableFlags.AllowOverlap, new Vector2(width, 24))) {
 					Program.OpenFile(recentProjects[i].Path);
 				}
-				ImGui.SetItemTooltip(recentProjects[i].Path);
+				ImGui.PopStyleVar();
+				if(ImGui.BeginItemTooltip()) {
+					ImGui.Text("Full Path: ");
+					ImGui.SameLine();
+					ImGui.Text(recentProjects[i].Path);
+					ImGui.Text("Last Opened: ");
+					ImGui.SameLine();
+					ImGui.Text(recentProjects[i].LastOpened.ToString());
+					ImGui.EndTooltip();
+				}
+				ImGui.SetCursorPos(cur + new Vector2(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(Codicons.Close).X - ImGui.GetStyle().FramePadding.X * 2, 0));
+				ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(1,1,1,0));
+				if(ImGui.Button(Codicons.Close)) {
+					removeIndex = i;
+				}
+				ImGui.SetItemTooltip("Remove");
+				ImGui.PopStyleColor();
 				ImGui.PopID();
+			}
+
+			if(removeIndex >= 0) {
+				recentProjects.RemoveAt(removeIndex);
 			}
 			
 			if(ImGui.BeginPopupContextWindow()) {
@@ -469,7 +503,7 @@ public static class Program {
 		}
 	}
 
-	private static string GetAppDataDirectory() {
+	public static string GetAppDataDirectory() {
 		string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "L2D");
 		if(!Directory.Exists(appDataDir)) {
 			Directory.CreateDirectory(appDataDir);

@@ -1,0 +1,104 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>L2D</AssemblyName>
+        <RootNamespace>L2D</RootNamespace>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <DefineConstants>TRACE
+GL</DefineConstants>
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <DefineConstants>TRACE
+GL</DefineConstants>
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
+      <PackageReference Include="NativeFileDialogSharp" Version="0.6.0-alpha" />
+      <PackageReference Include="Silk.NET.Core" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.Input" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.Input.Extensions" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.OpenGL" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.Windowing" Version="2.22.0" />
+      <PackageReference Include="StbImageSharp" Version="2.30.15" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Fonts\Codicons.ttf" />
+      <EmbeddedResource Include="Fonts\Codicons.ttf" />
+      <None Remove="Fonts\JetBrainsMono-Bold.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-Bold.ttf" />
+      <None Remove="Fonts\JetBrainsMono-BoldItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-BoldItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMono-ExtraBold.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-ExtraBold.ttf" />
+      <None Remove="Fonts\JetBrainsMono-ExtraBoldItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-ExtraBoldItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMono-ExtraLight.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-ExtraLight.ttf" />
+      <None Remove="Fonts\JetBrainsMono-ExtraLightItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-ExtraLightItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMono-Italic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-Italic.ttf" />
+      <None Remove="Fonts\JetBrainsMono-Light.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-Light.ttf" />
+      <None Remove="Fonts\JetBrainsMono-LightItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-LightItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMono-Medium.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-Medium.ttf" />
+      <None Remove="Fonts\JetBrainsMono-MediumItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-MediumItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMono-Regular.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-Regular.ttf" />
+      <None Remove="Fonts\JetBrainsMono-SemiBold.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-SemiBold.ttf" />
+      <None Remove="Fonts\JetBrainsMono-SemiBoldItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-SemiBoldItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMono-Thin.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-Thin.ttf" />
+      <None Remove="Fonts\JetBrainsMono-ThinItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMono-ThinItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-Bold.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-Bold.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-BoldItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-BoldItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-ExtraBold.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-ExtraBold.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-ExtraBoldItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-ExtraBoldItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-ExtraLight.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-ExtraLight.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-ExtraLightItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-ExtraLightItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-Italic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-Italic.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-Light.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-Light.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-LightItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-LightItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-Medium.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-Medium.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-MediumItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-MediumItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-Regular.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-Regular.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-SemiBold.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-SemiBold.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-SemiBoldItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-SemiBoldItalic.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-Thin.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-Thin.ttf" />
+      <None Remove="Fonts\JetBrainsMonoNL-ThinItalic.ttf" />
+      <EmbeddedResource Include="Fonts\JetBrainsMonoNL-ThinItalic.ttf" />
+    </ItemGroup>
+
+</Project>
