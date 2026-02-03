@@ -15,7 +15,7 @@ public static class EditHistory {
 		var entry = stack.Pop();
 		currentContext = entry.Context;
 		entry.Reverse?.Invoke(entry.Data);
-		Program.File.MarkDirty();
+		// Program.File.MarkDirty();
 	}
 
 	public static EditEntry Peek() {

@@ -92,6 +92,7 @@ public class EntitiesPanel : Panel {
 			entity.Position = -Program.CanvasPanel.Camera - new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight);
 			Program.SetSelectedEntity(entity);
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		
 		ImGui.SameLine();
@@ -105,6 +106,7 @@ public class EntitiesPanel : Panel {
 			Entity newEntity = layer.Entities.Copy(copyIndex);
 			newEntity.Position += new Vector2(newEntity.Size.X + 16, 0);
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		
 		ImGui.SameLine();
@@ -123,6 +125,7 @@ public class EntitiesPanel : Panel {
 				Program.SetSelectedEntity(layer.Entities.Get(deleteIndex));
 			}
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		
 		ImGui.SameLine();
@@ -146,11 +149,13 @@ public class EntitiesPanel : Panel {
 		if(moveUpIndex >= 1 && moveUpIndex < layer.Entities.Count) {
 			layer.Entities.Move(moveUpIndex, moveUpIndex - 1);
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		
 		if(moveDownIndex >= 0 && moveDownIndex < layer.Entities.Count - 1) {
 			layer.Entities.Move(moveDownIndex, moveDownIndex + 1);
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		
 		ImGui.SameLine();
@@ -165,17 +170,21 @@ public class EntitiesPanel : Panel {
 			ImGui.SeparatorText("Entity Options");
 			if(ImGui.InputText("Name", ref selected.Name, 512)) {
 				Program.File.MarkDirty();    
+				Program.File.ClearEditHistory(); // TODO: undo/redo
             }
 			if(ImGui.InputText("Type", ref selected.Type, 512)) {
 				Program.File.MarkDirty();    
+				Program.File.ClearEditHistory(); // TODO: undo/redo
             }
 			if(ImGui.DragFloat2("Position", ref selected.Position)) {
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			if(ImGui.DragFloat2("Size", ref selected.Size)) {
 				if(selected.Size.X < 0) selected.Size.X = 0;
 				if(selected.Size.Y < 0) selected.Size.Y = 0;
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			PropertyView.Run(selected.Properties);
 		} else {

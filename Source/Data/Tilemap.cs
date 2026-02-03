@@ -6,7 +6,7 @@ using Silk.NET.OpenGL;
 
 namespace L2D;
 
-public class Tilemap : IDisposable {
+public class Tilemap {
 
 	private const uint MAX_TILESETS = 16; // TODO: upgrade to 32
 	
@@ -21,7 +21,6 @@ public class Tilemap : IDisposable {
 	private TileRef[,] grid;
 	private int width;
 	private int height;
-	private bool disposed;
 	
 	private float[] tileBuffer;
 	private uint tileBufferHandle;
@@ -97,9 +96,21 @@ public class Tilemap : IDisposable {
 		grid[x, y].TilesetSlot = tileset;
 	}
 	
+	public void Set(int x, int y, TileRef tile) {
+		grid[x, y] = tile;
+	}
+	
 	public void Get(int x, int y, out int tile, out int tileset) {
 		tile = grid[x, y].TileID;
 		tileset = grid[x, y].TilesetSlot;
+	}
+	
+	public void Get(int x, int y, out TileRef tile) {
+		tile = grid[x, y];
+	}
+	
+	public TileRef Get(int x, int y) {
+		return grid[x, y];
 	}
 
 	public uint GetFrameBufferTexture() {
@@ -307,12 +318,19 @@ public class Tilemap : IDisposable {
 		gl.Viewport(0, 0, (uint)Program.FramebufferSize.X, (uint)Program.FramebufferSize.Y);
 	}
 
-	public void Dispose() {
-		if(disposed) return;
-		Program.GL.DeleteTexture(frameBufferTextureHandle);
-		Program.GL.DeleteFramebuffer(frameBufferHandle);
-		Program.GL.DeleteBuffer(tileBufferHandle);
-		disposed = true;
+	public void ReleaseResources() {
+		if(frameBufferTextureHandle > 0) {
+			Program.GL.DeleteTexture(frameBufferTextureHandle);
+			frameBufferTextureHandle = 0;
+		}
+		if(frameBufferHandle > 0) {
+			Program.GL.DeleteFramebuffer(frameBufferHandle);
+			frameBufferHandle = 0;
+		}
+		if(tileBufferHandle > 0) {
+			Program.GL.DeleteBuffer(tileBufferHandle);
+			tileBufferHandle = 0;
+		}
 	}
 	
 #region ==== GLSL SHADER SOURCE ====

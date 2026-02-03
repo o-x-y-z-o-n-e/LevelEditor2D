@@ -354,6 +354,7 @@ public class EntityEditTool : CanvasTool {
 					if(clear) dragEntity = null;
 				}
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}	
 		}
 		

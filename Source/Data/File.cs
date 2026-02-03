@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Xml;
@@ -16,6 +17,10 @@ public class File {
 	private string path;
 	private World world;
 	private bool dirty;
+	
+	private object? editContext;
+	private List<FileEditEntry> editStack;
+	private int editPointer;
 
 	private FileSystemWatcher watcher;
 
@@ -28,12 +33,16 @@ public class File {
 		watcher.Filter = "*.l2d";
 		watcher.EnableRaisingEvents = true;
 		watcher.Changed += OnChanged;
+		editContext = "";
+		editStack = new List<FileEditEntry>();
+		editPointer = 0;
 	}
 
 	public bool Read() {
 		FileStream stream = null;
 		Log.Information("Reading file... [{@path}]", path);
 		try {
+			ClearEditHistory();
 			stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
 			XDocument document = XDocument.Load(stream);
 			UnmarkDirty();
@@ -141,4 +150,96 @@ public class File {
 		});
 	}
 
+	public void ApplyEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo) {
+		if(redo == null || undo == null) throw new Exception("File edit needs an action & a reverse");
+		var edit = BeginEdit(context, data, redo, undo);
+		EndEdit(ref edit);
+	}
+
+	public FileEditEntry BeginEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo) {
+		return new FileEditEntry(context, redo, undo, data);
+	}
+
+	public void EndEdit(ref FileEditEntry edit) {
+		if(edit == null) return;
+		if(editStack.Contains(edit)) return;
+		if(editPointer != editStack.Count) {
+			// clear the 'undone' edit history to override with new change
+			editStack.RemoveRange(editPointer, editStack.Count - editPointer);
+		}
+		editStack.Add(edit);
+		editPointer++;
+		editContext = edit.Context;
+		edit.Action.Invoke(edit);
+		edit = null;
+		MarkDirty();
+	}
+
+	public void Undo() {
+		if(editPointer == 0) return;
+		var entry = editStack[editPointer - 1];
+		editPointer--;
+		editContext = entry.Context;
+		entry.Reverse.Invoke(entry);
+		MarkDirty();
+	}
+
+	public void Redo() {
+		if(editPointer == editStack.Count) return;
+		var entry = editStack[editPointer];
+		editPointer++;
+		editContext = entry.Context;
+		entry.Action.Invoke(entry);
+		MarkDirty();
+	}
+	
+	public void SetEditContext(object? context) {
+		editContext = context;
+	}
+
+	public object? GetEditContext() {
+		return editContext;
+	}
+
+	public bool WillUndoChangeContext() {
+		if(editPointer == 0) return false;
+		return editContext != editStack[editPointer - 1].Context;
+	}
+	
+	public bool WillRedoChangeContext() {
+		if(editPointer == editStack.Count) return false;
+		return editContext != editStack[editPointer].Context;
+	}
+
+	public void ClearEditHistory() {
+		editStack.Clear();
+		editPointer = 0;
+		editContext = "";
+	}
+
+}
+
+
+public class FileEditEntry {
+	public object? Context => context;
+	public Action<FileEditEntry> Action => action;
+	public Action<FileEditEntry> Reverse => reverse;
+	private object? context;
+	private Action<FileEditEntry> action;
+	private Action<FileEditEntry> reverse;
+	private object? data;
+	public FileEditEntry(object? context, Action<FileEditEntry> action, Action<FileEditEntry> reverse, object? data) {
+		this.context = context;
+		this.action = action;
+		this.reverse = reverse;
+		this.data = data;
+	}
+	// internal void SetActions(Action<FileEditEntry> action, Action<FileEditEntry> reverse) {
+	// 	this.action = action;
+	// 	this.reverse = reverse;
+	// }
+	// internal void SetData(object? data) {
+	// 	this.data = data;
+	// }
+	public T? GetData<T>() => (T?)data;
 }

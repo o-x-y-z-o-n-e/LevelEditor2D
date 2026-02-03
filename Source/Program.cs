@@ -204,15 +204,13 @@ public static class Program {
 			entitiesPanel.Execute();
 			tilePickerPanel.Execute();
 
-			if(ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
-				if(file != null) {
-					if(ImGui.IsKeyPressed(ImGuiKey.S)) {
-						SaveFile();
-					}
+			if(file != null && ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
+				if(ImGui.IsKeyPressed(ImGuiKey.S)) {
+					SaveFile();
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.Q)) {
-					if(file != null && file.UnsavedChanges) {
+					if(file.UnsavedChanges) {
 						Program.ConfirmModal.Open(
 							"Confirm Quit",
 							"You have unsaved changes.\nAre you sure you want to quit?",
@@ -224,7 +222,7 @@ public static class Program {
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.O)) {
-					if(file != null && file.UnsavedChanges) {
+					if(file.UnsavedChanges) {
 						Program.ConfirmModal.Open(
 							"Confirm Open",
 							"You have unsaved changes.\nAre you sure you want to open another file?",
@@ -236,7 +234,7 @@ public static class Program {
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.R)) {
-					if(file != null && file.UnsavedChanges) {
+					if(file.UnsavedChanges) {
 						Program.ConfirmModal.Open(
 							"Confirm Reload",
 							"You have unsaved changes.\nAre you sure you want to reload file from disk?",
@@ -248,7 +246,7 @@ public static class Program {
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.N)) {
-					if(file != null && file.UnsavedChanges) {
+					if(file.UnsavedChanges) {
 						Program.ConfirmModal.Open(
 							"Confirm New File",
 							"You have unsaved changes.\nAre you sure you want to create a new file?",
@@ -256,6 +254,30 @@ public static class Program {
 						);
 					} else {
 						newProjectModal.Open();
+					}
+				}
+
+				if(ImGui.IsKeyPressed(ImGuiKey.Z)) {
+					if(file.WillUndoChangeContext()) {
+						Program.ConfirmModal.Open(
+							"Undo changes",
+							"DIFFERENT CONTEXT MESSAGE",
+							file.Undo
+						);
+					} else {
+						file.Undo();
+					}
+				}
+				
+				if(ImGui.IsKeyPressed(ImGuiKey.Y)) {
+					if(file.WillRedoChangeContext()) {
+						Program.ConfirmModal.Open(
+							"Redo changes",
+							"DIFFERENT CONTEXT MESSAGE",
+							file.Redo
+						);
+					} else {
+						file.Redo();
 					}
 				}
 			}

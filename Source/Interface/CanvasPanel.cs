@@ -61,8 +61,8 @@ public class CanvasPanel : Panel {
 		gridScenesOnly = true;
 		entityEdit = new EntityEditTool();
 		tileSelect = new TileSelectTool();
-		tileBrush = null;
-		tileEraser = null;
+		tileBrush = new TileBrushTool();
+		tileEraser = new TileEraserTool();
 		activeTool = null;
 	}
 
@@ -209,29 +209,10 @@ public class CanvasPanel : Panel {
 		
 		Scene activeScene = Program.SelectedScene;
 		
-		if(activeScene == null && tileBrush != null) {
-			if(tileBrush == activeTool) activeTool = null;
-			tileBrush?.Dispose();
-			tileBrush = null;
-		} else if(activeScene != null && (tileBrush == null || tileBrush.Scene != activeScene)) {
-			if(tileBrush == activeTool) activeTool = null;
-			tileBrush?.Dispose();
-			tileBrush = new TileBrushTool(activeScene);
-		}
-
-		if(activeScene == null && tileEraser != null) {
-			if(tileEraser == activeTool) activeTool = null;
-			tileEraser?.Dispose();
-			tileEraser = null;
-		} else if(activeScene != null && (tileEraser == null || tileEraser.Scene != activeScene)) {
-			if(tileEraser == activeTool) activeTool = null;
-			tileEraser?.Dispose();
-			tileEraser = new TileEraserTool(activeScene);
-		}
-
-		if(tileSelect.Scene != activeScene) {
-			tileSelect.SetScene(activeScene);
-		}
+		tileSelect.SetScene(activeScene);
+		tileBrush.SetScene(activeScene);
+		tileEraser.SetScene(activeScene);
+		entityEdit.SetScene(activeScene);
 
 		if(selectedLayer == null) {
 			SetTool(null);
@@ -607,10 +588,17 @@ public class CanvasTool {
 	public string DisplayName;
 	public LayerType LayerType;
 
+	public Scene Scene => scene;
+	
+	private Scene scene;
+
 	public virtual void OnActive() {
 		
 	}
 	public virtual void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera, bool isHovered) {
 		
+	}
+	public virtual void SetScene(Scene scene) {
+		this.scene = scene;
 	}
 }

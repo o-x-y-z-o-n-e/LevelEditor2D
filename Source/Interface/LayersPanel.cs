@@ -68,6 +68,7 @@ public class LayersPanel : Panel {
 						scene.SwapLayers(i, n_next);
 						ImGui.ResetMouseDragDelta();
 						Program.File.MarkDirty();
+						Program.File.ClearEditHistory(); // TODO: undo/redo
 					}
 				}
 				
@@ -76,6 +77,7 @@ public class LayersPanel : Panel {
 					if(ImGui.MenuItem(layer.Visible ? "Hide" : "Show")) {
 						layer.Visible = !layer.Visible;
 						Program.File.MarkDirty();
+						Program.File.ClearEditHistory(); // TODO: undo/redo
 					}
 					ImGui.EndPopup();
 				}
@@ -86,6 +88,7 @@ public class LayersPanel : Panel {
 				if(ImGui.SmallButton(layer.Visible ? Codicons.Eye : Codicons.EyeClosed)) {
 					layer.Visible = !layer.Visible;
 					Program.File.MarkDirty();
+					Program.File.ClearEditHistory(); // TODO: undo/redo
 				}
 				ImGui.EndDisabled();
 
@@ -136,6 +139,7 @@ public class LayersPanel : Panel {
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -171,6 +175,7 @@ public class LayersPanel : Panel {
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -201,6 +206,7 @@ public class LayersPanel : Panel {
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.SameLine();
 			ImGui.Dummy(new Vector2(80, 0));
@@ -224,6 +230,7 @@ public class LayersPanel : Panel {
 		if(ImGui.Button(Codicons.ChevronUp)) {
 			scene.SwapLayers(layerIndex, layerIndex-1);
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		ImGui.EndDisabled();
 		ImGui.BeginDisabled(scene == null || layerIndex >= scene.LayerCount - 1);
@@ -231,6 +238,7 @@ public class LayersPanel : Panel {
 		if(ImGui.Button(Codicons.ChevronDown)) {
 			scene.SwapLayers(layerIndex, layerIndex+1);
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		ImGui.EndDisabled();
 		
@@ -259,6 +267,7 @@ public class LayersPanel : Panel {
 					layer.Name = name;
 				}
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			
 			ImGui.BeginDisabled();
@@ -266,6 +275,7 @@ public class LayersPanel : Panel {
 			if(ImGui.InputText("Group", ref group, 256)) {
 				// TODO
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.EndDisabled();
 			

@@ -108,7 +108,7 @@ public class Layer {
 	
 	public void Dispose() {
 		if(disposed) return;
-		tilemap?.Dispose();
+		tilemap?.ReleaseResources();
 		disposed = true;
 	}
 	

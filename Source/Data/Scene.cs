@@ -112,7 +112,6 @@ public class Scene {
 		element.Add(linksParent);
 
 		var groupsParent = new XElement("groups");
-		// TODO
 		element.Add(groupsParent);
 
 		var layersParent = new XElement("layers");

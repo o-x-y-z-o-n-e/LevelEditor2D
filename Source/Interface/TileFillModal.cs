@@ -241,6 +241,7 @@ public class TileFillModal {
 
 	private void Fill() {
 		Rectangle selection = Program.CanvasPanel.TileSelect.Selection;
+		/*
 		for(int y = selection.Top; y < selection.Bottom; y++) {
 			for(int x = selection.Left; x < selection.Right; x++) {
 				int sx = x - layer.Scene.WorldX;
@@ -256,6 +257,79 @@ public class TileFillModal {
 			}
 		}
 		Program.File.MarkDirty();
+		*/
+		
+		var edit = Program.File.BeginEdit(this, new TileFillOperation(layer.Tilemap, selection),
+			redo: entry => {
+				var data = entry.GetData<TileFillOperation>();
+				var area = data.Area;
+				for(int y = area.Top; y < area.Bottom; y++) {
+					for(int x = area.Left; x < area.Right; x++) {
+						int sx = x - data.Tilemap.Scene.WorldX;
+						int sy = y - data.Tilemap.Scene.WorldY;
+						if(sx >= 0 && sx < data.Tilemap.Scene.TileCountX && sy >= 0 && sy < data.Tilemap.Scene.TileCountY) {
+							data.Tilemap.Set(sx, sy, data.NextState[x - area.Left, y - area.Top]);
+						}
+					}
+				}
+			},
+			undo: entry => {
+				var data = entry.GetData<TileFillOperation>();
+				var area = data.Area;
+				for(int y = area.Top; y < area.Bottom; y++) {
+					for(int x = area.Left; x < area.Right; x++) {
+						int sx = x - data.Tilemap.Scene.WorldX;
+						int sy = y - data.Tilemap.Scene.WorldY;
+						if(sx >= 0 && sx < data.Tilemap.Scene.TileCountX && sy >= 0 && sy < data.Tilemap.Scene.TileCountY) {
+							data.Tilemap.Set(sx, sy, data.PrevState[x - area.Left, y - area.Top]);
+						}
+					}
+				}
+			}
+		);
+
+		var data = edit.GetData<TileFillOperation>();
+		for(int y = selection.Top; y < selection.Bottom; y++) {
+			for(int x = selection.Left; x < selection.Right; x++) {
+				int sx = x - layer.Scene.WorldX;
+				int sy = y - layer.Scene.WorldY;
+				if(sx >= 0 && sx < layer.Scene.TileCountX && sy >= 0 && sy < layer.Scene.TileCountY) {
+					int sampledEntry = Sample();
+					if(sampledEntry > 0) {
+						data.NextState[x - selection.Left, y - selection.Top] =
+							new TileRef(entries[sampledEntry - 1].TileID, entries[sampledEntry - 1].TilesetSlot);
+					} else {
+						data.NextState[x - selection.Left, y - selection.Top] =
+							new TileRef(0, 0);
+					}
+				}
+			}
+		}
+		
+		Program.File.EndEdit(ref edit);
+	}
+
+	public class TileFillOperation {
+		public Tilemap Tilemap;
+		public Rectangle Area;
+		public TileRef[,] PrevState;
+		public TileRef[,] NextState;
+		public TileFillOperation(Tilemap tilemap, Rectangle area) {
+			Tilemap = tilemap;
+			Area = area;
+			PrevState = new TileRef[area.Width,area.Height];
+			NextState = new TileRef[area.Width,area.Height];
+			for(int y = area.Top; y < area.Bottom; y++) {
+				for(int x = area.Left; x < area.Right; x++) {
+					int sx = x - tilemap.Scene.WorldX;
+					int sy = y - tilemap.Scene.WorldY;
+					if(sx >= 0 && sx < tilemap.Scene.TileCountX && sy >= 0 && sy < tilemap.Scene.TileCountY) {
+						PrevState[x - area.Left, y - area.Top] = tilemap.Get(sx, sy);
+						NextState[x - area.Left, y - area.Top] = tilemap.Get(sx, sy);
+					}
+				}
+			}
+		}
 	}
 	
 }

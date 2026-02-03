@@ -8,14 +8,12 @@ namespace L2D;
 
 public class TileBrushTool : CanvasTool {
 	
-	public Scene Scene => scene;
 	public Tilemap Tilemap => tilemap;
 
 	public int Width => width;
 	public int Height => height;
 	public bool Resizing => resizing;
 
-	private Scene scene;
 	private Tilemap tilemap;
 	private int width;
 	private int height;
@@ -24,10 +22,9 @@ public class TileBrushTool : CanvasTool {
 	private bool clearAfterPlace;
 	private bool disposed;
 
-	public TileBrushTool(Scene scene) {
+	public TileBrushTool() {
 		DisplayName = $"{Codicons.Pencil} Brush";
 		LayerType = LayerType.Tiles;
-		this.scene = scene;
 		tilemap = null;
 		width = 0;
 		height = 0;
@@ -80,13 +77,27 @@ public class TileBrushTool : CanvasTool {
 
 	public void Dispose() {
 		if(disposed) return;
-		tilemap?.Dispose();
+		tilemap?.ReleaseResources();
 		disposed = true;
 	}
-	
+
+	public override void SetScene(Scene scene) {
+		base.SetScene(scene);
+		if(tilemap?.Scene != scene) {
+			tilemap?.ReleaseResources();
+			if(scene != null) {
+				tilemap = new Tilemap(this);
+			} else {
+				tilemap = null;
+			}
+		}
+	}
+
 	public override void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera, bool isHovered) {
 		Layer layer = Program.SelectedLayer;
-		if(layer == null || layer.Scene != scene || layer.Type != LayerType.Tiles) return;
+		if(layer == null || layer.Type != LayerType.Tiles) return;
+
+		Scene scene = layer.Scene;
 		
 		Vector2 mousePos = ImGui.GetIO().MousePos;
 		Matrix4x4.Invert(transform, out var transformInverted);
@@ -275,6 +286,7 @@ public class TileBrushTool : CanvasTool {
 					tilemap.Grid[0, 0] = new TileRef();
 				}
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			
 			tilemap.Render();
@@ -405,6 +417,7 @@ public class TileBrushTool : CanvasTool {
 		}
 		clearAfterPlace = true;
 		Program.File.MarkDirty();
+		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 
 	public void CopyRegion(Rectangle region, Layer layer) {
@@ -532,6 +545,7 @@ public class TileBrushTool : CanvasTool {
 			}
 		}
 		Program.File.MarkDirty();
+		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 
 	public void FlipHorizontal() {
@@ -545,6 +559,7 @@ public class TileBrushTool : CanvasTool {
 			}
 		}
 		Program.File.MarkDirty();
+		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 
 	public void RotateLeft() {
@@ -564,6 +579,7 @@ public class TileBrushTool : CanvasTool {
 			}
 		}
 		Program.File.MarkDirty();
+		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 	
 	public void RotateRight() {
@@ -583,6 +599,7 @@ public class TileBrushTool : CanvasTool {
 			}
 		}
 		Program.File.MarkDirty();
+		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 
 }

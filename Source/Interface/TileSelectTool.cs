@@ -7,10 +7,8 @@ namespace L2D;
 
 public class TileSelectTool : CanvasTool {
 	
-	public Scene Scene => scene;
 	public Rectangle Selection => selection;
 	
-	private Scene scene;
 	private Rectangle selection;
 	private bool blockSelectUntilRelease;
 	private bool resizing;
@@ -22,10 +20,6 @@ public class TileSelectTool : CanvasTool {
 		selection = new(0, 0, 0, 0);
 	}
 
-	public void SetScene(Scene scene) {
-		this.scene = scene;
-	}
-
 	public override void OnActive() {
 		selection = new(0, 0, 0, 0);
 		resizing = false;
@@ -34,13 +28,13 @@ public class TileSelectTool : CanvasTool {
 
 	public override void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera, bool isHovered) {
 		Layer layer = Program.SelectedLayer;
-		if(layer == null || layer.Scene != scene || layer.Type != LayerType.Tiles) return;
+		if(layer == null || layer.Type != LayerType.Tiles) return;
 		
 		Vector2 mousePos = ImGui.GetIO().MousePos;
 		Matrix4x4.Invert(transform, out var transformInverted);
 		Vector2 mousePosTileCoord = Vector2.Transform(mousePos, transformInverted);
 		
-		Rectangle sceneRegion = new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
+		Rectangle sceneRegion = new Rectangle(layer.Scene.WorldX, layer.Scene.WorldY, layer.Scene.TileCountX, layer.Scene.TileCountY);
 		
 		int mx = (int)MathF.Floor(mousePosTileCoord.X);
 		int my = (int)MathF.Floor(mousePosTileCoord.Y);
@@ -69,10 +63,10 @@ public class TileSelectTool : CanvasTool {
 				int.Abs(my - resizeTileOrigin.Y) + 1
 			);
 		} else if(!resize && resizing) {
-			int left = int.Clamp(selection.Left, scene.WorldX, scene.WorldX + scene.TileCountX);
-			int right = int.Clamp(selection.Right, scene.WorldX, scene.WorldX + scene.TileCountX);
-			int top = int.Clamp(selection.Top, scene.WorldY, scene.WorldY + scene.TileCountY);
-			int bottom = int.Clamp(selection.Bottom, scene.WorldY, scene.WorldY + scene.TileCountY);
+			int left = int.Clamp(selection.Left, layer.Scene.WorldX, layer.Scene.WorldX + layer.Scene.TileCountX);
+			int right = int.Clamp(selection.Right, layer.Scene.WorldX, layer.Scene.WorldX + layer.Scene.TileCountX);
+			int top = int.Clamp(selection.Top, layer.Scene.WorldY, layer.Scene.WorldY + layer.Scene.TileCountY);
+			int bottom = int.Clamp(selection.Bottom, layer.Scene.WorldY, layer.Scene.WorldY + layer.Scene.TileCountY);
 			selection = new Rectangle(left, top, right - left, bottom - top);
 			resizing = false;
 		}
@@ -83,6 +77,7 @@ public class TileSelectTool : CanvasTool {
 					Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
 					Program.CanvasPanel.TileBrush.MoveRegion(selection, layer);
 					Program.File.MarkDirty();
+					Program.File.ClearEditHistory(); // TODO: undo/redo
 				}
 				if(ImGui.IsKeyPressed(ImGuiKey.C)) {
 					Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
@@ -92,6 +87,7 @@ public class TileSelectTool : CanvasTool {
 			if(ImGui.IsKeyPressed(ImGuiKey.Delete)) {
 				Program.CanvasPanel.TileEraser.Erase(selection, layer);
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 		}
 

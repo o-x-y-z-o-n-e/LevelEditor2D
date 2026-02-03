@@ -122,6 +122,7 @@ public class TilePickerPanel : Panel {
 						if(ImGui.Selectable($"Slot: {s}")) {
 							link.Slot = s;
 							Program.File.MarkDirty();
+							Program.File.ClearEditHistory(); // TODO: undo/redo
 						}
 					}
 					if(!atLeastOneOption) {
@@ -140,6 +141,7 @@ public class TilePickerPanel : Panel {
 						if(selected) link.Tileset = tileset;
 						tilesetLinkTarget = -1;
 						Program.File.MarkDirty();
+						Program.File.ClearEditHistory(); // TODO: undo/redo
 					});
 				}
 
@@ -223,7 +225,7 @@ public class TilePickerPanel : Panel {
 							int tileID = (y * countX + x) + 1;
 							bool selected = false;
 							
-							if(brush != null && !brush.Resizing) {
+							if(brush != null && brush.Tilemap != null && !brush.Resizing) {
 								for(int by = 0; by < brush.Height; by++) {
 									for(int bx = 0; bx < brush.Width; bx++) {
 										var tile = brush.Tilemap.Grid[bx, by];
@@ -308,6 +310,7 @@ public class TilePickerPanel : Panel {
 		if(ImGui.Button("Add", new Vector2(region.X, 0))) {
 			scene.Tilesets.Add(new TilesetLink(scene.File, nextSlotAvailable, null));
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		ImGui.EndDisabled();
 		

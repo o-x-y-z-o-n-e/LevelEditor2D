@@ -7,42 +7,136 @@ namespace L2D;
 
 public class TileEraserTool : CanvasTool {
 
-	public Scene Scene => scene;
-
-	private Scene scene;
 	private int width;
 	private int height;
 	private bool resizing;
 	private Point resizeTileOrigin;
 	private bool disposed;
+	private bool removing;
+	private FileEditEntry edit;
 	
-	public TileEraserTool(Scene scene) {
+	public TileEraserTool() {
 		DisplayName = $"{Codicons.Eraser} Eraser";
 		LayerType = LayerType.Tiles;
-		this.scene = scene;
 		width = 1;
 		height = 1;
+		removing = false;
+		resizing = false;
 	}
 
-	private void Erase(int w, int h, Point offset, int mx, int my, Tilemap tilemap) {
-		for(int y = 0; y < h; y++) {
-			for(int x = 0; x < w; x++) {
-				int tx = offset.X + mx - scene.WorldX + x;
-				int ty = offset.Y + my - scene.WorldY + y;
-				if(tx < 0 || ty < 0 || tx >= scene.TileCountX || ty >= scene.TileCountY) continue;
-				tilemap.Grid[tx, ty] = new TileRef(0, 0);
+	public class TileEraseOperation {
+		public Tilemap Tilemap;
+		public TileRef[,] PrevState;
+		public TileRef[,] NextState;
+		public TileEraseOperation(Tilemap tilemap) {
+			Tilemap = tilemap;
+			PrevState = new TileRef[tilemap.Width, tilemap.Height];
+			NextState = new TileRef[tilemap.Width, tilemap.Height];
+			for(int y = 0; y < tilemap.Height; y++) {
+				for(int x = 0; x < tilemap.Width; x++) {
+					PrevState[x, y] = tilemap.Grid[x, y];
+					NextState[x, y] = tilemap.Grid[x, y];
+				}
 			}
 		}
-		Program.File.MarkDirty();
+	}
+
+	private void Erase(int w, int h, Point offset, Tilemap tilemap) {
+		bool different = false;
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				int tx = offset.X - tilemap.Scene.WorldX + x;
+				int ty = offset.Y - tilemap.Scene.WorldY + y;
+				if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
+				if(tilemap.Grid[tx, ty].TileID != 0 || tilemap.Grid[tx, ty].TilesetSlot != 0) {
+					different = true;
+					break;
+				}
+			}
+			if(different) break;
+		}
+		if(!different) return;
+		TileRef[,] oldState = new TileRef[w, h];
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				int tx = offset.X - tilemap.Scene.WorldX + x;
+				int ty = offset.Y - tilemap.Scene.WorldY + y;
+				if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
+				oldState[x, y] = tilemap.Grid[tx, ty];
+			}
+		}
+		Program.File.ApplyEdit(this, null,
+			redo: entry => {
+				for(int y = 0; y < h; y++) {
+					for(int x = 0; x < w; x++) {
+						int tx = offset.X - tilemap.Scene.WorldX + x;
+						int ty = offset.Y - tilemap.Scene.WorldY + y;
+						if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
+						tilemap.Grid[tx, ty] = new TileRef(0, 0);
+					}
+				}
+			},
+			undo: entry => {
+				for(int y = 0; y < h; y++) {
+					for(int x = 0; x < w; x++) {
+						int tx = offset.X - tilemap.Scene.WorldX + x;
+						int ty = offset.Y - tilemap.Scene.WorldY + y;
+						if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
+						tilemap.Grid[tx, ty] = oldState[x, y];
+					}
+				}
+			}
+		);
+	}
+
+	private void BeginErase(Tilemap tilemap) {
+		edit = Program.File.BeginEdit(this, new TileEraseOperation(tilemap),
+			redo: entry => {
+				var state = entry.GetData<TileEraseOperation>();
+				var tilemap = state.Tilemap;
+				for(int y = 0; y < tilemap.Height; y++) {
+					for(int x = 0; x < tilemap.Width; x++) {
+						tilemap.Grid[x, y] = state.NextState[x, y];
+					}
+				}
+			},
+			undo: entry => {
+				var state = entry.GetData<TileEraseOperation>();
+				var tilemap = state.Tilemap;
+				for(int y = 0; y < tilemap.Height; y++) {
+					for(int x = 0; x < tilemap.Width; x++) {
+						tilemap.Grid[x, y] = state.PrevState[x, y];
+					}
+				}
+			}
+		);
+	}
+
+	private void UpdateErase(int w, int h, Point offset) {
+		var state = edit.GetData<TileEraseOperation>();
+		var tilemap = state.Tilemap;
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				int tx = offset.X - tilemap.Scene.WorldX + x;
+				int ty = offset.Y - tilemap.Scene.WorldY + y;
+				if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
+				tilemap.Grid[tx, ty] = new TileRef(0, 0);
+				state.NextState[tx, ty] = tilemap.Grid[tx, ty];
+			}
+		}
+	}
+
+	private void EndErase() {
+		Program.File.EndEdit(ref edit);
 	}
 
 	public void Erase(Rectangle region, Layer layer) {
-		Erase(region.Width, region.Height, region.Location, 0, 0, layer.Tilemap);
+		Erase(region.Width, region.Height, region.Location, layer.Tilemap);
 	}
 
 	public override void Update(ImDrawListPtr drawList, Matrix4x4 transform, Rectangle worldBorder, bool movingCamera, bool isHovered) {
 		Layer layer = Program.SelectedLayer;
-		if(layer == null || layer.Scene != scene || layer.Type != LayerType.Tiles) return;
+		if(layer == null || layer.Type != LayerType.Tiles) return;
 
 		Vector2 mousePos = ImGui.GetIO().MousePos;
 		Matrix4x4.Invert(transform, out var transformInverted);
@@ -51,21 +145,23 @@ public class TileEraserTool : CanvasTool {
 		int mx = (int)MathF.Floor(mousePosTileCoord.X);
 		int my = (int)MathF.Floor(mousePosTileCoord.Y);
 		
-		Rectangle sceneRegion = new Rectangle(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
+		Rectangle sceneRegion = new Rectangle(layer.Scene.WorldX, layer.Scene.WorldY, layer.Scene.TileCountX, layer.Scene.TileCountY);
 		
 		if(sceneRegion.Contains(mx, my) && !movingCamera) {
 			ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
 		}
 		
 		bool remove = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Left);
-		bool resize = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Right);
+		bool resize = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Right) && !remove;
 		
 		if(ImGui.IsKeyPressed(ImGuiKey.Escape)) {
+			if(edit != null) EndErase();
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
 			return;
 		}
 		
 		if(ImGui.IsKeyReleased(ImGuiKey.LeftShift)) {
+			if(edit != null) EndErase();
 			if(Program.CanvasPanel.TileBrush.IsEmpty()) {
 				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
 			} else {
@@ -109,9 +205,18 @@ public class TileEraserTool : CanvasTool {
 		uint fillColorInvalid = Utilities.GetPackedColor(255, 40, 40, 64);
 		
 		if(remove) {
-			Erase(width, height, offset, mx, my, layer.Tilemap);
-		} else if(!resize && resizing) {
-			Erase(width, height, offset, mx, my, layer.Tilemap);
+			if(!removing) {
+				removing = true;
+				BeginErase(layer.Tilemap);
+			}
+			UpdateErase(width, height, new Point(offset.X + mx, offset.Y + my));
+		} else if(!remove && removing) {
+			removing = false;
+			EndErase();
+		}
+		
+		if(!resize && resizing) {
+			Erase(width, height, new Point(offset.X + mx, offset.Y + my), layer.Tilemap);
 			width = 1;
 			height = 1;
 			resizing = false;

@@ -56,6 +56,7 @@ public class ScenesPanel : Panel {
 					world.SwapScenes(i, n_next);
 					ImGui.ResetMouseDragDelta();
 					Program.File.MarkDirty();
+					Program.File.ClearEditHistory(); // TODO: undo/redo
 				}
 			}
 			
@@ -109,6 +110,7 @@ public class ScenesPanel : Panel {
 				Program.SetSelectedScene(newScene);
 				ImGui.CloseCurrentPopup();
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.EndDisabled();
 			
@@ -159,6 +161,7 @@ public class ScenesPanel : Panel {
 				Program.SetSelectedScene(newScene);
 				ImGui.CloseCurrentPopup();
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.EndDisabled();
 			
@@ -187,6 +190,7 @@ public class ScenesPanel : Panel {
 				}
 				ImGui.CloseCurrentPopup();
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.SameLine();
 			ImGui.Dummy(new Vector2(80, 0));
@@ -208,6 +212,7 @@ public class ScenesPanel : Panel {
 		if(ImGui.Button(Codicons.ChevronUp)) {
 			world.SwapScenes(sceneIndex, sceneIndex-1);
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		ImGui.EndDisabled();
 		ImGui.SameLine();
@@ -215,6 +220,7 @@ public class ScenesPanel : Panel {
 		if(ImGui.Button(Codicons.ChevronDown)) { 
 			world.SwapScenes(sceneIndex, sceneIndex+1);
 			Program.File.MarkDirty();
+			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		ImGui.EndDisabled();
 		
@@ -241,6 +247,7 @@ public class ScenesPanel : Panel {
 				}
 				if(valid) scene.ID = id;
 				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			
 			if(ImGui.Button($"{scene.WorldX}, {scene.WorldY}", new Vector2(ImGui.CalcItemWidth(), 0))) {
@@ -274,6 +281,7 @@ public class ScenesPanel : Panel {
 					scene.WorldY = sceneReposVar.Y;
 					ImGui.CloseCurrentPopup();
 					Program.File.MarkDirty();
+					Program.File.ClearEditHistory(); // TODO: undo/redo
 				}
 				ImGui.EndDisabled();
 				
@@ -319,6 +327,7 @@ public class ScenesPanel : Panel {
 					scene.Resize(sceneResizeVar.X, sceneResizeVar.Y);
 					ImGui.CloseCurrentPopup();
 					Program.File.MarkDirty();
+					Program.File.ClearEditHistory(); // TODO: undo/redo
 				}
 				ImGui.EndDisabled();
 				
