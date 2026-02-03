@@ -4,6 +4,9 @@ using System.Numerics;
 using System.Reflection;
 using IconFonts;
 using ImGuiNET;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Silk.NET.Input;
 using Silk.NET.Input.Extensions;
 using Silk.NET.Maths;
@@ -20,8 +23,6 @@ public static class Program {
 	public const int VERSION_PATCH = 0;
 	
 	public static readonly string VERSION_STRING = $"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}";
-
-	public static readonly object ThreadLock = new object();
 	
 	public const string FILE_EXTENSION = "l2d";
 
@@ -102,159 +103,223 @@ public static class Program {
 	private static float deltaTime;
 
 	private static List<ProjectEditorState> recentProjects;
+
+	private static Queue<Action> threadMessages;
 	
 	public static int Main(string[] args) {
-		WindowOptions options = WindowOptions.Default with {
-			WindowState = WindowState.Maximized,
-			Title = "L2D",
-			API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(4, 1))
-		};
-		window = Window.Create(options);
-		window.VSync = false;
-		window.FramesPerSecond = 0;
-		window.UpdatesPerSecond = 0;
-		window.Load += Load;
-		window.Render += Render;
-		window.Closing += Closing;
+		DateTime now = DateTime.Now;
+		string logFilePath = Path.Combine(GetAppDataDirectory(),
+			$"logs/{now.Year:0000}-{now.Month:00}-{now.Day:00}-{now.Hour:00}-{now.Minute:00}.txt");
 		
-		window.Run();
-		window.Dispose();
+		Log.Logger = new LoggerConfiguration()
+			.MinimumLevel.Debug()
+			.WriteTo.Console()
+			.WriteTo.File(logFilePath, flushToDiskInterval: TimeSpan.FromSeconds(1))
+			.CreateLogger();
+		
+		threadMessages = new Queue<Action>();
 
+		try {
+			WindowOptions options = WindowOptions.Default with {
+				WindowState = WindowState.Maximized,
+				Title = "L2D",
+				API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default,
+					new APIVersion(4, 1))
+			};
+			window = Window.Create(options);
+			window.VSync = false;
+			window.FramesPerSecond = 0;
+			window.UpdatesPerSecond = 0;
+			window.Load += Load;
+			window.Render += Render;
+			window.Closing += Closing;
+
+			window.Run();
+			window.Dispose();
+		} catch(Exception e) {
+			Log.Fatal(e, "Program crashed!");
+			Log.CloseAndFlush();
+			return 1;
+		}
+		Log.CloseAndFlush();
 		return 0;
 	}
 
 	private static unsafe void Load() {
-		gl = window.CreateOpenGL();
-		input = window.CreateInput();
+		Log.Information("Program loading...");
+		try {
+			gl = window.CreateOpenGL();
+			input = window.CreateInput();
 
-		controller = new ImGuiController(gl, window, input);
-		
-		menuBar = new MenuBar();
-		canvasPanel = new CanvasPanel();
-		layersPanel = new LayersPanel();
-		entitiesPanel = new EntitiesPanel();
-		scenesPanel = new ScenesPanel();
-		tilePickerPanel = new TilePickerPanel();
-		tilesetsPanel = new TilesetsPanel();
-		tileFillModal = new TileFillModal();
-		confirmModal = new ConfirmModal();
-		reloadFileModal = new ReloadFileModal();
-		newProjectModal = new NewProjectModal();
+			controller = new ImGuiController(gl, window, input);
 
-		recentProjects = new List<ProjectEditorState>();
-		LoadRecentProjects();
+			menuBar = new MenuBar();
+			canvasPanel = new CanvasPanel();
+			layersPanel = new LayersPanel();
+			entitiesPanel = new EntitiesPanel();
+			scenesPanel = new ScenesPanel();
+			tilePickerPanel = new TilePickerPanel();
+			tilesetsPanel = new TilesetsPanel();
+			tileFillModal = new TileFillModal();
+			confirmModal = new ConfirmModal();
+			reloadFileModal = new ReloadFileModal();
+			newProjectModal = new NewProjectModal();
 
-		foreach(string arg in System.Environment.GetCommandLineArgs()) {
-			if(file == null && arg.EndsWith(".l2d")) {
-				OpenFile(arg);
+			recentProjects = new List<ProjectEditorState>();
+			LoadRecentProjects();
+			
+			Tilemap.CreateShaders();
+
+			foreach(string arg in System.Environment.GetCommandLineArgs()) {
+				if(file == null && arg.EndsWith(".l2d")) {
+					OpenFile(arg);
+				}
 			}
+		} catch(Exception e) {
+			Log.Fatal(e, "Program crashed!");
+			Log.CloseAndFlush();
+			Environment.Exit(1);
 		}
 	}
 
 	private static void Render(double deltaTime) {
-		controller.Update((float)deltaTime);
-		gl.Viewport(window.FramebufferSize);
-		gl.ClearColor(Color.FromArgb(255, 0, 0, 0));
-		gl.Clear((uint) ClearBufferMask.ColorBufferBit);
+		try {
+			controller.Update((float)deltaTime);
+			gl.Viewport(window.FramebufferSize);
+			gl.ClearColor(Color.FromArgb(255, 0, 0, 0));
+			gl.Clear((uint) ClearBufferMask.ColorBufferBit);
 
-		Program.deltaTime = (float)deltaTime;
-		
-		ImGui.DockSpaceOverViewport();
-		
-		menuBar.Execute();
-		
-		// ImGui.ShowDemoWindow();
-		
-		tilesetsPanel.Execute();
-		canvasPanel.Execute();
-		scenesPanel.Execute();
-		layersPanel.Execute();
-		entitiesPanel.Execute();
-		tilePickerPanel.Execute();
-		
-		if(ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
-			if(file != null) {
-				if(ImGui.IsKeyPressed(ImGuiKey.S)) {
-					SaveFile();
+			Program.deltaTime = (float)deltaTime;
+
+			ImGui.DockSpaceOverViewport();
+
+			menuBar.Execute();
+
+			// ImGui.ShowDemoWindow();
+
+			tilesetsPanel.Execute();
+			canvasPanel.Execute();
+			scenesPanel.Execute();
+			layersPanel.Execute();
+			entitiesPanel.Execute();
+			tilePickerPanel.Execute();
+
+			if(ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
+				if(file != null) {
+					if(ImGui.IsKeyPressed(ImGuiKey.S)) {
+						SaveFile();
+					}
+				}
+
+				if(ImGui.IsKeyPressed(ImGuiKey.Q)) {
+					if(file != null && file.UnsavedChanges) {
+						Program.ConfirmModal.Open(
+							"Confirm Quit",
+							"You have unsaved changes.\nAre you sure you want to quit?",
+							Close
+						);
+					} else {
+						Close();
+					}
+				}
+
+				if(ImGui.IsKeyPressed(ImGuiKey.O)) {
+					if(file != null && file.UnsavedChanges) {
+						Program.ConfirmModal.Open(
+							"Confirm Open",
+							"You have unsaved changes.\nAre you sure you want to open another file?",
+							OpenFileDialog
+						);
+					} else {
+						OpenFileDialog();
+					}
+				}
+
+				if(ImGui.IsKeyPressed(ImGuiKey.R)) {
+					if(file != null && file.UnsavedChanges) {
+						Program.ConfirmModal.Open(
+							"Confirm Reload",
+							"You have unsaved changes.\nAre you sure you want to reload file from disk?",
+							ReloadFile
+						);
+					} else {
+						ReloadFile();
+					}
+				}
+
+				if(ImGui.IsKeyPressed(ImGuiKey.N)) {
+					if(file != null && file.UnsavedChanges) {
+						Program.ConfirmModal.Open(
+							"Confirm New File",
+							"You have unsaved changes.\nAre you sure you want to create a new file?",
+							newProjectModal.Open
+						);
+					} else {
+						newProjectModal.Open();
+					}
 				}
 			}
-			if(ImGui.IsKeyPressed(ImGuiKey.Q)) {
-				if(file != null && file.UnsavedChanges) {
-					Program.ConfirmModal.Open(
-						"Confirm Quit",
-						"You have unsaved changes.\nAre you sure you want to quit?",
-						Close
-					);
-				} else {
-					Close();
+
+			confirmModal.Body();
+			tileFillModal.Body();
+			newProjectModal.Body();
+			reloadFileModal.Body();
+
+			if(file == null) {
+				Launcher();
+			}
+
+			lock(threadMessages) {
+				while(threadMessages.Count > 0) {
+					Action action = threadMessages.Dequeue();
+					action?.Invoke();
 				}
 			}
+
+			FileDialog.CompleteThreads();
+
+			controller.Render();
+
+			UpdateMouseCursor();
+
+			if(requestClose) {
+				window?.Close();
+			}
+			
 			if(ImGui.IsKeyPressed(ImGuiKey.O)) {
-				if(file != null && file.UnsavedChanges) {
-					Program.ConfirmModal.Open(
-						"Confirm Open",
-						"You have unsaved changes.\nAre you sure you want to open another file?",
-						OpenFileDialog
-					);
-				} else {
-					OpenFileDialog();
-				}
+				Log.Information("test");
 			}
-			if(ImGui.IsKeyPressed(ImGuiKey.R)) {
-				if(file != null && file.UnsavedChanges) {
-					Program.ConfirmModal.Open(
-						"Confirm Reload",
-						"You have unsaved changes.\nAre you sure you want to reload file from disk?",
-						ReloadFile
-					);
-				} else {
-					ReloadFile();
-				}
+
+			if(ImGui.IsKeyPressed(ImGuiKey.P)) {
+				Log.Information("hello");
+				throw new Exception("test-ex");
 			}
-			if(ImGui.IsKeyPressed(ImGuiKey.N)) {
-				if(file != null && file.UnsavedChanges) {
-					Program.ConfirmModal.Open(
-						"Confirm New File",
-						"You have unsaved changes.\nAre you sure you want to create a new file?",
-						newProjectModal.Open
-					);
-				} else {
-					newProjectModal.Open();
-				}
-			}
-		}
-		
-		confirmModal.Body();
-		tileFillModal.Body();
-		newProjectModal.Body();
-		reloadFileModal.Body();
-
-		if(file == null) {
-			Launcher();
-		}
-		
-		FileDialog.CompleteThreads();
-
-		controller.Render();
-
-		UpdateMouseCursor();
-		
-		if(requestClose) {
-			window?.Close();
+		} catch(Exception e) {
+			Log.Fatal(e, "Program crashed!");
+			Log.CloseAndFlush();
+			Environment.Exit(1);
 		}
 	}
 
 	private static void Closing() {
-		if(file != null) {
-			UpdateProjectState(file);
+		Log.Information("Program closing...");
+		try {
+			if(file != null) {
+				UpdateProjectState(file);
+			}
+
+			SaveRecentProjects();
+
+			controller?.SaveSettings();
+
+			controller?.Dispose();
+			input?.Dispose();
+			gl?.Dispose();
+		} catch(Exception e) {
+			Log.Fatal(e, "Program crashed!");
+			Log.CloseAndFlush();
+			Environment.Exit(1);
 		}
-		SaveRecentProjects();
-		
-		controller?.SaveSettings();
-		
-		controller?.Dispose();
-		input?.Dispose();
-		gl?.Dispose();
 	}
 
 	public static void Close() {
@@ -536,7 +601,7 @@ public static class Program {
 					switch(split[0]) {
 						case "LastOpened":
 							if(!DateTime.TryParse(split[1], out info.LastOpened)) {
-								Console.WriteLine("Failed to parse DateTime");
+								Log.Error("Failed to parse DateTime!");
 							}
 							break;
 						case "CameraPosition.X":
@@ -562,7 +627,7 @@ public static class Program {
 				}
 			}
 		} catch(Exception e) {
-			Console.Error.WriteLine(e);
+			Log.Error(e, "Failed to load recent projects!");
 		}
 		reader?.Close();
 	}
@@ -585,7 +650,7 @@ public static class Program {
 				writer.WriteLine($"SelectedLayer={p.SelectedLayer}");
 			}
 		} catch(Exception e) {
-			Console.Error.WriteLine(e);
+			Log.Error(e, "Failed to save recent projects!");
 		}
 
 		writer?.Close();
@@ -642,6 +707,12 @@ public static class Program {
 		
 		return info;
 	}
+
+	public static void SendMessage(Action action) {
+		lock(threadMessages) {
+			threadMessages.Enqueue(action);
+		}
+	} 
 	
 }
 

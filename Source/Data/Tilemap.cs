@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using System.Text;
 using System.Xml.Linq;
+using Serilog;
 using Silk.NET.OpenGL;
 
 namespace L2D;
@@ -105,7 +106,7 @@ public class Tilemap : IDisposable {
 		return frameBufferTextureHandle;
 	}
 
-	private static unsafe void CreateShaders() {
+	public static unsafe void CreateShaders() {
 		if(shaderProgramHandle != 0) return;
 		
 		GL gl = Program.GL;
@@ -117,10 +118,7 @@ public class Tilemap : IDisposable {
 		gl.CompileShader(vert);
 		gl.GetShader(vert, GLEnum.CompileStatus, out success);
 		if(success == 0) {
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine(gl.GetShaderInfoLog(vert));
-			Console.ForegroundColor = ConsoleColor.White;
-			Environment.Exit(1);
+			throw new Exception(gl.GetShaderInfoLog(vert));
 		}
 		
 		uint frag = gl.CreateShader(GLEnum.FragmentShader);
@@ -128,10 +126,7 @@ public class Tilemap : IDisposable {
 		gl.CompileShader(frag);
 		gl.GetShader(vert, GLEnum.CompileStatus, out success);
 		if(success == 0) {
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine(gl.GetShaderInfoLog(frag));
-			Console.ForegroundColor = ConsoleColor.White;
-			Environment.Exit(1);
+			throw new Exception(gl.GetShaderInfoLog(frag));
 		}
 
 		shaderProgramHandle = gl.CreateProgram();
@@ -151,7 +146,7 @@ public class Tilemap : IDisposable {
 			shaderTextureUniforms[i] = gl.GetUniformLocation(shaderProgramHandle, $"Tilesets[{i}]");
 		}
 		
-		Console.WriteLine("Tilemap shaders compiled");
+		Log.Information("Tilemap shaders compiled");
 	}
 
 	private unsafe void CreateFrameBuffer() {

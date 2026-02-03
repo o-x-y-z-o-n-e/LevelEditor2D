@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
+using Serilog;
 
 namespace L2D;
 
@@ -31,6 +32,7 @@ public class File {
 
 	public bool Read() {
 		FileStream stream = null;
+		Log.Information("Reading file... [{@path}]", path);
 		try {
 			stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
 			XDocument document = XDocument.Load(stream);
@@ -39,10 +41,9 @@ public class File {
 			stream.Close();
 			return true;
 		} catch(Exception e) {
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine($"Failed to load file: {path}\nError: {e}");
-			Console.ForegroundColor = ConsoleColor.White;
+			Log.Error(e, "Failed to read project file: {@path}", path);
 			stream?.Close();
+			New();
 			return false;
 		}
 	}
@@ -57,6 +58,7 @@ public class File {
 		XmlWriter writer = null;
 		FileStream stream = null;
 		watcher.EnableRaisingEvents = false;
+		Log.Information("Writing file... [{@path}]", path);
 		try {
 			stream = System.IO.File.Create(path);
 			XDocument document = new XDocument();
@@ -72,9 +74,7 @@ public class File {
 			stream.Close();
 			return true;
 		} catch(Exception e) {
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine($"Failed to write file: {path}\nError: {e}");
-			Console.ForegroundColor = ConsoleColor.White;
+			Log.Error(e, "Failed to write project file: {@path}", path);
 			writer?.Close();
 			stream?.Close();
 			return false;
@@ -131,14 +131,14 @@ public class File {
 		if(e.ChangeType != WatcherChangeTypes.Changed) {
 			return;
 		}
-		// Console.WriteLine($"Changed: {e.FullPath}");
 		string p = e.FullPath.Replace('\\', '/');
-		lock(Program.ThreadLock) {
+		Program.SendMessage(() => {
 			if(p == path) {
+				Log.Information("Detected change in file: {@path}", path);
 				MarkDirty();
 				Program.ReloadFileModal.Open();
 			}
-		}
+		});
 	}
 
 }

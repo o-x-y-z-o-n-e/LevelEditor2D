@@ -24,6 +24,9 @@ GL</DefineConstants>
     <ItemGroup>
       <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
       <PackageReference Include="NativeFileDialogSharp" Version="0.6.0-alpha" />
+      <PackageReference Include="Serilog" Version="4.3.1-dev-02406" />
+      <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+      <PackageReference Include="Serilog.Sinks.File" Version="8.0.0-dev-02318" />
       <PackageReference Include="Silk.NET.Core" Version="2.22.0" />
       <PackageReference Include="Silk.NET.Input" Version="2.22.0" />
       <PackageReference Include="Silk.NET.Input.Extensions" Version="2.22.0" />

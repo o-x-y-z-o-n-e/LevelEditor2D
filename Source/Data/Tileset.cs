@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Numerics;
 using System.Xml.Linq;
+using Serilog;
 using Silk.NET.OpenGL;
 using StbImageSharp;
 
@@ -166,9 +167,7 @@ public class Tileset {
 	}
 
 	private void OnTextureFileChanged(object sender, FileSystemEventArgs e) {
-		// lock(Program.ThreadLock) {
-		// 	ReloadTexture();
-		// }
+		Program.SendMessage(ReloadTexture);
 	}
 
 	public Texture GetTexturePreview() => texturePreview;
@@ -231,14 +230,20 @@ public class Tileset {
 		if(texturePreview != null) {
 			texturePreview.Dispose();
 		}
+		if(textureArray != null) {
+			textureArray.Dispose();
+		}
+		
+		if(!System.IO.File.Exists(textureFileFullPath)) {
+			return;
+		}
 
 		GL gl = Program.GL;
-		
-		texturePreview = Texture.LoadFromFile(textureFileFullPath);
-		
-		// temp
+
 		try {
 			byte[] raw = System.IO.File.ReadAllBytes(textureFileFullPath);
+
+			texturePreview = Texture.LoadFromMemory(raw);
 
 			ImageResult image = ImageResult.FromMemory(raw, ColorComponents.RedGreenBlueAlpha);
 
@@ -246,44 +251,46 @@ public class Tileset {
 			int tileCountY = GetTileCountY();
 			int tileCount = tileCountX * tileCountY;
 
-			if(textureArray != null) {
-				textureArray.Dispose();
-			}
-
 			textureArray = new TextureArray();
-			
+
 			textureArray.Bind();
-			
+
 			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureMinFilter, (int)GLEnum.Nearest);
 			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureMagFilter, (int)GLEnum.Nearest);
 			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureWrapS, (int)GLEnum.ClampToEdge);
 			gl.TexParameterI(GLEnum.Texture2DArray, GLEnum.TextureWrapT, (int)GLEnum.ClampToEdge);
-			
+
 			gl.TexStorage3D(TextureTarget.Texture2DArray, 1, GLEnum.Rgba8, (uint)size.X, (uint)size.Y, (uint)tileCount);
-			
+
 			var readOnlyData = new ReadOnlySpan<byte>(image.Data);
-			
+
 			gl.PixelStore(GLEnum.UnpackRowLength, image.Width);
 			for(int y = 0; y < tileCountY; y++) {
 				for(int x = 0; x < tileCountX; x++) {
 					int ox = x * size.X;
 					int oy = y * size.Y;
 					int tile = y * tileCountX + x;
-					
+
 					gl.PixelStore(GLEnum.UnpackSkipPixels, ox);
 					gl.PixelStore(GLEnum.UnpackSkipRows, oy);
-					
-					gl.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, tile, (uint)size.X, (uint)size.Y, 1, GLEnum.Rgba, GLEnum.UnsignedByte, readOnlyData);
+
+					gl.TexSubImage3D(TextureTarget.Texture2DArray, 0, 0, 0, tile, (uint)size.X, (uint)size.Y, 1,
+						GLEnum.Rgba, GLEnum.UnsignedByte, readOnlyData);
 				}
 			}
-			
+
 			textureArray.UnBind();
-			
+
 			gl.PixelStore(GLEnum.UnpackRowLength, 0);
 			gl.PixelStore(GLEnum.UnpackSkipPixels, 0);
 			gl.PixelStore(GLEnum.UnpackSkipRows, 0);
+		} catch(IOException e) {
 			
-		} catch { }
+		} catch(UnauthorizedAccessException e) {
+			
+		} catch(Exception e) {
+			Log.Error(e, "Failed to load tileset texture: {@textureFileFullPath}", textureFileFullPath);
+		}
 	}
 
 	public void Dispose() {
