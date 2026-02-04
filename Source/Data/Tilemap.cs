@@ -408,8 +408,105 @@ public struct TileRef {
 		TileID = 0;
 		TilesetSlot = 0;
 	}
+	public TileRef(TileRef tile) {
+		TileID = tile.TileID;
+		TilesetSlot = tile.TilesetSlot;
+	}
 	public TileRef(int tileID, int tilesetSlot) {
 		TileID = tileID;
 		TilesetSlot = tilesetSlot;
 	}
+	public static bool operator==(TileRef obj1, TileRef obj2) {
+		return (obj1.TileID == obj2.TileID && obj1.TilesetSlot == obj2.TilesetSlot);
+	}
+	public static bool operator!=(TileRef obj1, TileRef obj2) {
+		return !(obj1.TileID == obj2.TileID && obj1.TilesetSlot == obj2.TilesetSlot);
+	}
+	public override bool Equals(object obj) {
+		return obj is TileRef tile && (this.TileID == tile.TileID && this.TilesetSlot == tile.TilesetSlot);
+	}
+}
+
+public class TileEditOperation {
+		
+	public Tilemap Tilemap => tilemap;
+
+	private Tilemap tilemap;
+	private List<TileStateChange> changes;
+		
+	public TileEditOperation(Tilemap tilemap) {
+		this.tilemap = tilemap;
+		changes = new();
+	}
+
+	public bool HasChanges() => changes.Count > 0;
+
+	public bool IsTileChanged(int x, int y) {
+		for(int i = 0; i < changes.Count; i++) {
+			if(changes[i].X == x && changes[i].Y == y) return true;
+		}
+		return false;
+	}
+
+	public bool Set(int x, int y, TileRef state) {
+		TileRef oldState = tilemap.Get(x, y);
+		if(oldState == state) return false;
+		for(int i = 0; i < changes.Count; i++) {
+			if(changes[i].X == x && changes[i].Y == y) {
+				changes[i] = new TileStateChange(changes[i], state);
+				return true;
+			}
+		}
+		changes.Add(new TileStateChange(x, y, oldState, state));
+		return true;
+	}
+
+	public TileStateChange? Get(int x, int y) {
+		for(int i = 0; i < changes.Count; i++) {
+			if(changes[i].X == x && changes[i].Y == y) {
+				return changes[i];
+			}
+		}
+		return null;
+	}
+
+	public void ApplyNextState() {
+		for(int i = 0; i < changes.Count; i++) {
+			tilemap.Set(changes[i].X, changes[i].Y, changes[i].Next);
+		}
+	}
+
+	public void ApplyPrevState() {
+		for(int i = 0; i < changes.Count; i++) {
+			tilemap.Set(changes[i].X, changes[i].Y, changes[i].Prev);
+		}
+	}
+
+	public static void ApplyNextState(FileEditEntry edit) {
+		edit.GetData<TileEditOperation>().ApplyNextState();
+	}
+
+	public static void ApplyPrevState(FileEditEntry edit) {
+		edit.GetData<TileEditOperation>().ApplyPrevState();
+	}
+
+	public struct TileStateChange {
+		public int X;
+		public int Y;
+		public TileRef Prev;
+		public TileRef Next;
+		public TileStateChange(int x, int y, TileRef prev, TileRef next) {
+			X = x;
+			Y = y;
+			Prev = prev;
+			Next = next;
+		}
+		public TileStateChange(TileStateChange change, TileRef next) {
+			X = change.X;
+			Y = change.Y;
+			Prev = change.Prev;
+			Next = next;
+		}
+	}
+		
 }

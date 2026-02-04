@@ -160,8 +160,12 @@ public class File {
 		return new FileEditEntry(context, redo, undo, data);
 	}
 
-	public void EndEdit(ref FileEditEntry edit) {
+	public void EndEdit(ref FileEditEntry edit, bool discard = false) {
 		if(edit == null) return;
+		if(discard) {
+			edit = null;
+			return;
+		}
 		if(editStack.Contains(edit)) return;
 		if(editPointer != editStack.Count) {
 			// clear the 'undone' edit history to override with new change

@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using System.Text.RegularExpressions;
 using ImGuiNET;
 
 namespace L2D; 
@@ -241,7 +242,9 @@ public class TileFillModal {
 
 	private void Fill() {
 		Rectangle selection = Program.CanvasPanel.TileSelect.Selection;
-		/*
+
+		var operation = new TileFillOperation(layer.Tilemap, selection);
+		
 		for(int y = selection.Top; y < selection.Bottom; y++) {
 			for(int x = selection.Left; x < selection.Right; x++) {
 				int sx = x - layer.Scene.WorldX;
@@ -249,17 +252,17 @@ public class TileFillModal {
 				if(sx >= 0 && sx < layer.Scene.TileCountX && sy >= 0 && sy < layer.Scene.TileCountY) {
 					int sampledEntry = Sample();
 					if(sampledEntry > 0) {
-						layer.Tilemap.Set(sx, sy, entries[sampledEntry-1].TileID, entries[sampledEntry-1].TilesetSlot);
+						operation.NextState[x - selection.Left, y - selection.Top] =
+							new TileRef(entries[sampledEntry - 1].TileID, entries[sampledEntry - 1].TilesetSlot);
 					} else {
-						layer.Tilemap.Set(sx, sy, 0, 0);
+						operation.NextState[x - selection.Left, y - selection.Top] =
+							new TileRef(0, 0);
 					}
 				}
 			}
 		}
-		Program.File.MarkDirty();
-		*/
 		
-		var edit = Program.File.BeginEdit(this, new TileFillOperation(layer.Tilemap, selection),
+		var edit = Program.File.BeginEdit(this, operation,
 			redo: entry => {
 				var data = entry.GetData<TileFillOperation>();
 				var area = data.Area;
@@ -287,24 +290,6 @@ public class TileFillModal {
 				}
 			}
 		);
-
-		var data = edit.GetData<TileFillOperation>();
-		for(int y = selection.Top; y < selection.Bottom; y++) {
-			for(int x = selection.Left; x < selection.Right; x++) {
-				int sx = x - layer.Scene.WorldX;
-				int sy = y - layer.Scene.WorldY;
-				if(sx >= 0 && sx < layer.Scene.TileCountX && sy >= 0 && sy < layer.Scene.TileCountY) {
-					int sampledEntry = Sample();
-					if(sampledEntry > 0) {
-						data.NextState[x - selection.Left, y - selection.Top] =
-							new TileRef(entries[sampledEntry - 1].TileID, entries[sampledEntry - 1].TilesetSlot);
-					} else {
-						data.NextState[x - selection.Left, y - selection.Top] =
-							new TileRef(0, 0);
-					}
-				}
-			}
-		}
 		
 		Program.File.EndEdit(ref edit);
 	}

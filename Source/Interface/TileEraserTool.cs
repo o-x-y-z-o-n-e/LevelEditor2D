@@ -24,110 +24,57 @@ public class TileEraserTool : CanvasTool {
 		resizing = false;
 	}
 
-	public class TileEraseOperation {
-		public Tilemap Tilemap;
-		public TileRef[,] PrevState;
-		public TileRef[,] NextState;
-		public TileEraseOperation(Tilemap tilemap) {
-			Tilemap = tilemap;
-			PrevState = new TileRef[tilemap.Width, tilemap.Height];
-			NextState = new TileRef[tilemap.Width, tilemap.Height];
-			for(int y = 0; y < tilemap.Height; y++) {
-				for(int x = 0; x < tilemap.Width; x++) {
-					PrevState[x, y] = tilemap.Grid[x, y];
-					NextState[x, y] = tilemap.Grid[x, y];
-				}
-			}
-		}
-	}
-
 	private void Erase(int w, int h, Point offset, Tilemap tilemap) {
-		bool different = false;
+		var operation = new TileEditOperation(tilemap);
+		
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
 				int tx = offset.X - tilemap.Scene.WorldX + x;
 				int ty = offset.Y - tilemap.Scene.WorldY + y;
 				if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
-				if(tilemap.Grid[tx, ty].TileID != 0 || tilemap.Grid[tx, ty].TilesetSlot != 0) {
-					different = true;
-					break;
-				}
-			}
-			if(different) break;
-		}
-		if(!different) return;
-		TileRef[,] oldState = new TileRef[w, h];
-		for(int y = 0; y < h; y++) {
-			for(int x = 0; x < w; x++) {
-				int tx = offset.X - tilemap.Scene.WorldX + x;
-				int ty = offset.Y - tilemap.Scene.WorldY + y;
-				if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
-				oldState[x, y] = tilemap.Grid[tx, ty];
+				operation.Set(tx, ty, new TileRef(0, 0));
 			}
 		}
-		Program.File.ApplyEdit(this, null,
-			redo: entry => {
-				for(int y = 0; y < h; y++) {
-					for(int x = 0; x < w; x++) {
-						int tx = offset.X - tilemap.Scene.WorldX + x;
-						int ty = offset.Y - tilemap.Scene.WorldY + y;
-						if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
-						tilemap.Grid[tx, ty] = new TileRef(0, 0);
-					}
-				}
-			},
-			undo: entry => {
-				for(int y = 0; y < h; y++) {
-					for(int x = 0; x < w; x++) {
-						int tx = offset.X - tilemap.Scene.WorldX + x;
-						int ty = offset.Y - tilemap.Scene.WorldY + y;
-						if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
-						tilemap.Grid[tx, ty] = oldState[x, y];
-					}
-				}
-			}
-		);
+		
+		if(operation.HasChanges()) {
+			Program.File.ApplyEdit(this, operation,
+				redo: TileEditOperation.ApplyNextState,
+				undo: TileEditOperation.ApplyPrevState
+			);
+		}
 	}
 
 	private void BeginErase(Tilemap tilemap) {
-		edit = Program.File.BeginEdit(this, new TileEraseOperation(tilemap),
-			redo: entry => {
-				var state = entry.GetData<TileEraseOperation>();
-				var tilemap = state.Tilemap;
-				for(int y = 0; y < tilemap.Height; y++) {
-					for(int x = 0; x < tilemap.Width; x++) {
-						tilemap.Grid[x, y] = state.NextState[x, y];
-					}
-				}
-			},
-			undo: entry => {
-				var state = entry.GetData<TileEraseOperation>();
-				var tilemap = state.Tilemap;
-				for(int y = 0; y < tilemap.Height; y++) {
-					for(int x = 0; x < tilemap.Width; x++) {
-						tilemap.Grid[x, y] = state.PrevState[x, y];
-					}
-				}
-			}
+		if(edit != null) {
+			Program.File.EndEdit(ref edit, discard: true);
+		}
+		var operation = new TileEditOperation(tilemap);
+		edit = Program.File.BeginEdit(this, operation,
+			redo: TileEditOperation.ApplyNextState,
+			undo: TileEditOperation.ApplyPrevState
 		);
 	}
 
 	private void UpdateErase(int w, int h, Point offset) {
-		var state = edit.GetData<TileEraseOperation>();
-		var tilemap = state.Tilemap;
+		if(edit == null) return;
+		var operation = edit.GetData<TileEditOperation>();
+		var tilemap = operation.Tilemap;
+		TileRef clear = new TileRef(0, 0);
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
 				int tx = offset.X - tilemap.Scene.WorldX + x;
 				int ty = offset.Y - tilemap.Scene.WorldY + y;
 				if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
-				tilemap.Grid[tx, ty] = new TileRef(0, 0);
-				state.NextState[tx, ty] = tilemap.Grid[tx, ty];
+				if(operation.Set(tx, ty, clear)) {
+					tilemap.Grid[tx, ty] = clear;
+				}
 			}
 		}
 	}
 
 	private void EndErase() {
-		Program.File.EndEdit(ref edit);
+		if(edit == null) return;
+		Program.File.EndEdit(ref edit, discard: !edit.GetData<TileEditOperation>().HasChanges());
 	}
 
 	public void Erase(Rectangle region, Layer layer) {
