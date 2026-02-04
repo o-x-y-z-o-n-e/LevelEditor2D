@@ -271,22 +271,13 @@ public class TileBrushTool : CanvasTool {
 		
 		if(!resizing) {
 			if(imprint) {
-				for(int y = 0; y < height; y++) {
-					for(int x = 0; x < width; x++) {
-						int tx = offset.X + mx - scene.WorldX + x;
-						int ty = offset.Y + my - scene.WorldY + y;
-						if(tx < 0 || ty < 0 || tx >= scene.TileCountX || ty >= scene.TileCountY) continue;
-						if(tilemap.Grid[x, y].TileID == 0 || tilemap.Grid[x, y].TilesetSlot == 0) continue;
-						layer.Tilemap.Grid[tx, ty] = tilemap.Grid[x, y];
-					}
-				}
+				// TODO: begin, update, end imprint
+				Imprint(new Point(offset.X + mx, offset.Y + my), layer);
 				if(clearAfterPlace) {
 					clearAfterPlace = false;
 					SetSize(1, 1);
 					tilemap.Grid[0, 0] = new TileRef();
 				}
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			
 			tilemap.Render();
@@ -404,8 +395,31 @@ public class TileBrushTool : CanvasTool {
 		}
 	}
 
+	public void Imprint(Point offset, Layer layer) {
+		var operation = new TileEditOperation(layer.Tilemap);
+		
+		for(int y = 0; y < height; y++) {
+			for(int x = 0; x < width; x++) {
+				int tx = offset.X - layer.Scene.WorldX + x;
+				int ty = offset.Y - layer.Scene.WorldY + y;
+				if(tx < 0 || ty < 0 || tx >= layer.Scene.TileCountX || ty >= layer.Scene.TileCountY) continue;
+				if(tilemap.Grid[x, y].TileID == 0 || tilemap.Grid[x, y].TilesetSlot == 0) continue;
+				operation.Set(tx, ty, tilemap.Grid[x, y]);
+			}
+		}
+		
+		if(operation.HasChanges()) {
+			Program.File.ApplyEdit(this, operation,
+				redo: TileEditOperation.ApplyNextState,
+				undo: TileEditOperation.ApplyPrevState
+			);
+		}
+	}
+
 	public void MoveRegion(Rectangle region, Layer layer) {
 		CopyRegion(region, layer);
+		
+		/*
 		for(int y = 0; y < region.Height; y++) {
 			for(int x = 0; x < region.Width; x++) {
 				int tx = region.X - layer.Scene.WorldX + x;
@@ -414,10 +428,27 @@ public class TileBrushTool : CanvasTool {
 					layer.Tilemap.Grid[tx, ty] = new TileRef(0, 0);
 				}
 			}
+		}*/
+		
+		var operation = new TileEditOperation(layer.Tilemap);
+		
+		for(int y = 0; y < region.Height; y++) {
+			for(int x = 0; x < region.Width; x++) {
+				int tx = region.X - layer.Scene.WorldX + x;
+				int ty = region.Y - layer.Scene.WorldY + y;
+				if(tx < 0 || ty < 0 || tx >= layer.Scene.TileCountX || ty >= layer.Scene.TileCountY) continue;
+				operation.Set(tx, ty, new TileRef(0, 0));
+			}
 		}
+		
+		if(operation.HasChanges()) {
+			Program.File.ApplyEdit(this, operation,
+				redo: TileEditOperation.ApplyNextState,
+				undo: TileEditOperation.ApplyPrevState
+			);
+		}
+		
 		clearAfterPlace = true;
-		Program.File.MarkDirty();
-		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 
 	public void CopyRegion(Rectangle region, Layer layer) {
@@ -544,8 +575,6 @@ public class TileBrushTool : CanvasTool {
 				tilemap.Set(x, tilemap.Height - y - 1, tile1, tileset1);
 			}
 		}
-		Program.File.MarkDirty();
-		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 
 	public void FlipHorizontal() {
@@ -558,8 +587,6 @@ public class TileBrushTool : CanvasTool {
 				tilemap.Set(tilemap.Width - x - 1, y, tile1, tileset1);
 			}
 		}
-		Program.File.MarkDirty();
-		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 
 	public void RotateLeft() {
@@ -578,8 +605,6 @@ public class TileBrushTool : CanvasTool {
 				tilemap.Grid[x, y] = grid[w - y - 1, x];
 			}
 		}
-		Program.File.MarkDirty();
-		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 	
 	public void RotateRight() {
@@ -598,8 +623,6 @@ public class TileBrushTool : CanvasTool {
 				tilemap.Grid[x, y] = grid[y, h - x - 1];
 			}
 		}
-		Program.File.MarkDirty();
-		Program.File.ClearEditHistory(); // TODO: undo/redo
 	}
 
 }

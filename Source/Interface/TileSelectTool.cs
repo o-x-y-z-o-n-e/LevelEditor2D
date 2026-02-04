@@ -76,8 +76,6 @@ public class TileSelectTool : CanvasTool {
 				if(ImGui.IsKeyPressed(ImGuiKey.X)) {
 					Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
 					Program.CanvasPanel.TileBrush.MoveRegion(selection, layer);
-					Program.File.MarkDirty();
-					Program.File.ClearEditHistory(); // TODO: undo/redo
 				}
 				if(ImGui.IsKeyPressed(ImGuiKey.C)) {
 					Program.CanvasPanel.SetTool(Program.CanvasPanel.TileBrush);
@@ -86,8 +84,6 @@ public class TileSelectTool : CanvasTool {
 			}
 			if(ImGui.IsKeyPressed(ImGuiKey.Delete)) {
 				Program.CanvasPanel.TileEraser.Erase(selection, layer);
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 		}
 
