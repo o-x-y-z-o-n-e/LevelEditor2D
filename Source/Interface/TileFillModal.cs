@@ -242,6 +242,8 @@ public class TileFillModal {
 
 	private void Fill() {
 		Rectangle selection = Program.CanvasPanel.TileSelect.Selection;
+		
+		// TODO: update to TileEditOperation
 
 		var operation = new TileFillOperation(layer.Tilemap, selection);
 		
@@ -262,7 +264,7 @@ public class TileFillModal {
 			}
 		}
 		
-		var edit = Program.File.BeginEdit(this, operation,
+		var edit = Program.File.BeginEdit(Program.CanvasPanel, operation,
 			redo: entry => {
 				var data = entry.GetData<TileFillOperation>();
 				var area = data.Area;

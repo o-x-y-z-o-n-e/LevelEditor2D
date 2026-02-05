@@ -1,13 +1,19 @@
 ﻿using System.Numerics;
 using IconFonts;
 using ImGuiNET;
+using Serilog;
 
 namespace L2D; 
 
 public class EntitiesPanel : Panel {
 
+	private FileEditEntry positionEdit;
+	private FileEditEntry sizeEdit;
+
 	public EntitiesPanel() {
 		Title = "Entities";
+		positionEdit = null;
+		sizeEdit = null;
 	}
 
 	protected override void Update() {
@@ -91,8 +97,7 @@ public class EntitiesPanel : Panel {
 			entity.Name = "New Entity";
 			entity.Position = -Program.CanvasPanel.Camera - new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight);
 			Program.SetSelectedEntity(entity);
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(this, new AddOperation(layer.Entities, entity));
 		}
 		
 		ImGui.SameLine();
@@ -105,8 +110,7 @@ public class EntitiesPanel : Panel {
 		if(copyIndex >= 0 && copyIndex < layer.Entities.Count) {
 			Entity newEntity = layer.Entities.Copy(copyIndex);
 			newEntity.Position += new Vector2(newEntity.Size.X + 16, 0);
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(this, new AddOperation(layer.Entities, newEntity));
 		}
 		
 		ImGui.SameLine();
@@ -116,7 +120,7 @@ public class EntitiesPanel : Panel {
 		}
 
 		if(deleteIndex >= 0 && deleteIndex < layer.Entities.Count) {
-			layer.Entities.Remove(deleteIndex);
+			Program.File.ApplyEdit(this, new RemoveOperation(layer.Entities, layer.Entities.Get(deleteIndex)));
 			if(layer.Entities.Count == 0) {
 				Program.SetSelectedEntity(null);
 			} else if(deleteIndex >= layer.Entities.Count) {
@@ -124,8 +128,6 @@ public class EntitiesPanel : Panel {
 			} else {
 				Program.SetSelectedEntity(layer.Entities.Get(deleteIndex));
 			}
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		
 		ImGui.SameLine();
@@ -147,15 +149,11 @@ public class EntitiesPanel : Panel {
 		ImGui.EndDisabled();
 
 		if(moveUpIndex >= 1 && moveUpIndex < layer.Entities.Count) {
-			layer.Entities.Move(moveUpIndex, moveUpIndex - 1);
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(this, new MoveOperation(layer.Entities, moveUpIndex, moveUpIndex - 1));
 		}
 		
 		if(moveDownIndex >= 0 && moveDownIndex < layer.Entities.Count - 1) {
-			layer.Entities.Move(moveDownIndex, moveDownIndex + 1);
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(this, new MoveOperation(layer.Entities, moveDownIndex, moveDownIndex + 1));
 		}
 		
 		ImGui.SameLine();
@@ -168,27 +166,169 @@ public class EntitiesPanel : Panel {
 
 		if(selected != null) {
 			ImGui.SeparatorText("Entity Options");
-			if(ImGui.InputText("Name", ref selected.Name, 512)) {
-				Program.File.MarkDirty();    
-				Program.File.ClearEditHistory(); // TODO: undo/redo
+			string name = selected.Name;
+			if(ImGui.InputText("Name", ref name, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+				Program.File.ApplyEdit(this, new Tuple<string, string>(selected.Name, name),
+					redo: entry => {
+						selected.Name = entry.GetData<Tuple<string, string>>().Item2;
+					},
+					undo: entry => {
+						selected.Name = entry.GetData<Tuple<string, string>>().Item1;
+					}
+				);
             }
-			if(ImGui.InputText("Type", ref selected.Type, 512)) {
-				Program.File.MarkDirty();    
-				Program.File.ClearEditHistory(); // TODO: undo/redo
+			string type = selected.Type;
+			if(ImGui.InputText("Type", ref type, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+				Program.File.ApplyEdit(this, new Tuple<string, string>(selected.Type, type),
+					redo: entry => {
+						selected.Type = entry.GetData<Tuple<string, string>>().Item2;
+					},
+					undo: entry => {
+						selected.Type = entry.GetData<Tuple<string, string>>().Item1;
+					}
+				);
             }
-			if(ImGui.DragFloat2("Position", ref selected.Position)) {
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
+			Vector2 pos = selected.Position;
+			if(ImGui.DragFloat2("Position", ref pos)) {
+				if(positionEdit == null || positionEdit.GetData<PositionOperation>().Entity != selected) {
+					positionEdit = Program.File.BeginEdit(this, new PositionOperation(selected, pos));
+				} else {
+					positionEdit.GetData<PositionOperation>().SetPosition(pos);
+				}
+				selected.Position = pos;
 			}
-			if(ImGui.DragFloat2("Size", ref selected.Size)) {
-				if(selected.Size.X < 0) selected.Size.X = 0;
-				if(selected.Size.Y < 0) selected.Size.Y = 0;
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
+			if(ImGui.IsItemDeactivatedAfterEdit() && positionEdit != null) {
+				Program.File.EndEdit(ref positionEdit, !positionEdit.GetData<PositionOperation>().HasChanges());
+			}
+			Vector2 size = selected.Size;
+			if(ImGui.DragFloat2("Size", ref size)) {
+				if(size.X < 0) size.X = 0;
+				if(size.Y < 0) size.Y = 0;
+				if(sizeEdit == null || sizeEdit.GetData<SizeOperation>().Entity != selected) {
+					sizeEdit = Program.File.BeginEdit(this, new SizeOperation(selected, size));
+				} else {
+					sizeEdit.GetData<SizeOperation>().SetSize(size);
+				}
+				selected.Size = size;
+			}
+			if(ImGui.IsItemDeactivatedAfterEdit() && sizeEdit != null) {
+				Program.File.EndEdit(ref sizeEdit, !sizeEdit.GetData<SizeOperation>().HasChanges());
 			}
 			PropertyView.Run(selected.Properties);
 		} else {
 			ImGui.Text("No entity selected...");
 		}
+	}
+	
+	public class AddOperation : IFileEditOperation {
+		private EntityCollection collection;
+		private Entity entity;
+		public AddOperation(EntityCollection collection, Entity entity) {
+			this.collection = collection;
+			this.entity = entity;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.collection.Insert(op.entity, op.collection.Count);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.collection.Remove(op.entity);
+			if(Program.SelectedEntity == op.entity) {
+				Program.SetSelectedEntity(null);
+			}
+		}
+		public bool HasChanges() => true;
+	}
+
+	public class MoveOperation : IFileEditOperation {
+		private EntityCollection collection;
+		private int index1;
+		private int index2;
+		public MoveOperation(EntityCollection collection, int index1, int index2) {
+			this.collection = collection;
+			this.index1 = index1;
+			this.index2 = index2;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.collection.Move(op.index1, op.index2);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.collection.Move(op.index2, op.index1);
+		}
+		public bool HasChanges() => index1 != index2;
+	}
+	
+	public class RemoveOperation : IFileEditOperation {
+		private EntityCollection collection;
+		private Entity entity;
+		private int index;
+		public RemoveOperation(EntityCollection collection, Entity entity) {
+			this.collection = collection;
+			this.entity = entity;
+			this.index = collection.IndexOf(entity);
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.collection.Remove(op.entity);
+			if(Program.SelectedEntity == op.entity) {
+				Program.SetSelectedEntity(null);
+			}
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.collection.Insert(op.entity, op.index);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class PositionOperation : IFileEditOperation {
+		public Entity Entity => entity;
+		private Entity entity;
+		private Vector2 oldPosition;
+		private Vector2 newPosition;
+		public PositionOperation(Entity entity, Vector2 newPosition) {
+			this.entity = entity;
+			this.oldPosition = entity.Position;
+			this.newPosition = newPosition;
+		}
+		public void SetPosition(Vector2 position) {
+			newPosition = position;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<PositionOperation>();
+			op.entity.Position = newPosition;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<PositionOperation>();
+			op.entity.Position = oldPosition;
+		}
+		public bool HasChanges() => oldPosition != newPosition;
+	}
+	
+	public class SizeOperation : IFileEditOperation {
+		public Entity Entity => entity;
+		private Entity entity;
+		private Vector2 oldSize;
+		private Vector2 newSize;
+		public SizeOperation(Entity entity, Vector2 newSize) {
+			this.entity = entity;
+			this.oldSize = entity.Size;
+			this.newSize = newSize;
+		}
+		public void SetSize(Vector2 size) {
+			newSize = size;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<SizeOperation>();
+			op.entity.Size = newSize;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<SizeOperation>();
+			op.entity.Size = oldSize;
+		}
+		public bool HasChanges() => oldSize != newSize;
 	}
 }

@@ -22,7 +22,7 @@ public class TilesetsPanel : Panel {
 	private static int worldTilesetCount;
 	
 	// Temp editing data, controlled by Edit()
-	private static string idEditBuffer;
+	// private static string idEditBuffer;
 	private static int tileEditIndex;
 	private Tileset lastSelectedTileset;
 	private int previewScale;
@@ -47,7 +47,7 @@ public class TilesetsPanel : Panel {
 		mode = ViewMode.List;
 		search = "";
 		matchedSearchList = new(new DuplicateKeyComparer<int>());
-		idEditBuffer = "";
+		worldTilesetCount = 0;
 		lastSelectedTileset = null;
 		previewScale = 4;
 		showColliders = false;
@@ -225,10 +225,12 @@ public class TilesetsPanel : Panel {
 			Vector2 areaPos = ImGui.GetCursorScreenPos();
 			Vector2 areaSize = ImGui.GetContentRegionAvail();
 			Vector2 areaOffset = new Vector2(0, 0);
-			
-			for(int i = 0; i < world.TilesetCount; i++) {
+			int i = 0;
+			foreach(var entry in matchedSearchList) {
+				var tileset = entry.Value;
+			// for(int i = 0; i < world.TilesetCount; i++) {
 				ImGui.PushID(i);
-				Tileset tileset = world.GetTileset(i);
+				// Tileset tileset = world.GetTileset(i);
 
 				ImDrawListPtr drawList = ImGui.GetWindowDrawList();
 			
@@ -286,6 +288,7 @@ public class TilesetsPanel : Panel {
 					areaOffset.Y += itemSize.Y + itemSpacing.Y;
 				}
 				ImGui.PopID();
+				i++;
 			}
 			
 			ImGui.SetCursorScreenPos(areaPos);
@@ -421,32 +424,27 @@ public class TilesetsPanel : Panel {
 		ImGui.BeginDisabled(tileset == null);
 
 		if(tileset != lastSelectedTileset) {
-			idEditBuffer = tileset != null ? tileset.ID : "";
+			// idEditBuffer = tileset != null ? tileset.ID : "";
 			tileEditIndex = 0;
 		}
 
-		if(ImGui.InputText("ID", ref idEditBuffer, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
-			bool allowed = idEditBuffer != "";
+		string id = tileset != null ? tileset.ID : "";
+		if(ImGui.InputText("ID", ref id, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+			bool allowed = id != "";
 			foreach(var ts in Program.File.World.Tilesets) {
-				if(ts.ID == idEditBuffer) {
+				if(ts.ID == id) {
 					allowed = false;
 					break;
 				}
 			}
 			if(allowed) {
-				tileset.ID = idEditBuffer;
-			} else {
-				idEditBuffer = tileset.ID;
+				Program.File.ApplyEdit(this, new NameOperation(tileset, id));
 			}
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 
 		string group = tileset != null ? tileset.Group : "";
 		if(ImGui.InputText("Group", ref group, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
-			tileset.Group = group;
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(this, new GroupOperation(tileset, group));
 		}
 		
 		if(ImGui.Button("Reimport")) {
@@ -586,25 +584,28 @@ public class TilesetsPanel : Panel {
 		}
 
 		if(ImGui.InputInt("Shape Count", ref count, 1, 1)) {
-			if(count < 0) count = 0;
-			if(data == null) {
-				data = tileset.AddTileData(tileEditIndex);
-			}
-			if(count < data.Shapes.Count) {
-				data.Shapes.RemoveRange(count, data.Shapes.Count - count);
-			} else {
-				while(data.Shapes.Count < count) {
-					data.Shapes.Add(new TileShape());
+			if(ImGui.IsItemDeactivatedAfterEdit() || ImGui.IsItemClicked()) {
+				if(count < 0) count = 0;
+				if(data == null) {
+					data = tileset.AddTileData(tileEditIndex);
 				}
+				if(count < data.Shapes.Count) {
+					data.Shapes.RemoveRange(count, data.Shapes.Count - count);
+				} else {
+					while(data.Shapes.Count < count) {
+						data.Shapes.Add(new TileShape());
+					}
+				}
+				Program.File.MarkDirty();
+				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
 		}
 		
 		ImGui.Separator();
 
 		colliderHighlightIndex = -1;
 		if(data != null) {
+			count = data.Shapes.Count;
 			for(int i = 0; i < count; i++) {
 				ImGui.PushID(i);
 
@@ -725,12 +726,10 @@ public class TilesetsPanel : Panel {
 				tileset.SpacingY = importSpacing.Y;
 				tileset.SizeX = importTexels.X;
 				tileset.SizeY = importTexels.Y;
-				tileset.TextureFilePath = importPath;
-				Program.File.World.AddTileset(tileset);
-				ImGui.CloseCurrentPopup();
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
+				tileset.SetTexturePath(importPath, false);
+				Program.File.ApplyEdit(this, new AddOperation(Program.File.World, tileset));
 				MatchSearch();
+				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -749,6 +748,11 @@ public class TilesetsPanel : Panel {
 		ImGui.SetNextWindowSizeConstraints(new Vector2(400, 300), ImGui.GetIO().DisplaySize);
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F, 0.5F));
 		if(ImGui.BeginPopupModal("Select Tileset", ref open)) {
+			if(worldTilesetCount != Program.File.World.TilesetCount) {
+				worldTilesetCount = Program.File.World.TilesetCount;
+				MatchSearch();
+			}
+			
 			Vector2 area = ImGui.GetContentRegionAvail();
 			var style = ImGui.GetStyle();
 
@@ -806,6 +810,68 @@ public class TilesetsPanel : Panel {
 			else          // IndexOfKey(key) since the comparer never returns 0 to signal key equality
 				return result;
 		}
+	}
+	
+	public class AddOperation : IFileEditOperation {
+		private World world;
+		private Tileset tileset;
+		private int index;
+		public AddOperation(World world, Tileset tileset) {
+			this.world = world;
+			this.tileset = tileset;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.world.AddTileset(op.tileset);
+			op.tileset.UpdateFileWatcher();
+			op.tileset.ReloadTexture();
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.world.RemoveTileset(op.tileset);
+			op.tileset.ReleaseResources();
+		}
+		public bool HasChanges() => true;
+	}
+
+	public class NameOperation : IFileEditOperation {
+		private Tileset tileset;
+		private string oldValue;
+		private string newValue;
+		public NameOperation(Tileset tileset, string newValue) {
+			this.tileset = tileset;
+			this.oldValue = tileset.ID;
+			this.newValue = newValue;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<NameOperation>();
+			op.tileset.ID = op.newValue;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<NameOperation>();
+			op.tileset.ID = op.oldValue;
+		}
+		public bool HasChanges() => oldValue != newValue;
+	}
+	
+	public class GroupOperation : IFileEditOperation {
+		private Tileset tileset;
+		private string oldValue;
+		private string newValue;
+		public GroupOperation(Tileset tileset, string newValue) {
+			this.tileset = tileset;
+			this.oldValue = tileset.Group;
+			this.newValue = newValue;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<GroupOperation>();
+			op.tileset.Group = op.newValue;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<GroupOperation>();
+			op.tileset.Group = op.oldValue;
+		}
+		public bool HasChanges() => oldValue != newValue;
 	}
 	
 }

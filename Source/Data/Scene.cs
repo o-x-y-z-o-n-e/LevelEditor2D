@@ -162,14 +162,19 @@ public class Scene {
 		SwapLayers(layers.IndexOf(layer1), layers.IndexOf(layer2));
 	}
 
-	public void DeleteLayer(int index) {
-		DeleteLayer(layers[index]);
+	public void RemoveLayer(int index) {
+		RemoveLayer(layers[index]);
 	}
 	
-	public void DeleteLayer(Layer layer) {
-		if(layer.Scene != this) return;
+	public void RemoveLayer(Layer layer) {
+		if(layer == null || layer.Scene != this || !layers.Contains(layer)) return;
 		if(LastActiveLayer == layer) LastActiveLayer = null;
 		layers.Remove(layer);
+	}
+
+	public void InsertLayer(Layer layer, int index) {
+		if(layer == null || layer.Scene != this || layers.Contains(layer)) return;
+		layers.Insert(index, layer);
 	}
 	
 	public Layer CopyLayer(int index) {
@@ -219,12 +224,6 @@ public class Scene {
 				layer.Tilemap?.Resize(tileCountX, tileCountY);
 			}
 		}
-	}
-
-	public void Dispose() {
-		if(disposed) return;
-		for(int i = 0; i < layers.Count; i++) layers[i]?.Dispose();
-		disposed = true;
 	}
 }
 

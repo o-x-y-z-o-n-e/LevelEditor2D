@@ -106,12 +106,6 @@ public class Layer {
 		return element;
 	}
 	
-	public void Dispose() {
-		if(disposed) return;
-		tilemap?.ReleaseResources();
-		disposed = true;
-	}
-	
 }
 
 public enum LayerType {

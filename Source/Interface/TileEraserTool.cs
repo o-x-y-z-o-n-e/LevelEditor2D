@@ -15,9 +15,7 @@ public class TileEraserTool : CanvasTool {
 	private bool removing;
 	private FileEditEntry edit;
 	
-	public TileEraserTool() {
-		DisplayName = $"{Codicons.Eraser} Eraser";
-		LayerType = LayerType.Tiles;
+	public TileEraserTool() : base($"{Codicons.Eraser} Eraser", LayerType.Tiles) {
 		width = 1;
 		height = 1;
 		removing = false;
@@ -25,6 +23,10 @@ public class TileEraserTool : CanvasTool {
 	}
 
 	private void Erase(int w, int h, Point offset, Tilemap tilemap) {
+		BeginErase(tilemap);
+		UpdateErase(w, h, offset);
+		EndErase();
+		/*
 		var operation = new TileEditOperation(tilemap);
 		
 		for(int y = 0; y < h; y++) {
@@ -42,6 +44,7 @@ public class TileEraserTool : CanvasTool {
 				undo: TileEditOperation.ApplyPrevState
 			);
 		}
+		*/
 	}
 
 	private void BeginErase(Tilemap tilemap) {
@@ -49,7 +52,7 @@ public class TileEraserTool : CanvasTool {
 			Program.File.EndEdit(ref edit, discard: true);
 		}
 		var operation = new TileEditOperation(tilemap);
-		edit = Program.File.BeginEdit(this, operation,
+		edit = Program.File.BeginEdit(Program.CanvasPanel, operation,
 			redo: TileEditOperation.ApplyNextState,
 			undo: TileEditOperation.ApplyPrevState
 		);

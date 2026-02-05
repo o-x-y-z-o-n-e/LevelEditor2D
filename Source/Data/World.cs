@@ -53,6 +53,10 @@ public class World {
 		return tilesets[index];
 	}
 
+	public int GetTilesetIndex(Tileset tileset) {
+		return tilesets.IndexOf(tileset);
+	}
+
 	public Scene GetScene(int index) {
 		if(index < 0 || index >= scenes.Count) return null;
 		return scenes[index];
@@ -72,6 +76,11 @@ public class World {
 		if(blankLayer) scene.AddLayer(LayerType.Tiles);
 		scenes.Add(scene);
 		return scene;
+	}
+
+	internal void InsertScene(Scene scene, int index) {
+		if(scene == null || scene.World != this || scenes.Contains(scene)) return;
+		scenes.Insert(index, scene);
 	}
 
 	public void SwapScenes(int index1, int index2) {
@@ -136,23 +145,29 @@ public class World {
 		return newScene;
 	}
 
-	public void DeleteScene(int index) {
+	public void RemoveScene(int index) {
 		if(index < 0 || index >= scenes.Count) return;
-		DeleteScene(scenes[index]);
+		RemoveScene(scenes[index]);
 	}
 	
-	public void DeleteScene(Scene scene) {
+	public void RemoveScene(Scene scene) {
 		if(!scenes.Contains(scene)) return;
 		scenes.Remove(scene);
-		scene.Dispose();
-		if(scene == Program.SelectedScene) {
-			Program.SetSelectedScene(null);
+		for(int i = 0; i < scene.LayerCount; i++) {
+			if(scene.Layers[i].Type == LayerType.Tiles) {
+				scene.Layers[i].Tilemap?.ReleaseResources();
+			}
 		}
 	}
 
 	internal void AddTileset(Tileset tileset) {
 		if(tilesets.Contains(tileset)) return;
 		tilesets.Add(tileset);
+	}
+	
+	public void RemoveTileset(Tileset tileset) {
+		if(!tilesets.Contains(tileset)) return;
+		tilesets.Remove(tileset);
 	}
 
 	internal void Parse(XElement worldElement) {
@@ -194,8 +209,16 @@ public class World {
 	
 	public void Dispose() {
 		if(disposed) return;
-		for(int i = 0; i < tilesets.Count; i++) tilesets[i]?.Dispose();
-		for(int i = 0; i < scenes.Count; i++) scenes[i]?.Dispose();
+		for(int i = 0; i < tilesets.Count; i++) tilesets[i]?.ReleaseResources();
+		
+		for(int s = 0; s < scenes.Count; s++) {
+			for(int i = 0; i < scenes[s].LayerCount; i++) {
+				if(scenes[s].Layers[i].Type == LayerType.Tiles) {
+					scenes[s].Layers[i].Tilemap?.ReleaseResources();
+				}
+			}
+		}
+		
 		disposed = true;
 	}
 

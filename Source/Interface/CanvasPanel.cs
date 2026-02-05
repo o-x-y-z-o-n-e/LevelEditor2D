@@ -85,45 +85,8 @@ public class CanvasPanel : Panel {
 		World world = Program.File.World;
 
 		Layer selectedLayer = Program.SelectedLayer;
-		
-		ImGui.SetNextItemWidth(150);
-		if(ImGui.BeginCombo("Active Tool", activeTool?.DisplayName ?? "None")) {
-			ImGui.BeginDisabled(selectedLayer == null || selectedLayer.Type == LayerType.Entities);
-			if(ImGui.Selectable(tileSelect.DisplayName, activeTool == tileSelect)) {
-				SetTool(tileSelect);
-			}
-			ImGui.BeginDisabled(tileBrush.IsEmpty());
-			if(ImGui.Selectable(tileBrush.DisplayName, activeTool == tileBrush)) {
-				SetTool(tileBrush);
-			}
-			ImGui.EndDisabled();
-			if(ImGui.Selectable(tileEraser.DisplayName, activeTool == tileEraser)) {
-				SetTool(tileEraser);
-			}
-			ImGui.EndDisabled();
-			ImGui.BeginDisabled(selectedLayer == null || selectedLayer.Type == LayerType.Tiles);
-			if(ImGui.Selectable(entityEdit.DisplayName, activeTool == entityEdit)) {
-				SetTool(entityEdit);
-			}
-			ImGui.EndDisabled();
-			ImGui.EndCombo();
-		}
-		
-		ImGui.SameLine();
 
-		ImGui.Checkbox("Grid Scenes Only", ref gridScenesOnly);
-		
-		ImGui.SameLine();
-		
-		ImGui.SetNextItemWidth(400);
-		ImGui.SliderFloat("Zoom", ref zooming, ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
-		ImGui.OpenPopupOnItemClick("zoom-menu", ImGuiPopupFlags.MouseButtonRight);
-		if(ImGui.BeginPopup("zoom-menu")) {
-			if(ImGui.MenuItem("Reset", null, false, true)) {
-				zooming = 0;
-			}
-			ImGui.EndPopup();
-		}
+		ToolBar();
 
 		ImGui.BeginChild("view", ImGui.GetContentRegionAvail(), ImGuiChildFlags.None, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 		
@@ -237,6 +200,49 @@ public class CanvasPanel : Panel {
 		drawList.PopClipRect();
 		
 		ImGui.EndChild();
+	}
+
+	private void ToolBar() {
+		Layer selectedLayer = Program.SelectedLayer;
+		
+		ImGui.SetNextItemWidth(150);
+		if(ImGui.BeginCombo("Active Tool", activeTool?.DisplayName ?? "None")) {
+			ImGui.BeginDisabled(selectedLayer == null || selectedLayer.Type == LayerType.Entities);
+			if(ImGui.Selectable(tileSelect.DisplayName, activeTool == tileSelect)) {
+				SetTool(tileSelect);
+			}
+			ImGui.BeginDisabled(tileBrush.IsEmpty());
+			if(ImGui.Selectable(tileBrush.DisplayName, activeTool == tileBrush)) {
+				SetTool(tileBrush);
+			}
+			ImGui.EndDisabled();
+			if(ImGui.Selectable(tileEraser.DisplayName, activeTool == tileEraser)) {
+				SetTool(tileEraser);
+			}
+			ImGui.EndDisabled();
+			ImGui.BeginDisabled(selectedLayer == null || selectedLayer.Type == LayerType.Tiles);
+			if(ImGui.Selectable(entityEdit.DisplayName, activeTool == entityEdit)) {
+				SetTool(entityEdit);
+			}
+			ImGui.EndDisabled();
+			ImGui.EndCombo();
+		}
+		
+		ImGui.SameLine();
+
+		ImGui.Checkbox("Grid Scenes Only", ref gridScenesOnly);
+		
+		ImGui.SameLine();
+		
+		ImGui.SetNextItemWidth(400);
+		ImGui.SliderFloat("Zoom", ref zooming, ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
+		ImGui.OpenPopupOnItemClick("zoom-menu", ImGuiPopupFlags.MouseButtonRight);
+		if(ImGui.BeginPopup("zoom-menu")) {
+			if(ImGui.MenuItem("Reset", null, false, true)) {
+				zooming = 0;
+			}
+			ImGui.EndPopup();
+		}
 	}
 
 	private Rectangle DrawWorldBorder(World world, ImDrawListPtr drawList, Matrix4x4 transform) {
@@ -585,12 +591,19 @@ public class CanvasPanel : Panel {
 }
 
 public class CanvasTool {
-	public string DisplayName;
-	public LayerType LayerType;
+	public string DisplayName => displayName;
+	public LayerType LayerType => layerType;
 
 	public Scene Scene => scene;
-	
+
+	private string displayName;
+	private LayerType layerType;
 	private Scene scene;
+
+	protected CanvasTool(string displayName, LayerType type) {
+		this.displayName = displayName;
+		this.layerType = layerType;
+	}
 
 	public virtual void OnActive() {
 		

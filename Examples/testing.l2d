@@ -24,6 +24,7 @@
   </tilesets>
   <scenes>
     <scene id="town_center" world.x="0" world.y="0" tiles.x="120" tiles.y="120">
+      <property name="test" type="string" value="yomama" />
       <links>
         <link slot="1" tileset="lone_forest_ground" />
         <link slot="2" tileset="lone_forest_path" />

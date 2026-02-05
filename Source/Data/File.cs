@@ -149,11 +149,20 @@ public class File {
 			}
 		});
 	}
+	
+	public void ApplyEdit(object? context, IFileEditOperation operation) {
+		var edit = BeginEdit(context, operation, operation.ApplyNextState, operation.ApplyPrevState);
+		EndEdit(ref edit);
+	}
 
 	public void ApplyEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo) {
 		if(redo == null || undo == null) throw new Exception("File edit needs an action & a reverse");
 		var edit = BeginEdit(context, data, redo, undo);
 		EndEdit(ref edit);
+	}
+	
+	public FileEditEntry BeginEdit(object? context, IFileEditOperation operation) {
+		return new FileEditEntry(context, operation.ApplyNextState, operation.ApplyPrevState, operation);
 	}
 
 	public FileEditEntry BeginEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo) {
@@ -223,6 +232,11 @@ public class File {
 
 }
 
+public interface IFileEditOperation {
+	void ApplyNextState(FileEditEntry entry);
+	void ApplyPrevState(FileEditEntry entry);
+	bool HasChanges();
+}
 
 public class FileEditEntry {
 	public object? Context => context;

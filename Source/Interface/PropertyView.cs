@@ -24,31 +24,47 @@ public static class PropertyView {
 		foreach(var p in collection.All) {
 			ImGui.PushID(pIndex);
 			if(p.Type == PropertyType.String) {
-				if(ImGui.InputText("##", ref p.String, 512)) {
-					Program.File.MarkDirty();
-					Program.File.ClearEditHistory(); // TODO: undo/redo
+				string str = p.String;
+				if(ImGui.InputText("##", ref str, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+					Program.File.ApplyEdit(collection, new Tuple<string, string>(p.String, str),
+						redo: entry => { p.String = entry.GetData<Tuple<string, string>>().Item2; },
+						undo: entry => { p.String = entry.GetData<Tuple<string, string>>().Item1; }
+					);
 				}
 			} else if(p.Type == PropertyType.Integer) {
-				if(ImGui.InputInt("##", ref p.Integer)) {
-					Program.File.MarkDirty();
-					Program.File.ClearEditHistory(); // TODO: undo/redo
+				int i = p.Integer;
+				if(ImGui.InputInt("##", ref i, 1, 10)) {
+					if(ImGui.IsItemDeactivatedAfterEdit() || ImGui.IsItemClicked()) {
+						Program.File.ApplyEdit(collection, new Tuple<int, int>(p.Integer, i),
+							redo: entry => { p.Integer = entry.GetData<Tuple<int, int>>().Item2; },
+							undo: entry => { p.Integer = entry.GetData<Tuple<int, int>>().Item1; }
+						);
+					}
 				}
 			} else if(p.Type == PropertyType.Float) {
-				if(ImGui.InputFloat("##", ref p.Float)) {
-					Program.File.MarkDirty();
-					Program.File.ClearEditHistory(); // TODO: undo/redo
+				float f = p.Float;
+				if(ImGui.InputFloat("##", ref f, 1.0F, 10.0F, "%.2f")) {
+					if(ImGui.IsItemDeactivatedAfterEdit() || ImGui.IsItemClicked()) {
+						Program.File.ApplyEdit(collection, new Tuple<float, float>(p.Float, f),
+							redo: entry => { p.Float = entry.GetData<Tuple<float, float>>().Item2; },
+							undo: entry => { p.Float = entry.GetData<Tuple<float, float>>().Item1; }
+						);
+					}
 				}
 			} else if(p.Type == PropertyType.Boolean) {
 				if(ImGui.BeginCombo("##", p.Boolean ? "True" : "False")) {
-					if(ImGui.Selectable("True", p.Boolean)) {
-						p.Boolean = true;
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
+					bool b = p.Boolean;
+					if(ImGui.Selectable("True", b)) {
+						b = true;
 					}
-					if(ImGui.Selectable("False", !p.Boolean)) {
-						p.Boolean = false;
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
+					if(ImGui.Selectable("False", !b)) {
+						b = false;
+					}
+					if(b != p.Boolean) {
+						Program.File.ApplyEdit(collection, new Tuple<bool, bool>(p.Boolean, b),
+							redo: entry => { p.Boolean = entry.GetData<Tuple<bool, bool>>().Item2; },
+							undo: entry => { p.Boolean = entry.GetData<Tuple<bool, bool>>().Item1; }
+						);
 					}
 					ImGui.EndCombo();
 				}
@@ -98,7 +114,17 @@ public static class PropertyView {
 			if(convert) ImGui.OpenPopup("convert");
 			
 			if(ImGui.BeginPopup("rename")) {
-				if(ImGui.InputText("Name", ref p.Name, 512)) Program.File.MarkDirty();
+				string name = p.Name;
+				if(ImGui.InputText("Name", ref name, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+					Program.File.ApplyEdit(collection, new Tuple<string, string>(p.Name, name),
+						redo: entry => {
+							p.Name = entry.GetData<Tuple<string, string>>().Item2;
+						},
+						undo: entry => {
+							p.Name = entry.GetData<Tuple<string, string>>().Item1;
+						}
+					);
+				}
 				ImGui.EndPopup();
 			}
 
@@ -106,65 +132,73 @@ public static class PropertyView {
 				bool close = false;
 				if(ImGui.BeginCombo("Type", p.Type.ToString())) {
 					if(ImGui.Selectable("String", p.Type == PropertyType.String)) {
+						string newString = "";
 						if(p.Type == PropertyType.Integer) {
-							p.String = p.Integer.ToString();
+							newString = p.Integer.ToString();
 						}
 						if(p.Type == PropertyType.Float) {
-							p.String = p.Float.ToString();
+							newString = p.Float.ToString();
 						}
 						if(p.Type == PropertyType.Boolean) {
-							p.String = p.Boolean.ToString();
+							newString = p.Boolean.ToString();
 						}
-						p.Type = PropertyType.String;
+						Program.File.ApplyEdit(collection, new ConvertOperation(p, newString),
+							redo: ConvertOperation.ApplyNextState,
+							undo: ConvertOperation.ApplyPrevState
+						);
 						close = true;
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
 					}
 					if(ImGui.Selectable("Integer", p.Type == PropertyType.Integer)) {
+						int newInteger = 0;
 						if(p.Type == PropertyType.String) {
-							int.TryParse(p.String, out p.Integer);
+							int.TryParse(p.String, out newInteger);
 						}
 						if(p.Type == PropertyType.Float) {
-							p.Integer = (int)p.Float;
+							newInteger = (int)p.Float;
 						}
 						if(p.Type == PropertyType.Boolean) {
-							p.Integer = p.Boolean ? 1 : 0;
+							newInteger = p.Boolean ? 1 : 0;
 						}
-						p.Type = PropertyType.Integer;
+						Program.File.ApplyEdit(collection, new ConvertOperation(p, newInteger),
+							redo: ConvertOperation.ApplyNextState,
+							undo: ConvertOperation.ApplyPrevState
+						);
 						close = true;
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
 					}
 					if(ImGui.Selectable("Float", p.Type == PropertyType.Float)) {
+						float newFloat = 0.0F;
 						if(p.Type == PropertyType.String) {
-							float.TryParse(p.String, out p.Float);
+							float.TryParse(p.String, out newFloat);
 						}
 						if(p.Type == PropertyType.Integer) {
-							p.Float = p.Integer;
+							newFloat = p.Integer;
 						}
 						if(p.Type == PropertyType.Boolean) {
-							p.Float = p.Boolean ? 1 : 0;
+							newFloat = p.Boolean ? 1 : 0;
 						}
-						p.Type = PropertyType.Float;
+						Program.File.ApplyEdit(collection, new ConvertOperation(p, newFloat),
+							redo: ConvertOperation.ApplyNextState,
+							undo: ConvertOperation.ApplyPrevState
+						);
 						close = true;
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
 					}
 
 					if(ImGui.Selectable("Boolean", p.Type == PropertyType.Boolean)) {
+						bool newBoolean = false;
 						if(p.Type == PropertyType.String) {
-							bool.TryParse(p.String, out p.Boolean);
+							bool.TryParse(p.String, out newBoolean);
 						}
 						if(p.Type == PropertyType.Integer) {
-							p.Boolean = p.Integer != 0;
+							newBoolean = p.Integer != 0;
 						}
 						if(p.Type == PropertyType.Float) {
-							p.Boolean = p.Float != 0.0F;
+							newBoolean = p.Float != 0.0F;
 						}
-						p.Type = PropertyType.Boolean;
+						Program.File.ApplyEdit(collection, new ConvertOperation(p, newBoolean),
+							redo: ConvertOperation.ApplyNextState,
+							undo: ConvertOperation.ApplyPrevState
+						);
 						close = true;
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
 					}
 
 					ImGui.EndCombo();
@@ -180,13 +214,15 @@ public static class PropertyView {
 		}
 
 		if(pDelete >= 0) {
-			collection.Remove(pDelete);
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(collection, new RemoveOperation(collection, pDelete),
+				redo: RemoveOperation.ApplyNextState,
+				undo: RemoveOperation.ApplyPrevState
+			);
 		} else if(pMoveSrc >= 0 && pMoveDst >= 0) {
-			collection.Move(pMoveSrc, pMoveDst);
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(collection, new MoveOperation(collection, pMoveSrc, pMoveDst),
+				redo: MoveOperation.ApplyNextState,
+				undo: MoveOperation.ApplyPrevState
+			);
 		}
 
 		if(ImGui.Button(Codicons.Add)) {
@@ -237,18 +273,21 @@ public static class PropertyView {
 				ImGui.SameLine();
 				ImGui.SetCursorPosX(ImGui.GetCursorPosX() - ImGui.GetStyle().ItemInnerSpacing.X);
 				ImGui.Text("Value");
-				// ImGui.Checkbox("Value", ref newPropertyBoolean);
 			}
 			ImGui.BeginDisabled(newPropertyName == "");
 			if(ImGui.Button("Add")) {
-				var property = collection.Add(newPropertyName, newPropertyType);
+				Property property = new Property();
+				property.Name = newPropertyName;
+				property.Type = newPropertyType;
 				if(newPropertyType == PropertyType.String) property.String = newPropertyString;
 				if(newPropertyType == PropertyType.Integer) property.Integer = newPropertyInteger;
 				if(newPropertyType == PropertyType.Float) property.Float = newPropertyFloat;
 				if(newPropertyType == PropertyType.Boolean) property.Boolean = newPropertyBoolean;
+				Program.File.ApplyEdit(collection, new AddOperation(collection, property),
+					redo: AddOperation.ApplyNextState,
+					undo: AddOperation.ApplyPrevState
+				);
 				ImGui.CloseCurrentPopup();
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -261,4 +300,172 @@ public static class PropertyView {
 		ImGui.PopID();
 	}
 
+	public class MoveOperation {
+		private PropertyCollection collection;
+		private int index1;
+		private int index2;
+		public MoveOperation(PropertyCollection collection, int index1, int index2) {
+			this.collection = collection;
+			this.index1 = index1;
+			this.index2 = index2;
+		}
+		public static void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.collection.Move(op.index1, op.index2);
+		}
+		public static void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.collection.Move(op.index2, op.index1);
+		}
+	}
+
+	public class AddOperation {
+		private PropertyCollection collection;
+		private Property property;
+		public AddOperation(PropertyCollection collection, Property property) {
+			this.collection = collection;
+			this.property = property;
+		}
+		public static void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.collection.Insert(op.property, op.collection.Count);
+		}
+		public static void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.collection.Remove(op.collection.Count - 1);
+		}
+	}
+
+	public class RemoveOperation {
+		private PropertyCollection collection;
+		private Property property;
+		private int index;
+		public RemoveOperation(PropertyCollection collection, int index) {
+			this.collection = collection;
+			this.property = collection.Get(index);
+			this.index = index;
+		}
+		public static void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.collection.Remove(op.index);
+		}
+		public static void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.collection.Insert(op.property, op.index);
+		}
+	}
+
+	public class ConvertOperation {
+		
+		// public Property Property => property;
+		// public PropertyType OldType => oldType;
+		// public PropertyType NewType => newType;
+		
+		// public string OldString => oldString;
+		// public int OldInteger => oldInteger;
+		// public float OldFloat => oldFloat;
+		// public bool OldBoolean => oldBoolean;
+		// public string NewString => newString;
+		// public int NewInteger => newInteger;
+		// public float NewFloat => newFloat;
+		// public bool NewBoolean => newBoolean;
+		
+		private Property property;
+		private PropertyType oldType;
+		private PropertyType newType;
+		private string oldString;
+		private int oldInteger;
+		private float oldFloat;
+		private bool oldBoolean;
+		private string newString;
+		private int newInteger;
+		private float newFloat;
+		private bool newBoolean;
+
+		public static void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<ConvertOperation>();
+			op.property.Type = op.newType;
+			switch(op.newType) {
+				case PropertyType.String:
+					op.property.String = op.newString;
+					break;
+				case PropertyType.Integer:
+					op.property.Integer = op.newInteger;
+					break;
+				case PropertyType.Float:
+					op.property.Float = op.newFloat;
+					break;
+				case PropertyType.Boolean:
+					op.property.Boolean = op.newBoolean;
+					break;
+			}
+		}
+		
+		public static void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<ConvertOperation>();
+			op.property.Type = op.oldType;
+			op.property.String = op.oldString;
+			op.property.Integer = op.oldInteger;
+			op.property.Float = op.oldFloat;
+			op.property.Boolean = op.oldBoolean;
+		}
+		
+		public ConvertOperation(Property property, string newString) {
+			this.property = property;
+			this.oldType = property.Type;
+			this.oldString = property.String;
+			this.oldInteger = property.Integer;
+			this.oldFloat = property.Float;
+			this.oldBoolean = property.Boolean;
+			this.newType = PropertyType.String;
+			this.newString = newString;
+			this.newInteger = property.Integer;
+			this.newFloat = property.Float;
+			this.newBoolean = property.Boolean;
+		}
+		
+		public ConvertOperation(Property property, int newInteger) {
+			this.property = property;
+			this.oldType = property.Type;
+			this.oldString = property.String;
+			this.oldInteger = property.Integer;
+			this.oldFloat = property.Float;
+			this.oldBoolean = property.Boolean;
+			this.newType = PropertyType.Integer;
+			this.newInteger = newInteger;
+			this.newString = property.String;
+			this.newFloat = property.Float;
+			this.newBoolean = property.Boolean;
+		}
+		
+		public ConvertOperation(Property property, float newFloat) {
+			this.property = property;
+			this.oldType = property.Type;
+			this.oldString = property.String;
+			this.oldInteger = property.Integer;
+			this.oldFloat = property.Float;
+			this.oldBoolean = property.Boolean;
+			this.newType = PropertyType.Float;
+			this.newFloat = newFloat;
+			this.newString = property.String;
+			this.newInteger = property.Integer;
+			this.newBoolean = property.Boolean;
+		}
+		
+		public ConvertOperation(Property property, bool newBoolean) {
+			this.property = property;
+			this.oldType = property.Type;
+			this.oldString = property.String;
+			this.oldInteger = property.Integer;
+			this.oldFloat = property.Float;
+			this.oldBoolean = property.Boolean;
+			this.newType = PropertyType.Boolean;
+			this.newBoolean = newBoolean;
+			this.newString = property.String;
+			this.newInteger = property.Integer;
+			this.newFloat = property.Float;
+		}
+		
+	}
+	
 }

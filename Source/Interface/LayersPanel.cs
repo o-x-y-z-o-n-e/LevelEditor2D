@@ -65,19 +65,15 @@ public class LayersPanel : Panel {
 				if(ImGui.IsItemActive() && !ImGui.IsItemHovered()) {
 					int n_next = i + (ImGui.GetMouseDragDelta(0).Y < 0.0F ? -1 : 1);
 					if(n_next >= 0 && n_next < scene.Layers.Count) {
-						scene.SwapLayers(i, n_next);
 						ImGui.ResetMouseDragDelta();
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
+						Program.File.ApplyEdit(this, new MoveOperation(scene, i, n_next));
 					}
 				}
 				
 				ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
 				if(ImGui.BeginPopup("context")) {
 					if(ImGui.MenuItem(layer.Visible ? "Hide" : "Show")) {
-						layer.Visible = !layer.Visible;
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
+						Program.File.ApplyEdit(this, new VisiblityOperation(layer, !layer.Visible));
 					}
 					ImGui.EndPopup();
 				}
@@ -86,9 +82,7 @@ public class LayersPanel : Panel {
 				ImGui.SetCursorPos(cur);
 				ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(layer.Visible ? Codicons.Eye : Codicons.EyeClosed).X - 6);
 				if(ImGui.SmallButton(layer.Visible ? Codicons.Eye : Codicons.EyeClosed)) {
-					layer.Visible = !layer.Visible;
-					Program.File.MarkDirty();
-					Program.File.ClearEditHistory(); // TODO: undo/redo
+					Program.File.ApplyEdit(this, new VisiblityOperation(layer, !layer.Visible));
 				}
 				ImGui.EndDisabled();
 
@@ -135,11 +129,10 @@ public class LayersPanel : Panel {
 				LayerType type = layerTypeOption == 0 ? LayerType.Tiles : LayerType.Entities;
 				Layer layer = scene.AddLayer(type);
 				layer.Name = layerRenameBuffer;
-				Program.SelectedLayer = layer;
+				Program.File.ApplyEdit(this, new AddOperation(scene, layer));
+				Program.SetSelectedLayer(layer);
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -171,11 +164,10 @@ public class LayersPanel : Panel {
 			if(ImGui.Button("Ok")) {
 				Layer layer = scene.CopyLayer(Program.SelectedLayer);
 				layer.Name = layerRenameBuffer;
+				Program.File.ApplyEdit(this, new AddOperation(scene, layer));
 				Program.SetSelectedLayer(layer);
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -195,18 +187,15 @@ public class LayersPanel : Panel {
 		if(ImGui.BeginPopup("delete-layer")) {
 			ImGui.Text("Delete selected layer?");
 			if(ImGui.Button("Ok")) {
-				int deleteLayerIndex = scene.Layers.IndexOf(Program.SelectedLayer);
-				scene.DeleteLayer(scene.GetLayer(deleteLayerIndex));
-				if(scene.LayerCount > 0) {
-					if(deleteLayerIndex >= scene.LayerCount) deleteLayerIndex = scene.LayerCount - 1;
-					Program.SelectedLayer = scene.GetLayer(deleteLayerIndex);
-				} else {
-					Program.SelectedLayer = null;
-				}
+				Program.File.ApplyEdit(this, new RemoveOperation(scene, Program.SelectedLayer));
 				ImGui.CloseCurrentPopup();
 				layerRenameBuffer = "";
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
+				// if(scene.LayerCount > 0) {
+				// 	if(deleteLayerIndex >= scene.LayerCount) deleteLayerIndex = scene.LayerCount - 1;
+				// 	Program.SelectedLayer = scene.GetLayer(deleteLayerIndex);
+				// } else {
+				// 	Program.SelectedLayer = null;
+				// }
 			}
 			ImGui.SameLine();
 			ImGui.Dummy(new Vector2(80, 0));
@@ -228,17 +217,13 @@ public class LayersPanel : Panel {
 		
 		ImGui.BeginDisabled(layerIndex <= 0);
 		if(ImGui.Button(Codicons.ChevronUp)) {
-			scene.SwapLayers(layerIndex, layerIndex-1);
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(this, new MoveOperation(scene, layerIndex, layerIndex-1));
 		}
 		ImGui.EndDisabled();
 		ImGui.BeginDisabled(scene == null || layerIndex >= scene.LayerCount - 1);
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.ChevronDown)) {
-			scene.SwapLayers(layerIndex, layerIndex+1);
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			Program.File.ApplyEdit(this, new MoveOperation(scene, layerIndex, layerIndex+1));
 		}
 		ImGui.EndDisabled();
 		
@@ -264,24 +249,122 @@ public class LayersPanel : Panel {
 					}
 				}
 				if(!invalidName) {
-					layer.Name = name;
+					Program.File.ApplyEdit(this, new RenameOperation(layer, name));
 				}
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
 			}
 			
 			ImGui.BeginDisabled();
 			string group = "--unused--";
-			if(ImGui.InputText("Group", ref group, 256)) {
-				// TODO
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
-			}
+			if(ImGui.InputText("Group", ref group, 256)) { }
 			ImGui.EndDisabled();
 			
 			PropertyView.Run(layer.Properties);
 		} else {
 			ImGui.Text("No layer selected...");
 		}
+	}
+	
+	public class AddOperation : IFileEditOperation {
+		private Scene scene;
+		private Layer layer;
+		public AddOperation(Scene scene, Layer layer) {
+			this.scene = scene;
+			this.layer = layer;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.scene.InsertLayer(op.layer, op.scene.LayerCount);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.scene.RemoveLayer(op.layer);
+			if(Program.SelectedLayer == op.layer) {
+				Program.SetSelectedLayer(null);
+			}
+		}
+		public bool HasChanges() => true;
+	}
+
+	public class MoveOperation : IFileEditOperation {
+		private Scene scene;
+		private int index1;
+		private int index2;
+		public MoveOperation(Scene scene, int index1, int index2) {
+			this.scene = scene;
+			this.index1 = index1;
+			this.index2 = index2;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.scene.SwapLayers(op.index1, op.index2);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.scene.SwapLayers(op.index2, op.index1);
+		}
+		public bool HasChanges() => index1 != index2;
+	}
+	
+	public class VisiblityOperation : IFileEditOperation {
+		private Layer layer;
+		private bool oldValue;
+		private bool newValue;
+		public VisiblityOperation(Layer layer, bool newValue) {
+			this.layer = layer;
+			this.oldValue = layer.Visible;
+			this.newValue = newValue;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<VisiblityOperation>();
+			op.layer.Visible = op.newValue;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<VisiblityOperation>();
+			op.layer.Visible = op.oldValue;
+		}
+		public bool HasChanges() => oldValue != newValue;
+	}
+	
+	public class RenameOperation : IFileEditOperation {
+		private Layer layer;
+		private string oldName;
+		private string newName;
+		public RenameOperation(Layer layer, string newName) {
+			this.layer = layer;
+			this.oldName = layer.Name;
+			this.newName = newName;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RenameOperation>();
+			op.layer.Name = op.newName;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RenameOperation>();
+			op.layer.Name = op.oldName;
+		}
+		public bool HasChanges() => oldName != newName;
+	}
+	
+	public class RemoveOperation : IFileEditOperation {
+		private Scene scene;
+		private Layer layer;
+		private int index;
+		public RemoveOperation(Scene scene, Layer layer) {
+			this.scene = scene;
+			this.layer = layer;
+			this.index = scene.GetLayerIndex(layer);
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.scene.RemoveLayer(op.layer);
+			if(op.layer == Program.SelectedLayer) {
+				Program.SetSelectedLayer(null);
+			}
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.scene.InsertLayer(op.layer, op.index);
+		}
+		public bool HasChanges() => true;
 	}
 }

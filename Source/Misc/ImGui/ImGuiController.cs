@@ -99,7 +99,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
 
             {
                 Assembly assembly = typeof(L2D.Program).Assembly;
-                Stream stream = assembly.GetManifestResourceStream("L2D.Fonts.JetBrainsMono-Medium.ttf");
+                Stream stream = assembly.GetManifestResourceStream("L2D.Resources.JetBrainsMono-Medium.ttf");
                 byte[] buffer = new byte[stream.Length];
                 stream.Read(buffer);
                 stream.Close();
@@ -134,8 +134,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             ushort[] iconRanges = new ushort[] { Codicons.IconMin, Codicons.IconMax, 0 };
 
             GCHandle rangeHandle = GCHandle.Alloc(iconRanges, GCHandleType.Pinned);
-            try
-            {
+            try {
                 // io.Fonts.AddFontFromFileTTF(
                 //     "Fonts/Codicons.ttf",
                 //     fontSize,
@@ -143,7 +142,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
                 //     rangeHandle.AddrOfPinnedObject()
                 // );
                 Assembly assembly = typeof(L2D.Program).Assembly;
-                Stream stream = assembly.GetManifestResourceStream("L2D.Fonts.Codicons.ttf");
+                Stream stream = assembly.GetManifestResourceStream("L2D.Resources.Codicons.ttf");
                 byte[] buffer = new byte[stream.Length];
                 stream.Read(buffer);
                 stream.Close();

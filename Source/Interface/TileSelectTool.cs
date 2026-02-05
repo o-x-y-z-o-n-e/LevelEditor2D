@@ -14,9 +14,7 @@ public class TileSelectTool : CanvasTool {
 	private bool resizing;
 	private Point resizeTileOrigin;
 
-	public TileSelectTool() {
-		DisplayName = $"{Codicons.ScreenFull} Select";
-		LayerType = LayerType.Tiles;
+	public TileSelectTool() : base($"{Codicons.ScreenFull} Select", LayerType.Tiles) {
 		selection = new(0, 0, 0, 0);
 	}
 

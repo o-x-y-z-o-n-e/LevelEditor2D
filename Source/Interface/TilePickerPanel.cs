@@ -120,9 +120,10 @@ public class TilePickerPanel : Panel {
 						if(match) continue;
 						atLeastOneOption = true;
 						if(ImGui.Selectable($"Slot: {s}")) {
-							link.Slot = s;
-							Program.File.MarkDirty();
-							Program.File.ClearEditHistory(); // TODO: undo/redo
+							Program.File.ApplyEdit(this, new SlotOperation(link, s),
+								redo: SlotOperation.ApplyNextState,
+								undo: SlotOperation.ApplyPrevState
+							);
 						}
 					}
 					if(!atLeastOneOption) {
@@ -138,10 +139,13 @@ public class TilePickerPanel : Panel {
 
 				if(i == tilesetLinkTarget) {
 					Program.TilesetsPanel.SelectTilesetModal((selected, tileset) => {
-						if(selected) link.Tileset = tileset;
+						if(selected) {
+							Program.File.ApplyEdit(this, new TilesetOperation(link, tileset),
+								redo: TilesetOperation.ApplyNextState,
+								undo: TilesetOperation.ApplyPrevState
+							);
+						}
 						tilesetLinkTarget = -1;
-						Program.File.MarkDirty();
-						Program.File.ClearEditHistory(); // TODO: undo/redo
 					});
 				}
 
@@ -308,9 +312,11 @@ public class TilePickerPanel : Panel {
 		}
 		ImGui.BeginDisabled(nextSlotAvailable > maxTilesetSlots);
 		if(ImGui.Button("Add", new Vector2(region.X, 0))) {
-			scene.Tilesets.Add(new TilesetLink(scene.File, nextSlotAvailable, null));
-			Program.File.MarkDirty();
-			Program.File.ClearEditHistory(); // TODO: undo/redo
+			TilesetLink link = new TilesetLink(scene.File, nextSlotAvailable, null);
+			Program.File.ApplyEdit(this, new AddOperation(scene, link),
+				redo: AddOperation.ApplyNextState,
+				undo: AddOperation.ApplyPrevState
+			);
 		}
 		ImGui.EndDisabled();
 		
@@ -318,4 +324,60 @@ public class TilePickerPanel : Panel {
 		
 		ImGui.PopID(); // scene.ID
 	}
+	
+	public class AddOperation {
+		private Scene scene;
+		private TilesetLink link;
+		public AddOperation(Scene scene, TilesetLink link) {
+			this.scene = scene;
+			this.link = link;
+		}
+		public static void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.scene.Tilesets.Add(op.link);
+		}
+		public static void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.scene.Tilesets.Remove(op.link);
+		}
+	}
+	
+	public class SlotOperation {
+		private TilesetLink link;
+		private int oldSlot;
+		private int newSlot;
+		public SlotOperation(TilesetLink link, int slot) {
+			this.link = link;
+			this.oldSlot = link.Slot;
+			this.newSlot = slot;
+		}
+		public static void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<SlotOperation>();
+			op.link.Slot = op.newSlot;
+		}
+		public static void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<SlotOperation>();
+			op.link.Slot = op.oldSlot;
+		}
+	}
+	
+	public class TilesetOperation {
+		private TilesetLink link;
+		private Tileset oldTileset;
+		private Tileset newTileset;
+		public TilesetOperation(TilesetLink link, Tileset tileset) {
+			this.link = link;
+			this.oldTileset = link.Tileset;
+			this.newTileset = tileset;
+		}
+		public static void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<TilesetOperation>();
+			op.link.Tileset = op.newTileset;
+		}
+		public static void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<TilesetOperation>();
+			op.link.Tileset = op.oldTileset;
+		}
+	}
+	
 }

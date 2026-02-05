@@ -18,17 +18,19 @@ public class TileBrushTool : CanvasTool {
 	private int width;
 	private int height;
 	private bool resizing;
+	private bool imprinting;
 	private Point resizeTileOrigin;
 	private bool clearAfterPlace;
 	private bool disposed;
+	private FileEditEntry edit;
 
-	public TileBrushTool() {
-		DisplayName = $"{Codicons.Pencil} Brush";
-		LayerType = LayerType.Tiles;
+	public TileBrushTool() : base($"{Codicons.Pencil} Brush", LayerType.Tiles) {
 		tilemap = null;
 		width = 0;
 		height = 0;
 		resizing = false;
+		imprinting = false;
+		edit = null;
 		SetSize(1, 1, true);
 	}
 
@@ -112,20 +114,23 @@ public class TileBrushTool : CanvasTool {
 			ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
 		}
 		
-		bool imprint = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Left);
 		bool resize = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Right);
+		bool imprint = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Left) && !resize;
 		
 		if(IsEmpty() && !resizing && !resize) {
+			if(edit != null) EndImprint();
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
 			return;
 		}
 
 		if(ImGui.IsKeyPressed(ImGuiKey.Escape)) {
+			if(edit != null) EndImprint();
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
 			return;
 		}
 		
 		if(ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
+			if(edit != null) EndImprint();
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileEraser);
 			return;
 		}
@@ -269,17 +274,25 @@ public class TileBrushTool : CanvasTool {
 		uint borderColorInvalid = Utilities.GetPackedColor(255, 40, 40, 255);
 		uint fillColorInvalid = Utilities.GetPackedColor(255, 40, 40, 64);
 		
-		if(!resizing) {
-			if(imprint) {
-				// TODO: begin, update, end imprint
+		if(imprint) {
+			if(clearAfterPlace) {
+				clearAfterPlace = false;
 				Imprint(new Point(offset.X + mx, offset.Y + my), layer);
-				if(clearAfterPlace) {
-					clearAfterPlace = false;
-					SetSize(1, 1);
-					tilemap.Grid[0, 0] = new TileRef();
+				SetSize(1, 1);
+				tilemap.Grid[0, 0] = new TileRef();
+			} else {
+				if(!imprinting) {
+					imprinting = true;
+					BeginImprint(layer);
 				}
+				UpdateImprint(new Point(offset.X + mx, offset.Y + my));
 			}
-			
+		} else if(!imprint && imprinting) {
+			imprinting = false;
+			EndImprint();
+		}
+		
+		if(!resizing) {
 			tilemap.Render();
 			uint tex = tilemap.GetFrameBufferTexture();
 			drawList.AddImage((nint)tex, p0, p3, new(0,1), new(1,0));
@@ -396,39 +409,44 @@ public class TileBrushTool : CanvasTool {
 	}
 
 	public void Imprint(Point offset, Layer layer) {
+		BeginImprint(layer);
+		UpdateImprint(offset);
+		EndImprint();
+	}
+
+	private void BeginImprint(Layer layer) {
+		if(edit != null) {
+			Program.File.EndEdit(ref edit, discard: true);
+		}
 		var operation = new TileEditOperation(layer.Tilemap);
-		
+		edit = Program.File.BeginEdit(Program.CanvasPanel, operation,
+			redo: TileEditOperation.ApplyNextState,
+			undo: TileEditOperation.ApplyPrevState
+		);
+	}
+
+	private void UpdateImprint(Point offset) {
+		if(edit == null) return;
+		var operation = edit.GetData<TileEditOperation>();
 		for(int y = 0; y < height; y++) {
 			for(int x = 0; x < width; x++) {
-				int tx = offset.X - layer.Scene.WorldX + x;
-				int ty = offset.Y - layer.Scene.WorldY + y;
-				if(tx < 0 || ty < 0 || tx >= layer.Scene.TileCountX || ty >= layer.Scene.TileCountY) continue;
-				if(tilemap.Grid[x, y].TileID == 0 || tilemap.Grid[x, y].TilesetSlot == 0) continue;
-				operation.Set(tx, ty, tilemap.Grid[x, y]);
+				int tx = offset.X - operation.Tilemap.Scene.WorldX + x;
+				int ty = offset.Y - operation.Tilemap.Scene.WorldY + y;
+				if(tx < 0 || ty < 0 || tx >= operation.Tilemap.Scene.TileCountX || ty >= operation.Tilemap.Scene.TileCountY) continue;
+				if(this.tilemap.Grid[x, y].TileID == 0 || this.tilemap.Grid[x, y].TilesetSlot == 0) continue;
+				operation.Set(tx, ty, this.tilemap.Grid[x, y]);
+				operation.Tilemap.Grid[tx, ty] = this.tilemap.Grid[x, y];
 			}
 		}
-		
-		if(operation.HasChanges()) {
-			Program.File.ApplyEdit(this, operation,
-				redo: TileEditOperation.ApplyNextState,
-				undo: TileEditOperation.ApplyPrevState
-			);
-		}
+	}
+
+	private void EndImprint() {
+		if(edit == null) return;
+		Program.File.EndEdit(ref edit, discard: !edit.GetData<TileEditOperation>().HasChanges());
 	}
 
 	public void MoveRegion(Rectangle region, Layer layer) {
 		CopyRegion(region, layer);
-		
-		/*
-		for(int y = 0; y < region.Height; y++) {
-			for(int x = 0; x < region.Width; x++) {
-				int tx = region.X - layer.Scene.WorldX + x;
-				int ty = region.Y - layer.Scene.WorldY + y;
-				if(tx >= 0 && ty >= 0 && tx < layer.Scene.TileCountX && ty < layer.Scene.TileCountY) {
-					layer.Tilemap.Grid[tx, ty] = new TileRef(0, 0);
-				}
-			}
-		}*/
 		
 		var operation = new TileEditOperation(layer.Tilemap);
 		

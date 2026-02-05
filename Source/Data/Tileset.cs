@@ -151,9 +151,27 @@ public class Tileset {
 		return element;
 	}
 
+	internal void SetTexturePath(string path, bool updateResources = true) {
+		textureFilePath = path;
+		textureFileFullPath = file.GetPath(textureFilePath);
+		if(updateResources) {
+			UpdateFileWatcher();
+			ReloadTexture();
+		}
+	}
+
 	private void OnTextureFilePathChanged() {
 		if(textureFilePath == null) textureFilePath = "";
 		textureFileFullPath = file.GetPath(textureFilePath);
+		UpdateFileWatcher();
+		ReloadTexture();
+	}
+
+	private void OnTextureFileChanged(object sender, FileSystemEventArgs e) {
+		Program.SendMessage(ReloadTexture);
+	}
+
+	public void UpdateFileWatcher() {
 		if(textureFileWatcher == null) {
 			textureFileWatcher = new FileSystemWatcher();
 			textureFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
@@ -162,12 +180,6 @@ public class Tileset {
 		textureFileWatcher.Path = Path.GetDirectoryName(textureFileFullPath).Replace('\\', '/');
 		textureFileWatcher.Filter = Path.GetFileName(textureFilePath);
 		textureFileWatcher.EnableRaisingEvents = textureFilePath != "";
-		
-		ReloadTexture();
-	}
-
-	private void OnTextureFileChanged(object sender, FileSystemEventArgs e) {
-		Program.SendMessage(ReloadTexture);
 	}
 
 	public Texture GetTexturePreview() => texturePreview;
@@ -293,12 +305,13 @@ public class Tileset {
 		}
 	}
 
-	public void Dispose() {
-		if(disposed) return;
+	public void ReleaseResources() {
+		textureFileWatcher?.Dispose();
 		texturePreview?.Dispose();
 		textureArray?.Dispose();
-		textureFileWatcher?.Dispose();
-		disposed = true;
+		textureFileWatcher = null;
+		texturePreview = null;
+		textureArray = null;
 	}
 }
 

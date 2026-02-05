@@ -113,6 +113,16 @@ public class EntityCollection {
 	public void Remove(int index) {
 		entities.RemoveAt(index);
 	}
+	
+	public void Remove(Entity entity) {
+		if(entity == null || !entities.Contains(entity)) return;
+		entities.Remove(entity);
+	}
+	
+	public void Insert(Entity entity, int index) {
+		if(entity == null || entities.Contains(entity)) return;
+		entities.Insert(index, entity);
+	}
 
 }
 

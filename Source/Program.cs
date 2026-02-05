@@ -150,6 +150,8 @@ public static class Program {
 		try {
 			gl = window.CreateOpenGL();
 			input = window.CreateInput();
+			
+			window.SetDefaultIcon();
 
 			controller = new ImGuiController(gl, window, input);
 
@@ -711,7 +713,7 @@ public static class Program {
 		} else {
 			recentProjects.Remove(info);
 		}
-		recentProjects.Insert(0, info);
+		recentProjects.Add(info);
 		
 		info.LastOpened = DateTime.Now;
 		info.CameraPosition = canvasPanel.Camera;

@@ -11,6 +11,14 @@ public class Property {
 	public int Integer;
 	public float Float;
 	public bool Boolean;
+	public Property() {
+		Name = "";
+		Type = PropertyType.String;
+		String = "";
+		Integer = 0;
+		Float = 0.0F;
+		Boolean = false;
+	}
 }
 
 public class PropertyCollection {
@@ -23,6 +31,10 @@ public class PropertyCollection {
 	
 	public PropertyCollection() {
 		properties = new();
+	}
+	
+	public Property Get(int index) {
+		return properties[index];
 	}
 	
 	public Property Get(string name) {
@@ -50,16 +62,16 @@ public class PropertyCollection {
 	}
 
 	public Property Add(string name, PropertyType type) {
-		Property property = Get(name);
-		if(property != null) {
-			property.Type = type;
-			return property;
-		}
-		property = new Property();
+		Property property = new Property();
 		property.Name = name;
 		property.Type = type;
 		properties.Add(property);
 		return property;
+	}
+
+	public void Insert(Property property, int index) {
+		if(properties.Contains(property)) return;
+		properties.Insert(index, property);
 	}
 
 	public int IndexOf(Property property) => properties.IndexOf(property);
