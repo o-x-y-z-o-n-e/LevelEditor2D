@@ -40,6 +40,8 @@ public class TilesetsPanel : Panel {
 	private Vector2 colliderDragOrigin;
 	private bool colliderDrag;
 	private int colliderHighlightIndex;
+
+	private FileEditEntry shapeEdit;
 	
 	public TilesetsPanel() {
 		Title = "Tilesets";
@@ -60,6 +62,7 @@ public class TilesetsPanel : Panel {
 		importOffset = new(0);
 		importSpacing = new(0);
 		importTexels = new(16);
+		shapeEdit = null;
 	}
 
 	protected override void Update() {
@@ -557,9 +560,11 @@ public class TilesetsPanel : Panel {
 					if(tiledata == null) {
 						tiledata = tileset.AddTileData(tileEditIndex);
 					}
-					tiledata.Shapes.Add(new(c0, c1 - c0));
-					Program.File.MarkDirty();
-					Program.File.ClearEditHistory(); // TODO: undo/redo
+					int c = tiledata.Shapes.Count;
+					var edit = Program.File.BeginEdit(this, new ShapeCountOperation(tiledata, c + 1));
+					var op = edit.GetData<ShapeCountOperation>();
+					op.NewList[c] = new TileShape(c0, c1 - c0);
+					Program.File.EndEdit(ref edit);
 				}
 			}
 		}
@@ -589,15 +594,7 @@ public class TilesetsPanel : Panel {
 				if(data == null) {
 					data = tileset.AddTileData(tileEditIndex);
 				}
-				if(count < data.Shapes.Count) {
-					data.Shapes.RemoveRange(count, data.Shapes.Count - count);
-				} else {
-					while(data.Shapes.Count < count) {
-						data.Shapes.Add(new TileShape());
-					}
-				}
-				Program.File.MarkDirty();
-				Program.File.ClearEditHistory(); // TODO: undo/redo
+				Program.File.ApplyEdit(this, new ShapeCountOperation(data, count));
 			}
 		}
 		
@@ -610,18 +607,22 @@ public class TilesetsPanel : Panel {
 				ImGui.PushID(i);
 
 				ImGui.Text($"Shape #{i + 1}");
-				
 				if(ImGui.IsItemHovered()) {
 					colliderHighlightIndex = i;
 				}
 
-				bool changed = false;
-
 				Vector2 pos = data.Shapes[i].Position;
+				Vector2 size = data.Shapes[i].Size;
+				bool end = false;
+				
 				if(ImGui.DragFloat2("Shape Pos", ref pos, 1.0F)) {
-					changed = true;
+					if(shapeEdit == null) {
+						shapeEdit = Program.File.BeginEdit(this, new ShapeEditOperation(data, i));
+					}
 				}
-
+				if(ImGui.IsItemDeactivatedAfterEdit()) {
+					end = true;
+				}
 				if(ImGui.IsItemHovered()) {
 					colliderHighlightIndex = i;
 				}
@@ -629,11 +630,14 @@ public class TilesetsPanel : Panel {
 				pos.X = float.Clamp(pos.X, 0.0F, tileset.SizeX);
 				pos.Y = float.Clamp(pos.Y, 0.0F, tileset.SizeY);
 
-				Vector2 size = data.Shapes[i].Size;
 				if(ImGui.DragFloat2("Shape Size", ref size, 1.0F)) {
-					changed = true;
+					if(shapeEdit == null) {
+						shapeEdit = Program.File.BeginEdit(this, new ShapeEditOperation(data, i));
+					}
 				}
-				
+				if(ImGui.IsItemDeactivatedAfterEdit()) {
+					end = true;
+				}
 				if(ImGui.IsItemHovered()) {
 					colliderHighlightIndex = i;
 				}
@@ -641,10 +645,14 @@ public class TilesetsPanel : Panel {
 				size.X = float.Clamp(size.X, 0.0F, tileset.SizeX - pos.X);
 				size.Y = float.Clamp(size.Y, 0.0F, tileset.SizeY - pos.Y);
 
-				if(changed) {
-					data.Shapes[i] = new TileShape(pos, size);
-					Program.File.MarkDirty();
-					Program.File.ClearEditHistory(); // TODO: undo/redo
+				if(shapeEdit != null) {
+					var op = shapeEdit.GetData<ShapeEditOperation>();
+					op.SetPosition(pos);
+					op.SetSize(size);
+					data.Shapes[i] = op.NewShape;
+					if(end) {
+						Program.File.EndEdit(ref shapeEdit, !op.HasChanges());
+					}
 				}
 
 				ImGui.PopID();
@@ -872,6 +880,65 @@ public class TilesetsPanel : Panel {
 			op.tileset.Group = op.oldValue;
 		}
 		public bool HasChanges() => oldValue != newValue;
+	}
+	
+	public class ShapeCountOperation : IFileEditOperation {
+		public List<TileShape> NewList => newList;
+		private TileData data;
+		private List<TileShape> oldList;
+		private List<TileShape> newList;
+		public ShapeCountOperation(TileData data, int newCount) {
+			this.data = data;
+			this.oldList = data.Shapes;
+			this.newList = new();
+			int i = 0;
+			while(i < newCount && i < data.Shapes.Count) {
+				this.newList.Add(data.Shapes[i]);
+				i++;
+			}
+			while(i < newCount) {
+				this.newList.Add(new TileShape());
+				i++;
+			}
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<ShapeCountOperation>();
+			op.data.Shapes = op.newList;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<ShapeCountOperation>();
+			op.data.Shapes = op.oldList;
+		}
+		public bool HasChanges() => oldList.Count != newList.Count;
+	}
+	
+	public class ShapeEditOperation : IFileEditOperation {
+		public TileShape NewShape => newShape;
+		private TileData data;
+		private int index;
+		private TileShape oldShape;
+		private TileShape newShape;
+		public ShapeEditOperation(TileData data, int index) {
+			this.data = data;
+			this.index = index;
+			this.oldShape = data.Shapes[index];
+			this.newShape = data.Shapes[index];
+		}
+		public void SetPosition(Vector2 position) {
+			newShape.Position = position;
+		}
+		public void SetSize(Vector2 size) {
+			newShape.Size = size;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<ShapeEditOperation>();
+			op.data.Shapes[op.index] = op.newShape;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<ShapeEditOperation>();
+			op.data.Shapes[op.index] = op.oldShape;
+		}
+		public bool HasChanges() => oldShape != newShape;
 	}
 	
 }

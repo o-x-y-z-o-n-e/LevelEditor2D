@@ -317,7 +317,10 @@ public class Tileset {
 
 public class TileData {
 	public int Tile => tile;
-	public List<TileShape> Shapes => shapes;
+	public List<TileShape> Shapes {
+		get => shapes;
+		set => shapes = value;
+	}
 	private int tile;
 	private List<TileShape> shapes;
 	public TileData(int tile) {
@@ -336,5 +339,14 @@ public struct TileShape {
 	public TileShape(Vector2 p, Vector2 s) {
 		Position = p;
 		Size = s;
+	}
+	public static bool operator==(TileShape obj1, TileShape obj2) {
+		return (obj1.Position == obj2.Position && obj1.Size == obj2.Size);
+	}
+	public static bool operator!=(TileShape obj1, TileShape obj2) {
+		return !(obj1.Position == obj2.Position && obj1.Size == obj2.Size);
+	}
+	public override bool Equals(object obj) {
+		return obj is TileShape shape && (this.Position == shape.Position && this.Size == shape.Size);
 	}
 }
