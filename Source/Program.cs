@@ -309,15 +309,6 @@ public static class Program {
 			if(requestClose) {
 				window?.Close();
 			}
-			
-			if(ImGui.IsKeyPressed(ImGuiKey.O)) {
-				Log.Information("test");
-			}
-
-			if(ImGui.IsKeyPressed(ImGuiKey.P)) {
-				Log.Information("hello");
-				throw new Exception("test-ex");
-			}
 		} catch(Exception e) {
 			Log.Fatal(e, "Program crashed!");
 			Log.CloseAndFlush();
