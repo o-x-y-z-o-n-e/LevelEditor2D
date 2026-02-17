@@ -379,6 +379,9 @@ public static class Program {
 	
 	public static void SetSelectedEntity(Entity entity) {
 		selectedEntity = entity;
+		if(selectedEntity != null) {
+			entitiesPanel.Focus();
+		}
 	}
 	
 	public static void SetSelectedTileset(Tileset tileset) {
