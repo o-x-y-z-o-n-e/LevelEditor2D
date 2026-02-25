@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Numerics;
 using System.Xml.Linq;
 
 namespace L2D;
@@ -50,6 +51,18 @@ public static class Utilities {
 		}
 		return defaultValue;
 	}
+	
+	public static Vector3 ParseAsColor(this XAttribute? attr, Vector3 defaultValue = default) {
+		Vector3 value = defaultValue;
+		if(attr == null) return value;
+		string str = attr.Value.ToLower();
+		string[] comps = str.Split(',');
+		if(comps.Length < 3) return value;
+		if(!float.TryParse(comps[0], out value.X)) return value; value.X = float.Clamp(value.X / 255.0F, 0.0F, 1.0F);
+		if(!float.TryParse(comps[1], out value.Y)) return value; value.Y = float.Clamp(value.Y / 255.0F, 0.0F, 1.0F);
+		if(!float.TryParse(comps[2], out value.Z)) return value; value.Z = float.Clamp(value.Z / 255.0F, 0.0F, 1.0F);
+		return value;
+	}
 
 	public static bool ParseAsVersion(this XAttribute? attr, out int major, out int minor, out int patch) {
 		major = 0;
@@ -67,6 +80,13 @@ public static class Utilities {
 
 	public static float Map(float value, float in_low, float in_high, float out_low, float out_high) {
 		return out_low + (out_high - out_low) * ((float.Clamp(value, in_low, in_high) - in_low) / (in_high - in_low));
+	}
+
+	public static string SerializeColor(Vector3 color) {
+		color.X = float.Clamp(color.X * 255.0F, 0.0F, 255.0F);
+		color.Y = float.Clamp(color.Y * 255.0F, 0.0F, 255.0F);
+		color.Z = float.Clamp(color.Z * 255.0F, 0.0F, 255.0F);
+		return $"{color.X:F0},{color.Y:F0},{color.Z:F0}";
 	}
 	
 }

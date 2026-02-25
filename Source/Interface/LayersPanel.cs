@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Drawing;
+using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
@@ -13,11 +14,14 @@ public class LayersPanel : Panel {
 	private string layerRenameBuffer;
 	private int layerTypeOption;
 
+	private FileEditEntry colorEdit;
+
 	public LayersPanel() {
 		Title = "Layers";
 		isolateLayerView = false;
 		layerRenameBuffer = "";
 		layerTypeOption = 0;
+		colorEdit = null;
 	}
 
 	protected override void Update() {
@@ -258,6 +262,18 @@ public class LayersPanel : Panel {
 			if(ImGui.InputText("Group", ref group, 256)) { }
 			ImGui.EndDisabled();
 			
+			Vector3 col = layer.Color;
+			if(ImGui.ColorEdit3("Color", ref col)) {
+				if(colorEdit == null) {
+					colorEdit = Program.File.BeginEdit(this, new ColorOperation(layer));
+				}
+				colorEdit.GetData<ColorOperation>().NewColor = col;
+				layer.Color = col;
+			}
+			if(ImGui.IsItemDeactivatedAfterEdit()) {
+				Program.File.EndEdit(ref colorEdit);
+			}
+			
 			PropertyView.Run(layer.Properties);
 		} else {
 			ImGui.Text("No layer selected...");
@@ -366,5 +382,32 @@ public class LayersPanel : Panel {
 			op.scene.InsertLayer(op.layer, op.index);
 		}
 		public bool HasChanges() => true;
+	}
+
+	public class ColorOperation : IFileEditOperation {
+
+		public ref Vector3 NewColor => ref newColor;
+
+		private Layer layer;
+		private Vector3 oldColor;
+		private Vector3 newColor;
+		
+		public ColorOperation(Layer layer) {
+			this.layer = layer;
+			this.oldColor = layer.Color;
+			this.newColor = layer.Color;
+		}
+		
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<ColorOperation>();
+			op.layer.Color = op.newColor;
+		}
+		
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<ColorOperation>();
+			op.layer.Color = op.oldColor;
+		}
+		
+		public bool HasChanges() => oldColor != newColor;
 	}
 }

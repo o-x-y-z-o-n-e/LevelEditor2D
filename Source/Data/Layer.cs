@@ -1,4 +1,5 @@
-﻿using System.Xml.Linq;
+﻿using System.Numerics;
+using System.Xml.Linq;
 
 namespace L2D;
 
@@ -18,6 +19,11 @@ public class Layer {
 		set => visible = value;
 	}
 	
+	public Vector3 Color {
+		get => color;
+		set => color = value;
+	}
+	
 	public Tilemap Tilemap => tilemap;
 	
 	public EntityCollection Entities => entities;
@@ -31,6 +37,7 @@ public class Layer {
 	private Scene scene;
 	private string name;
 	private bool visible;
+	private Vector3 color;
 	private LayerType type;
 	private LayerGroup group;
 	private Tilemap tilemap;
@@ -43,6 +50,7 @@ public class Layer {
 		this.type = type;
 		name = "new_layer";
 		visible = true;
+		color = Vector3.One;
 		group = null;
 		properties = new();
 		if(type == LayerType.Tiles) {
@@ -57,6 +65,7 @@ public class Layer {
 		this.type = LayerType.Tiles;
 		name = "new_layer";
 		visible = true;
+		color = Vector3.One;
 		group = null;
 		properties = new();
 	}
@@ -64,6 +73,7 @@ public class Layer {
 	internal void Parse(XElement layerElement) {
 		name = layerElement.Attribute("name").Value;
 		visible = layerElement.Attribute("visible").ParseAsBool(true);
+		color = layerElement.Attribute("color").ParseAsColor(Vector3.One);
 		string type = layerElement.Attribute("type")?.Value ?? "tiles";
 		if(type == "entities") {
 			this.type = LayerType.Entities;
@@ -89,6 +99,7 @@ public class Layer {
 			new XAttribute("name", name),
 			new XAttribute("group", ""), // TODO
 			new XAttribute("visible", visible),
+			new XAttribute("color", Utilities.SerializeColor(color)),
 			new XAttribute("type", type.ToString().ToLower())
 		);
 		
