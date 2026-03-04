@@ -70,23 +70,7 @@ public class EntityCollection {
 		dstEntity.Type = srcEntity.Type;
 		dstEntity.Position = srcEntity.Position;
 		dstEntity.Size = srcEntity.Size;
-		foreach(var srcProperty in srcEntity.Properties.All) {
-			var dstProperty = dstEntity.Properties.Add(srcProperty.Name, srcProperty.Type);
-			switch(srcProperty.Type) {
-				case PropertyType.String:
-					dstProperty.String = srcProperty.String;
-					break;
-				case PropertyType.Integer:
-					dstProperty.Integer = srcProperty.Integer;
-					break;
-				case PropertyType.Float:
-					dstProperty.Float = srcProperty.Float;
-					break;
-				case PropertyType.Boolean:
-					dstProperty.Boolean = srcProperty.Boolean;
-					break;
-			}
-		}
+		srcEntity.Properties.CopyTo(dstEntity.Properties);
 		entities.Add(dstEntity);
 		return dstEntity;
 	}

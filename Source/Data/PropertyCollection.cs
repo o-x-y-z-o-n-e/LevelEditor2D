@@ -105,6 +105,26 @@ public class PropertyCollection {
 
 	public void Clear() => properties.Clear();
 
+	public void CopyTo(PropertyCollection collection) {
+		foreach(var srcProperty in properties) {
+			var dstProperty = collection.Add(srcProperty.Name, srcProperty.Type);
+			switch(srcProperty.Type) {
+				case PropertyType.String:
+					dstProperty.String = srcProperty.String;
+					break;
+				case PropertyType.Integer:
+					dstProperty.Integer = srcProperty.Integer;
+					break;
+				case PropertyType.Float:
+					dstProperty.Float = srcProperty.Float;
+					break;
+				case PropertyType.Boolean:
+					dstProperty.Boolean = srcProperty.Boolean;
+					break;
+			}
+		}
+	}
+
 	public void SerializeToElement(XElement element) {
 		foreach(var entry in properties) {
 			var e = new XElement("property");

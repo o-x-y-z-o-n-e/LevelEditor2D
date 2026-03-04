@@ -103,6 +103,8 @@ public class World {
 		if(!scenes.Contains(srcScene)) return null;
 		Scene newScene = CreateScene(newID, srcScene.TileCountX, srcScene.TileCountY, x, y, false);
 		
+		srcScene.Properties.CopyTo(newScene.Properties);
+		
 		// TODO: groups
 
 		for(int i = 0; i < srcScene.Tilesets.Count; i++) {
@@ -118,6 +120,8 @@ public class World {
 			
 			newLayer.Name = srcLayer.Name;
 			newLayer.Visible = srcLayer.Visible;
+			newLayer.Color = srcLayer.Color;
+			srcLayer.Properties.CopyTo(newLayer.Properties);
 			if(srcLayer.Type == LayerType.Tiles) {
 				for(int ty = 0; ty < srcScene.TileCountY; ty++) {
 					for(int tx = 0; tx < srcScene.TileCountX; tx++) {

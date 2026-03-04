@@ -186,6 +186,8 @@ public class Scene {
 
 		Layer newLayer = AddLayer(srcLayer.Type);
 		newLayer.Visible = srcLayer.Visible;
+		newLayer.Color = srcLayer.Color;
+		srcLayer.Properties.CopyTo(newLayer.Properties);
 		if(srcLayer.Type == LayerType.Tiles) {
 			for(int y = 0; y < tileCountY; y++) {
 				for(int x = 0; x < tileCountX; x++) {
