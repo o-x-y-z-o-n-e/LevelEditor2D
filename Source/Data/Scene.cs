@@ -265,10 +265,12 @@ public class TilesetLink {
 
 	internal void Parse(XElement linkElement) {
 		slot = linkElement.Attribute("slot").ParseAsInt();
-		string id = linkElement.Attribute("tileset").Value;
-		foreach(var tileset in file.World.Tilesets) {
-			if(tileset.ID == id) {
-				this.tileset = tileset;
+		string id = linkElement.Attribute("tileset").ParseAsString();
+		if(id != "") {
+			foreach(var tileset in file.World.Tilesets) {
+				if(tileset.ID == id) {
+					this.tileset = tileset;
+				}
 			}
 		}
 	}
@@ -277,7 +279,7 @@ public class TilesetLink {
 		XElement linkElement = new XElement("link");
 		linkElement.Add(
 			new XAttribute("slot", slot),
-			new XAttribute("tileset", tileset.ID)
+			new XAttribute("tileset", tileset?.ID ?? "")
 		);
 		return linkElement;
 	}

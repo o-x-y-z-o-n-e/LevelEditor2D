@@ -65,11 +65,10 @@ public class File {
 
 	public bool Write() {
 		XmlWriter writer = null;
-		FileStream stream = null;
 		watcher.EnableRaisingEvents = false;
 		Log.Information("Writing file... [{@path}]", path);
 		try {
-			stream = System.IO.File.Create(path);
+			StringBuilder builder = new StringBuilder();
 			XDocument document = new XDocument();
 			UnmarkDirty();
 			Serialize(document);
@@ -77,15 +76,14 @@ public class File {
 			settings.OmitXmlDeclaration = true;
 			settings.CloseOutput = false;
 			settings.Indent = true;
-			writer = XmlTextWriter.Create(stream, settings);
+			writer = XmlTextWriter.Create(builder, settings);
 			document.Save(writer);
 			writer.Close();
-			stream.Close();
+			System.IO.File.WriteAllText(path, builder.ToString());
 			return true;
 		} catch(Exception e) {
 			Log.Error(e, "Failed to write project file: {@path}", path);
 			writer?.Close();
-			stream?.Close();
 			return false;
 		} finally {
 			watcher.EnableRaisingEvents = true;
