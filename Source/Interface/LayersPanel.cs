@@ -79,6 +79,12 @@ public class LayersPanel : Panel {
 					if(ImGui.MenuItem(layer.Visible ? "Hide" : "Show")) {
 						Program.File.ApplyEdit(this, new VisiblityOperation(layer, !layer.Visible));
 					}
+					if(layer.Type == LayerType.Tiles) {
+						if(ImGui.MenuItem("Export as Image")) {
+							// TODO
+							layer.Tilemap.ExportToFile("test.png");
+						}
+					}
 					ImGui.EndPopup();
 				}
 				
@@ -92,7 +98,9 @@ public class LayersPanel : Panel {
 
 				// Vector2 selCur = ImGui.GetCursorPos();
 				ImGui.SetCursorPos(iconOrigin);
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(layer.Color, 1.0F));
 				ImGui.Text(iconTxt);
+				ImGui.PopStyleColor();
 				// ImGui.SetCursorPos(selCur);
 				
 				ImGui.PopID();

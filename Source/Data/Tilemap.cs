@@ -3,6 +3,7 @@ using System.Text;
 using System.Xml.Linq;
 using Serilog;
 using Silk.NET.OpenGL;
+using StbImageWriteSharp;
 
 namespace L2D;
 
@@ -277,8 +278,8 @@ public class Tilemap {
 		GL gl = Program.GL;
 
 		Matrix4x4 screenMatrix = Matrix4x4.Identity;
-		screenMatrix *= Matrix4x4.CreateScale(2.0F / frameBufferWidth, -2.0F / frameBufferHeight, 1.0F);
-		screenMatrix *= Matrix4x4.CreateTranslation(-1.0F, 1.0F, 0.0F);
+		screenMatrix *= Matrix4x4.CreateScale(2.0F / frameBufferWidth, 2.0F / frameBufferHeight, 1.0F);
+		screenMatrix *= Matrix4x4.CreateTranslation(-1.0F, -1.0F, 0.0F);
 		
 		gl.BindFramebuffer(GLEnum.Framebuffer, frameBufferHandle);
 		gl.Viewport(0, 0, frameBufferWidth, frameBufferHeight);
@@ -316,6 +317,28 @@ public class Tilemap {
 		gl.BindFramebuffer(GLEnum.Framebuffer, 0);
 		
 		gl.Viewport(0, 0, (uint)Program.FramebufferSize.X, (uint)Program.FramebufferSize.Y);
+	}
+
+	public unsafe void ExportToFile(string filename) {
+		GL gl = Program.GL;
+
+		FileStream stream = null;
+		
+		try {
+			Render();
+			byte[] data = new byte[frameBufferWidth * frameBufferHeight * 4];
+			gl.BindFramebuffer(GLEnum.Framebuffer, frameBufferHandle);
+			gl.ReadBuffer(GLEnum.ColorAttachment0);
+			fixed(void* raw = data) {
+				gl.ReadPixels(0, 0, frameBufferWidth, frameBufferHeight, GLEnum.Rgba, GLEnum.UnsignedByte, raw);
+			}
+			stream = System.IO.File.Create(filename);
+			new StbImageWriteSharp.ImageWriter().WritePng(data, (int)frameBufferWidth, (int)frameBufferHeight, ColorComponents.RedGreenBlueAlpha, stream);
+			stream.Close();
+		} catch(Exception e) {
+			stream?.Close();
+			Log.Error(e, "Failed to export tilemap image!");
+		}
 	}
 
 	public void ReleaseResources() {

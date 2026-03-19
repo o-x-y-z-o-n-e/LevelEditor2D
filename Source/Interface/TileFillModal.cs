@@ -17,9 +17,6 @@ public class TileFillModal {
 		open = false;
 		layer = null;
 		emptyTileWeight = 0.0F;
-		entries.Add(new(1, 3, 2.0F));
-		entries.Add(new(1, 4, 1.0F));
-		entries.Add(new(5, 5, 5.0F));
 	}
 
 	public void Open(Layer layer) {

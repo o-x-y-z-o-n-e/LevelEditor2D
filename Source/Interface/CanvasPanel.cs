@@ -339,7 +339,7 @@ public class CanvasPanel : Panel {
 			if(layer.Type == LayerType.Tiles && layer.HasTilemap) {
 				layer.Tilemap.Render();
 				uint tex = layer.Tilemap.GetFrameBufferTexture();
-				drawList.AddImage((nint)tex, p0, p3, new(0,1), new(1,0));
+				drawList.AddImage((nint)tex, p0, p3, new(0,0), new(1,1));
 			}
 			if(layer.Type == LayerType.Entities && layer.HasEntities) {
 				Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);

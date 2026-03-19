@@ -295,7 +295,7 @@ public class TileBrushTool : CanvasTool {
 		if(!resizing) {
 			tilemap.Render();
 			uint tex = tilemap.GetFrameBufferTexture();
-			drawList.AddImage((nint)tex, p0, p3, new(0,1), new(1,0));
+			drawList.AddImage((nint)tex, p0, p3, new(0,0), new(1,1));
 		}
 
 		// valid tile overlay
