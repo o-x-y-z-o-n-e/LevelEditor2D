@@ -336,6 +336,64 @@ public class TilesetsPanel : Panel {
 		
 		Vector2 areaPos = ImGui.GetCursorScreenPos();
 		Vector2 areaSize = ImGui.GetContentRegionAvail();
+		
+		ImGui.BeginChild("tileset-controls", new Vector2(ImGui.GetContentRegionAvail().X, 110), ImGuiChildFlags.Borders);
+		ImGui.BeginDisabled(tileset == null);
+		
+		ImGui.Columns(2);
+
+		if(tileset != lastSelectedTileset) {
+			// idEditBuffer = tileset != null ? tileset.ID : "";
+			tileEditIndex = 0;
+		}
+
+		string id = tileset != null ? tileset.ID : "";
+		if(ImGui.InputText("ID", ref id, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+			bool allowed = id != "";
+			foreach(var ts in Program.File.World.Tilesets) {
+				if(ts.ID == id) {
+					allowed = false;
+					break;
+				}
+			}
+			if(allowed) {
+				Program.File.ApplyEdit(this, new NameOperation(tileset, id));
+			}
+		}
+
+		string group = tileset != null ? tileset.Group : "";
+		if(ImGui.InputText("Group", ref group, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+			Program.File.ApplyEdit(this, new GroupOperation(tileset, group));
+		}
+		
+		if(ImGui.Button("Reimport")) {
+			reimport = true;
+			reimportTileset = tileset;
+			importOpenModal = true;
+			importPath = tileset.TextureFilePath;
+			importID = tileset.ID;
+			importGroup = tileset.Group;
+			importOffset = new(tileset.OffsetX, tileset.OffsetY);
+			importSpacing = new(tileset.SpacingX, tileset.SpacingY);
+			importTexels = new(tileset.SizeX, tileset.SizeY);
+		}
+		
+		ImGui.NextColumn();
+		
+		if(tileset != null) {
+			ImGui.Text($"Path: {tileset.TextureFilePath}");
+			ImGui.Text($"Offset: {tileset.OffsetX} {tileset.OffsetY}");
+			ImGui.Text($"Spacing: {tileset.SpacingX} {tileset.SpacingY}");
+			ImGui.Text($"Texels: {tileset.SizeX} {tileset.SizeY}");
+		} else {
+			ImGui.Text("Path: --");
+			ImGui.Text("Offset: --");
+			ImGui.Text("Spacing: --");
+			ImGui.Text("Texels: --");
+		}
+		
+		ImGui.EndDisabled();
+		ImGui.EndChild(); // tileset-controls
 
 		ImGui.SetNextWindowSizeConstraints(new(1, 1), new(areaSize.X, areaSize.Y - 100));
 		ImGui.BeginChild(
@@ -344,6 +402,12 @@ public class TilesetsPanel : Panel {
 			ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY,
 			ImGuiWindowFlags.AlwaysHorizontalScrollbar | ImGuiWindowFlags.AlwaysVerticalScrollbar
 		);
+		
+		if(ImGui.IsWindowHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
+			ImGui.SetScrollY(ImGui.GetScrollY() - ImGui.GetIO().MouseDelta.Y);
+			ImGui.SetScrollX(ImGui.GetScrollX() - ImGui.GetIO().MouseDelta.X);
+		}
+		
 		Vector2 region = ImGui.GetContentRegionAvail();
 		Vector2 p0 = areaPos;
 		Vector2 p1 = p0 + region;
@@ -423,61 +487,23 @@ public class TilesetsPanel : Panel {
 		}
 		ImGui.EndChild();
 		
-		ImGui.BeginChild("tileset-controls");
-		ImGui.BeginDisabled(tileset == null);
-
-		if(tileset != lastSelectedTileset) {
-			// idEditBuffer = tileset != null ? tileset.ID : "";
-			tileEditIndex = 0;
+		// ImGui.BeginChild("tile-controls");
+		ImGui.BeginTabBar("tile-controls");
+		if(ImGui.BeginTabItem("Tile Colliders")) {
+			TileEdit();
+			ImGui.EndTabItem();
 		}
-
-		string id = tileset != null ? tileset.ID : "";
-		if(ImGui.InputText("ID", ref id, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
-			bool allowed = id != "";
-			foreach(var ts in Program.File.World.Tilesets) {
-				if(ts.ID == id) {
-					allowed = false;
-					break;
-				}
-			}
-			if(allowed) {
-				Program.File.ApplyEdit(this, new NameOperation(tileset, id));
-			}
+		if(ImGui.BeginTabItem("Automap Patterns")) {
+			ImGui.Text("Automap Patterns");
+			ImGui.EndTabItem();
 		}
-
-		string group = tileset != null ? tileset.Group : "";
-		if(ImGui.InputText("Group", ref group, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
-			Program.File.ApplyEdit(this, new GroupOperation(tileset, group));
+		if(ImGui.BeginTabItem("Preset Patterns")) {
+			ImGui.Text("Preset Patterns");
+			ImGui.EndTabItem();
 		}
+		ImGui.EndTabBar();
+		// ImGui.EndChild();
 		
-		if(ImGui.Button("Reimport")) {
-			reimport = true;
-			reimportTileset = tileset;
-			importOpenModal = true;
-			importPath = tileset.TextureFilePath;
-			importID = tileset.ID;
-			importGroup = tileset.Group;
-			importOffset = new(tileset.OffsetX, tileset.OffsetY);
-			importSpacing = new(tileset.SpacingX, tileset.SpacingY);
-			importTexels = new(tileset.SizeX, tileset.SizeY);
-		}
-		
-		if(tileset != null) {
-			ImGui.Text($"Path: {tileset.TextureFilePath}");
-			ImGui.Text($"Offset: {tileset.OffsetX} {tileset.OffsetY}");
-			ImGui.Text($"Spacing: {tileset.SpacingX} {tileset.SpacingY}");
-			ImGui.Text($"Texels: {tileset.SizeX} {tileset.SizeY}");
-		} else {
-			ImGui.Text("Path: --");
-			ImGui.Text("Offset: --");
-			ImGui.Text("Spacing: --");
-			ImGui.Text("Texels: --");
-		}
-
-		TileEdit();
-		
-		ImGui.EndDisabled();
-		ImGui.EndChild(); // tileset-controls
 		ImGui.EndChild(); // tileset-edit
 		
 		lastSelectedTileset = tileset;
@@ -490,6 +516,13 @@ public class TilesetsPanel : Panel {
 
 		Vector2 origin = ImGui.GetCursorPos();
 		Vector2 areaSize = ImGui.GetContentRegionAvail();
+				
+		if(ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
+			// ImGui.SetScrollX(ImGui.GetScrollX() + ImGui.GetIO().MouseWheel * 64.0F);
+			ImGui.GetIO().MouseWheelRequestAxisSwap = true;
+		} else {
+			ImGui.GetIO().MouseWheelRequestAxisSwap = false;
+		}
 		
 		ImGui.BeginChild(
 			"tile-preview",
@@ -497,10 +530,11 @@ public class TilesetsPanel : Panel {
 			ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeX
 		);
 		ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+		Vector2 previewPos = ImGui.GetWindowPos();
 		Vector2 previewSize = ImGui.GetWindowSize();
 		Vector2 contentSize = ImGui.GetContentRegionAvail();
 		Vector2 contentPos = ImGui.GetCursorScreenPos();
-
+		
 		Vector2 tileSize = contentSize * 0.75F;
 		if(tileSize.X < tileSize.Y) {
 			tileSize.Y = tileSize.X;
@@ -540,6 +574,11 @@ public class TilesetsPanel : Panel {
 			if(ImGui.IsWindowFocused()) {
 				Vector2 pos = ImGui.GetMousePos();
 				bool drag = ImGui.IsMouseDragging(ImGuiMouseButton.Left, -1.0F);
+				
+				// protected child window resizing on the right
+				if(pos.X >= previewPos.X + previewSize.X - 12) {
+					drag = false;
+				}
 
 				if(drag && !colliderDrag) {
 					colliderDrag = true;
@@ -576,7 +615,6 @@ public class TilesetsPanel : Panel {
 		ImGui.BeginChild("tile-options");
 		
 		int tileCount = tileset != null ? tileset.GetTileCount() : 0;
-		ImGui.SeparatorText("Tile Data");
 		ImGui.DragInt("Tile ID", ref tileEditIndex, 0.05F, 0, tileCount+1);
 		
 		ImGui.BeginDisabled(tileEditIndex == 0);

@@ -60,7 +60,17 @@ public class TilePickerPanel : Panel {
 			ImGui.SetNextWindowScroll(new(0,0));
 		}
 
-		ImGui.BeginChild("tileset-list", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Borders, ImGuiWindowFlags.AlwaysVerticalScrollbar);
+		var windowFlags = ImGuiWindowFlags.AlwaysVerticalScrollbar;
+
+		if(ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
+			windowFlags |= ImGuiWindowFlags.NoScrollWithMouse;
+		}
+
+		ImGui.BeginChild("tileset-list", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Borders, windowFlags);
+
+		int moveUpIndex = -1;
+		int moveDownIndex = -1;
+		int removeIndex = -1;
 		
 		Vector2 region = ImGui.GetContentRegionAvail() - new Vector2(8, 0);
 		string empty = "";
@@ -82,19 +92,19 @@ public class TilePickerPanel : Panel {
 			
 			ImGui.OpenPopupOnItemClick("menu", ImGuiPopupFlags.MouseButtonRight);
 			if(ImGui.BeginPopup("menu")) {
-				
-				ImGui.BeginDisabled();// TODO
+				ImGui.BeginDisabled(i == 0);
 				if(ImGui.MenuItem("Move Up")) {
-					// TODO
-				}
-				if(ImGui.MenuItem("Move Down")) {
-					// TODO
-				}
-				if(ImGui.MenuItem("Remove")) {
-					// TODO
+					moveUpIndex = i;
 				}
 				ImGui.EndDisabled();
-				
+				ImGui.BeginDisabled(i == count - 1);
+				if(ImGui.MenuItem("Move Down")) {
+					moveDownIndex = i;
+				}
+				ImGui.EndDisabled();
+				if(ImGui.MenuItem("Remove")) {
+					removeIndex = i;
+				}
 				ImGui.EndPopup();
 			}
 			
@@ -120,10 +130,7 @@ public class TilePickerPanel : Panel {
 						if(match) continue;
 						atLeastOneOption = true;
 						if(ImGui.Selectable($"Slot: {s}")) {
-							Program.File.ApplyEdit(this, new SlotOperation(link, s),
-								redo: SlotOperation.ApplyNextState,
-								undo: SlotOperation.ApplyPrevState
-							);
+							Program.File.ApplyEdit(this, new SlotOperation(link, s));
 						}
 					}
 					if(!atLeastOneOption) {
@@ -140,10 +147,7 @@ public class TilePickerPanel : Panel {
 				if(i == tilesetLinkTarget) {
 					Program.TilesetsPanel.SelectTilesetModal((selected, tileset) => {
 						if(selected) {
-							Program.File.ApplyEdit(this, new TilesetOperation(link, tileset),
-								redo: TilesetOperation.ApplyNextState,
-								undo: TilesetOperation.ApplyPrevState
-							);
+							Program.File.ApplyEdit(this, new TilesetOperation(link, tileset));
 						}
 						tilesetLinkTarget = -1;
 					});
@@ -156,12 +160,27 @@ public class TilePickerPanel : Panel {
 				
 				Vector2 areaPos = ImGui.GetCursorScreenPos();
 				Vector2 areaSize = new(region.X, texSource?.Height * scale + 34 ?? region.X);
+
+				var childFlags = ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.AlwaysHorizontalScrollbar;
+				if(!ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
+					windowFlags |= ImGuiWindowFlags.NoScrollWithMouse;
+				}
+				
 				ImGui.BeginChild(
 					"tileset-picker",
 					areaSize,
 					ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders,
-					ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.AlwaysHorizontalScrollbar
+					childFlags
 				);
+				
+				if(ImGui.IsWindowHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
+					ImGui.SetScrollY(ImGui.GetScrollY() - ImGui.GetIO().MouseDelta.Y);
+					ImGui.SetScrollX(ImGui.GetScrollX() - ImGui.GetIO().MouseDelta.X);
+				}
+				if(ImGui.IsWindowHovered() && ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
+					ImGui.SetScrollX(ImGui.GetScrollX() + ImGui.GetIO().MouseWheel * 64.0F);
+				}
+				
 				Vector2 p0 = areaPos;
 				Vector2 p1 = p0 + areaSize - new Vector2(16);
 				bool hoveredTile = false;
@@ -313,36 +332,90 @@ public class TilePickerPanel : Panel {
 		ImGui.BeginDisabled(nextSlotAvailable > maxTilesetSlots);
 		if(ImGui.Button("Add", new Vector2(region.X, 0))) {
 			TilesetLink link = new TilesetLink(scene.File, nextSlotAvailable, null);
-			Program.File.ApplyEdit(this, new AddOperation(scene, link),
-				redo: AddOperation.ApplyNextState,
-				undo: AddOperation.ApplyPrevState
-			);
+			Program.File.ApplyEdit(this, new AddOperation(scene, link));
 		}
 		ImGui.EndDisabled();
+
+		if(moveUpIndex >= 0) {
+			Program.File.ApplyEdit(this, new MoveOperation(scene, moveUpIndex, moveUpIndex - 1));
+		}
+		
+		if(moveDownIndex >= 0) {
+			Program.File.ApplyEdit(this, new MoveOperation(scene, moveDownIndex, moveDownIndex + 1));
+		}
+
+		if(removeIndex >= 0) {
+			Program.File.ApplyEdit(this, new RemoveOperation(scene, removeIndex));
+		}
 		
 		ImGui.EndChild(); // tileset-list
 		
 		ImGui.PopID(); // scene.ID
 	}
 	
-	public class AddOperation {
+	public class AddOperation : IFileEditOperation {
 		private Scene scene;
 		private TilesetLink link;
 		public AddOperation(Scene scene, TilesetLink link) {
 			this.scene = scene;
 			this.link = link;
 		}
-		public static void ApplyNextState(FileEditEntry entry) {
+		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<AddOperation>();
 			op.scene.Tilesets.Add(op.link);
 		}
-		public static void ApplyPrevState(FileEditEntry entry) {
+		public void ApplyPrevState(FileEditEntry entry) {
 			var op = entry.GetData<AddOperation>();
 			op.scene.Tilesets.Remove(op.link);
 		}
+		public bool HasChanges() => true;
 	}
 	
-	public class SlotOperation {
+	public class RemoveOperation : IFileEditOperation {
+		private Scene scene;
+		private TilesetLink link;
+		private int index;
+		public RemoveOperation(Scene scene, int index) {
+			this.scene = scene;
+			this.link = scene.Tilesets[index];
+			this.index = index;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.scene.Tilesets.RemoveAt(op.index);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.scene.Tilesets.Insert(op.index, op.link);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class MoveOperation : IFileEditOperation {
+		private Scene scene;
+		private int index1;
+		private int index2;
+		public MoveOperation(Scene scene, int index1, int index2) {
+			this.scene = scene;
+			this.index1 = index1;
+			this.index2 = index2;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			var t = op.scene.Tilesets[op.index1];
+			op.scene.Tilesets[op.index1] = op.scene.Tilesets[op.index2];
+			op.scene.Tilesets[op.index2] = t;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			var t = op.scene.Tilesets[op.index2];
+			op.scene.Tilesets[op.index2] = op.scene.Tilesets[op.index1];
+			op.scene.Tilesets[op.index1] = t;
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class SlotOperation : IFileEditOperation {
 		private TilesetLink link;
 		private int oldSlot;
 		private int newSlot;
@@ -351,17 +424,18 @@ public class TilePickerPanel : Panel {
 			this.oldSlot = link.Slot;
 			this.newSlot = slot;
 		}
-		public static void ApplyNextState(FileEditEntry entry) {
+		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<SlotOperation>();
 			op.link.Slot = op.newSlot;
 		}
-		public static void ApplyPrevState(FileEditEntry entry) {
+		public void ApplyPrevState(FileEditEntry entry) {
 			var op = entry.GetData<SlotOperation>();
 			op.link.Slot = op.oldSlot;
 		}
+		public bool HasChanges() => true;
 	}
 	
-	public class TilesetOperation {
+	public class TilesetOperation : IFileEditOperation {
 		private TilesetLink link;
 		private Tileset oldTileset;
 		private Tileset newTileset;
@@ -370,14 +444,15 @@ public class TilePickerPanel : Panel {
 			this.oldTileset = link.Tileset;
 			this.newTileset = tileset;
 		}
-		public static void ApplyNextState(FileEditEntry entry) {
+		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<TilesetOperation>();
 			op.link.Tileset = op.newTileset;
 		}
-		public static void ApplyPrevState(FileEditEntry entry) {
+		public void ApplyPrevState(FileEditEntry entry) {
 			var op = entry.GetData<TilesetOperation>();
 			op.link.Tileset = op.oldTileset;
 		}
+		public bool HasChanges() => true;
 	}
 	
 }
