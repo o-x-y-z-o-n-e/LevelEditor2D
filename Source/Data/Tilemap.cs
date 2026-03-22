@@ -474,6 +474,7 @@ public class TileEditOperation {
 	public bool Set(int x, int y, TileRef state) {
 		TileRef oldState = tilemap.Get(x, y);
 		if(oldState == state) return false;
+		tilemap.Set(x, y, state);
 		for(int i = 0; i < changes.Count; i++) {
 			if(changes[i].X == x && changes[i].Y == y) {
 				changes[i] = new TileStateChange(changes[i], state);

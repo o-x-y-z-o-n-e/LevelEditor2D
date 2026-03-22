@@ -68,9 +68,7 @@ public class TileEraserTool : CanvasTool {
 				int tx = offset.X - tilemap.Scene.WorldX + x;
 				int ty = offset.Y - tilemap.Scene.WorldY + y;
 				if(tx < 0 || ty < 0 || tx >= tilemap.Scene.TileCountX || ty >= tilemap.Scene.TileCountY) continue;
-				if(operation.Set(tx, ty, clear)) {
-					tilemap.Grid[tx, ty] = clear;
-				}
+				operation.Set(tx, ty, clear);
 			}
 		}
 	}

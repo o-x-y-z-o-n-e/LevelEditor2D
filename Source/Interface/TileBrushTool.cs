@@ -23,6 +23,7 @@ public class TileBrushTool : CanvasTool {
 	private bool clearAfterPlace;
 	private bool disposed;
 	private FileEditEntry edit;
+	private AutomapPattern pattern;
 
 	public TileBrushTool() : base($"{Codicons.Pencil} Brush", LayerType.Tiles) {
 		tilemap = null;
@@ -36,6 +37,25 @@ public class TileBrushTool : CanvasTool {
 
 	public override void OnActive() {
 		clearAfterPlace = false;
+	}
+
+	public void SetAutomapPattern(AutomapPattern pattern, int w = 1, int h = 1) {
+		this.pattern = pattern;
+		SetSize(int.Max(w, 1), int.Max(h, 1), true);
+		int tilesetSlot = 0;
+		foreach(var link in tilemap.Scene.Tilesets) {
+			if(link.Tileset == pattern.Tileset) {
+				tilesetSlot = link.Slot;
+				break;
+			}
+		}
+		int fillTileID = pattern.Evaluate(0b111111111);
+		for(int y = 0; y < height; y++) {
+			for(int x = 0; x < width; x++) {
+				tilemap.Grid[x, y].TileID = fillTileID;
+				tilemap.Grid[x, y].TilesetSlot = tilesetSlot;
+			}
+		}
 	}
 
 	public void SetSize(int w, int h, bool set = true) {
@@ -56,6 +76,7 @@ public class TileBrushTool : CanvasTool {
 
 	public void SetTile(int x, int y, int tileID, int tilesetSlot) {
 		if(resizing || x < 0 || y < 0 || x >= tilemap.Width || y >= tilemap.Height) return;
+		pattern = null;
 		tilemap.Grid[x, y].TileID = tileID;
 		tilemap.Grid[x, y].TilesetSlot = tilesetSlot;
 	}
@@ -86,6 +107,7 @@ public class TileBrushTool : CanvasTool {
 	public override void SetScene(Scene scene) {
 		base.SetScene(scene);
 		if(tilemap?.Scene != scene) {
+			pattern = null;
 			tilemap?.ReleaseResources();
 			if(scene != null) {
 				tilemap = new Tilemap(this);
@@ -146,6 +168,7 @@ public class TileBrushTool : CanvasTool {
 			ImGui.SetMouseCursor((ImGuiMouseCursor)10);
 			
 			SetSize(sx, sy, false);
+			pattern = null;
 		} else if(!resize && resizing) {
 			int offsetX = int.Min(resizeTileOrigin.X - mx, 0);
 			int offsetY = int.Min(resizeTileOrigin.Y - my, 0);
@@ -280,6 +303,7 @@ public class TileBrushTool : CanvasTool {
 				Imprint(new Point(offset.X + mx, offset.Y + my), layer);
 				SetSize(1, 1);
 				tilemap.Grid[0, 0] = new TileRef();
+				pattern = null;
 			} else {
 				if(!imprinting) {
 					imprinting = true;
@@ -433,9 +457,12 @@ public class TileBrushTool : CanvasTool {
 				int tx = offset.X - operation.Tilemap.Scene.WorldX + x;
 				int ty = offset.Y - operation.Tilemap.Scene.WorldY + y;
 				if(tx < 0 || ty < 0 || tx >= operation.Tilemap.Scene.TileCountX || ty >= operation.Tilemap.Scene.TileCountY) continue;
-				if(this.tilemap.Grid[x, y].TileID == 0 || this.tilemap.Grid[x, y].TilesetSlot == 0) continue;
-				operation.Set(tx, ty, this.tilemap.Grid[x, y]);
-				operation.Tilemap.Grid[tx, ty] = this.tilemap.Grid[x, y];
+				if(pattern != null) {
+					pattern.Print(operation.Tilemap, tx, ty, operation.Set);
+				} else {
+					if(this.tilemap.Grid[x, y].TileID == 0 || this.tilemap.Grid[x, y].TilesetSlot == 0) continue;
+					operation.Set(tx, ty, this.tilemap.Grid[x, y]);
+				}
 			}
 		}
 	}
@@ -446,6 +473,8 @@ public class TileBrushTool : CanvasTool {
 	}
 
 	public void MoveRegion(Rectangle region, Layer layer) {
+		pattern = null;
+		
 		CopyRegion(region, layer);
 		
 		var operation = new TileEditOperation(layer.Tilemap);
@@ -470,6 +499,8 @@ public class TileBrushTool : CanvasTool {
 	}
 
 	public void CopyRegion(Rectangle region, Layer layer) {
+		pattern = null;
+		
 		int trimLeft = 0;
 		int trimRight = 0;
 		int trimTop = 0;
@@ -585,6 +616,7 @@ public class TileBrushTool : CanvasTool {
 
 	public void FlipVertical() {
 		if(tilemap == null || tilemap.Height <= 1) return;
+		pattern = null;
 		for(int x = 0; x < tilemap.Width; x++) {
 			for(int y = 0; y < tilemap.Height / 2; y++) {
 				tilemap.Get(x, y, out int tile1, out int tileset1);
@@ -597,6 +629,7 @@ public class TileBrushTool : CanvasTool {
 
 	public void FlipHorizontal() {
 		if(tilemap == null || tilemap.Width <= 1) return;
+		pattern = null;
 		for(int y = 0; y < tilemap.Height; y++) {
 			for(int x = 0; x < tilemap.Width / 2; x++) {
 				tilemap.Get(x, y, out int tile1, out int tileset1);
@@ -609,6 +642,7 @@ public class TileBrushTool : CanvasTool {
 
 	public void RotateLeft() {
 		if(tilemap == null || (tilemap.Width <= 1 && tilemap.Height <= 1)) return;
+		pattern = null;
 		int w = tilemap.Width;
 		int h = tilemap.Height;
 		var grid = new TileRef[w, h];
@@ -627,6 +661,7 @@ public class TileBrushTool : CanvasTool {
 	
 	public void RotateRight() {
 		if(tilemap == null || (tilemap.Width <= 1 && tilemap.Height <= 1)) return;
+		pattern = null;
 		int w = tilemap.Width;
 		int h = tilemap.Height;
 		var grid = new TileRef[w, h];

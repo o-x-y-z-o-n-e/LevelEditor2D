@@ -61,7 +61,6 @@ public class TilePickerPanel : Panel {
 		}
 
 		var windowFlags = ImGuiWindowFlags.AlwaysVerticalScrollbar;
-
 		if(ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
 			windowFlags |= ImGuiWindowFlags.NoScrollWithMouse;
 		}
@@ -155,158 +154,18 @@ public class TilePickerPanel : Panel {
 
 				ImGui.SameLine(0, ImGui.GetStyle().ItemInnerSpacing.X);
 				ImGui.Text("Tileset");
-				
-				Texture texSource = tileset?.GetTexturePreview();
-				
-				Vector2 areaPos = ImGui.GetCursorScreenPos();
-				Vector2 areaSize = new(region.X, texSource?.Height * scale + 34 ?? region.X);
 
-				var childFlags = ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.AlwaysHorizontalScrollbar;
-				if(!ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
-					windowFlags |= ImGuiWindowFlags.NoScrollWithMouse;
+				ImGui.BeginTabBar("tab-bar");
+				if(ImGui.BeginTabItem("Tiles")) {
+					TileGridView(scene, tileset, link, windowFlags, region, scale);
+					ImGui.EndTabItem();
 				}
-				
-				ImGui.BeginChild(
-					"tileset-picker",
-					areaSize,
-					ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders,
-					childFlags
-				);
-				
-				if(ImGui.IsWindowHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
-					ImGui.SetScrollY(ImGui.GetScrollY() - ImGui.GetIO().MouseDelta.Y);
-					ImGui.SetScrollX(ImGui.GetScrollX() - ImGui.GetIO().MouseDelta.X);
+				if(ImGui.BeginTabItem("Automaps")) {
+					AutomapListView(scene, tileset, link, windowFlags, region, scale);
+					ImGui.EndTabItem();
 				}
-				if(ImGui.IsWindowHovered() && ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
-					ImGui.SetScrollX(ImGui.GetScrollX() + ImGui.GetIO().MouseWheel * 64.0F);
-				}
+				ImGui.EndTabBar();
 				
-				Vector2 p0 = areaPos;
-				Vector2 p1 = p0 + areaSize - new Vector2(16);
-				bool hoveredTile = false;
-				if(tileset != null && texSource != null) {
-					Vector2 origin = ImGui.GetCursorPos();
-					Vector2 originScreen = ImGui.GetCursorScreenPos();
-					Vector2 border = new(4,4);
-					Vector2 size = new Vector2(texSource.Width, texSource.Height) * scale;
-					ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1,1,1,1));
-					
-					var brush = Program.CanvasPanel.TileBrush;
-					bool brushChanged = false;
-
-					int countX = tileset.GetTileCountX();
-					int countY = tileset.GetTileCountY();
-					
-					Vector2 multiSelectMin = new(0);
-					Vector2 multiSelectMax = new(0);
-					RectangleF multiSelectRect = new(0, 0, 0, 0);
-					
-					if(ImGui.IsWindowFocused()) {
-						
-						Vector2 pos = ImGui.GetMousePos();
-						multiSelectMin = new Vector2(float.Min(pos.X, multiSelectOrigin.X), float.Min(pos.Y, multiSelectOrigin.Y));
-						multiSelectMax = new Vector2(float.Max(pos.X, multiSelectOrigin.X), float.Max(pos.Y, multiSelectOrigin.Y));
-						multiSelectRect = new RectangleF(multiSelectMin.X, multiSelectMin.Y, multiSelectMax.X - multiSelectMin.X, multiSelectMax.Y - multiSelectMin.Y);
-						
-						if(ImGui.IsMouseDragging(ImGuiMouseButton.Left, -1.0F)) {
-							if(!multiSelect) {
-								multiSelect = true;
-								multiSelectOrigin = ImGui.GetMousePos();
-							}
-							ImGui.GetWindowDrawList().AddRect(multiSelectMin, multiSelectMax, Utilities.GetPackedColor(255, 255, 255, 255));
-						} else {
-							if(multiSelect) {
-								multiSelect = false;
-								
-								int minX = (int)((multiSelectMin.X - originScreen.X) / (float)(scale * scene.World.TileWidth));
-								int minY = (int)((multiSelectMin.Y - originScreen.Y) / (float)(scale * scene.World.TileHeight));
-								int maxX = (int)((multiSelectMax.X - originScreen.X) / (float)(scale * scene.World.TileWidth));
-								int maxY = (int)((multiSelectMax.Y - originScreen.Y) / (float)(scale * scene.World.TileHeight));
-
-								minX = int.Max(minX, 0);
-								minY = int.Max(minY, 0);
-								maxX = int.Min(maxX, countX - 1);
-								maxY = int.Min(maxY, countY - 1);
-								
-								brush.SetSize(maxX - minX + 1, maxY - minY + 1);
-								
-								for(int y = minY; y <= maxY; y++) {
-									for(int x = minX; x <= maxX; x++) {
-										int tileID = (y * countX + x) + 1;
-										
-										brush.SetTile(x - minX, y - minY, tileID, link.Slot);
-									}
-								}
-
-								brushChanged = true;
-							}
-						}
-					}
-
-					for(int y = 0; y < countY; y++) {
-						for(int x = 0; x < countX; x++) {
-							int tileID = (y * countX + x) + 1;
-							bool selected = false;
-							
-							if(brush != null && brush.Tilemap != null && !brush.Resizing) {
-								for(int by = 0; by < brush.Height; by++) {
-									for(int bx = 0; bx < brush.Width; bx++) {
-										var tile = brush.Tilemap.Grid[bx, by];
-										selected = tile.TileID == tileID && tile.TilesetSlot == link.Slot;
-										if(selected) break;
-									}
-									if(selected) break;
-								}
-							}
-							
-							ImGui.SetCursorPos(origin + new Vector2(scene.World.TileWidth * x, scene.World.TileHeight * y) * scale);
-							ImGui.PushID(tileID);
-							Vector2 c = ImGui.GetCursorScreenPos();
-							Vector2 s = new Vector2(scene.World.TileWidth, scene.World.TileHeight) * scale;
-							if(ImGui.InvisibleButton("##tile", s)) {
-								if(brush != null) {
-									brush.SetSize(1, 1, true);
-									brush.SetTile(0, 0, tileID, link.Slot);
-									brushChanged = true;
-								}
-							}
-							
-							bool inMultiSelect = false;
-							if(multiSelect) {
-								inMultiSelect = multiSelectRect.IntersectsWith(new RectangleF(c.X, c.Y, s.X, s.Y));
-							}
-							
-							if(ImGui.IsItemHovered() || inMultiSelect) {
-								ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
-								hoveredTile = true;
-							}
-							if(selected) {
-								ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
-								ImGui.GetWindowDrawList().AddRect(c, c + s, Utilities.GetPackedColor(255, 255, 255, 255));
-							}
-							ImGui.PopID();
-						}
-					}
-					if(!hoveredTile) {
-						ImGui.SetCursorPos(origin);
-						if(ImGui.InvisibleButton("##clear", ImGui.GetContentRegionAvail())) {
-							if(brush != null) {
-								brush.SetSize(1, 1, true);
-								brush.SetTile(0, 0, 0, 0);
-								if(Program.CanvasPanel.ActiveTool == brush) {
-									Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
-								}
-							}
-						}
-					}
-					if(brushChanged) {
-						Program.CanvasPanel.SetTool(brush);
-					}
-				} else {
-					ImGui.Text("No tileset selected...");
-				}
-				
-				ImGui.EndChild(); // tileset-picker
 				ImGui.Separator();
 				ImGui.Spacing();
 			}
@@ -352,7 +211,201 @@ public class TilePickerPanel : Panel {
 		
 		ImGui.PopID(); // scene.ID
 	}
-	
+
+	private void TileGridView(Scene scene, Tileset tileset, TilesetLink link, ImGuiWindowFlags windowFlags, Vector2 region, int scale) {
+		Texture texSource = tileset?.GetTexturePreview();
+
+		Vector2 areaPos = ImGui.GetCursorScreenPos();
+		Vector2 areaSize = new(region.X, texSource?.Height * scale + 34 ?? region.X);
+
+		var childFlags = ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.AlwaysHorizontalScrollbar;
+		if(!ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
+			windowFlags |= ImGuiWindowFlags.NoScrollWithMouse;
+		}
+
+		ImGui.BeginChild(
+			"tileset-picker",
+			areaSize,
+			ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders,
+			childFlags
+		);
+
+		if(ImGui.IsWindowHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
+			ImGui.SetScrollY(ImGui.GetScrollY() - ImGui.GetIO().MouseDelta.Y);
+			ImGui.SetScrollX(ImGui.GetScrollX() - ImGui.GetIO().MouseDelta.X);
+		}
+
+		if(ImGui.IsWindowHovered() && ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
+			ImGui.SetScrollX(ImGui.GetScrollX() + ImGui.GetIO().MouseWheel * 64.0F);
+		}
+
+		Vector2 p0 = areaPos;
+		Vector2 p1 = p0 + areaSize - new Vector2(16);
+		bool hoveredTile = false;
+		if(tileset != null && texSource != null) {
+			Vector2 origin = ImGui.GetCursorPos();
+			Vector2 originScreen = ImGui.GetCursorScreenPos();
+			Vector2 border = new(4, 4);
+			Vector2 size = new Vector2(texSource.Width, texSource.Height) * scale;
+			ImGui.Image(new IntPtr(texSource.Handle), size, new(0, 0), new(1, 1), new(1, 1, 1, 1));
+
+			var brush = Program.CanvasPanel.TileBrush;
+			bool brushChanged = false;
+
+			int countX = tileset.GetTileCountX();
+			int countY = tileset.GetTileCountY();
+
+			Vector2 multiSelectMin = new(0);
+			Vector2 multiSelectMax = new(0);
+			RectangleF multiSelectRect = new(0, 0, 0, 0);
+
+			if(ImGui.IsWindowFocused()) {
+
+				Vector2 pos = ImGui.GetMousePos();
+				multiSelectMin = new Vector2(float.Min(pos.X, multiSelectOrigin.X), float.Min(pos.Y, multiSelectOrigin.Y));
+				multiSelectMax = new Vector2(float.Max(pos.X, multiSelectOrigin.X), float.Max(pos.Y, multiSelectOrigin.Y));
+				multiSelectRect = new RectangleF(multiSelectMin.X, multiSelectMin.Y, multiSelectMax.X - multiSelectMin.X, multiSelectMax.Y - multiSelectMin.Y);
+
+				if(ImGui.IsMouseDragging(ImGuiMouseButton.Left, -1.0F)) {
+					if(!multiSelect) {
+						multiSelect = true;
+						multiSelectOrigin = ImGui.GetMousePos();
+					}
+
+					ImGui.GetWindowDrawList().AddRect(multiSelectMin, multiSelectMax, Utilities.GetPackedColor(255, 255, 255, 255));
+				} else {
+					if(multiSelect) {
+						multiSelect = false;
+
+						int minX = (int)((multiSelectMin.X - originScreen.X) / (float)(scale * scene.World.TileWidth));
+						int minY = (int)((multiSelectMin.Y - originScreen.Y) / (float)(scale * scene.World.TileHeight));
+						int maxX = (int)((multiSelectMax.X - originScreen.X) / (float)(scale * scene.World.TileWidth));
+						int maxY = (int)((multiSelectMax.Y - originScreen.Y) / (float)(scale * scene.World.TileHeight));
+
+						minX = int.Max(minX, 0);
+						minY = int.Max(minY, 0);
+						maxX = int.Min(maxX, countX - 1);
+						maxY = int.Min(maxY, countY - 1);
+
+						brush.SetSize(maxX - minX + 1, maxY - minY + 1);
+
+						for(int y = minY; y <= maxY; y++) {
+							for(int x = minX; x <= maxX; x++) {
+								int tileID = (y * countX + x) + 1;
+
+								brush.SetTile(x - minX, y - minY, tileID, link.Slot);
+							}
+						}
+
+						brushChanged = true;
+					}
+				}
+			}
+
+			for(int y = 0; y < countY; y++) {
+				for(int x = 0; x < countX; x++) {
+					int tileID = (y * countX + x) + 1;
+					bool selected = false;
+
+					if(brush != null && brush.Tilemap != null && !brush.Resizing) {
+						for(int by = 0; by < brush.Height; by++) {
+							for(int bx = 0; bx < brush.Width; bx++) {
+								var tile = brush.Tilemap.Grid[bx, by];
+								selected = tile.TileID == tileID && tile.TilesetSlot == link.Slot;
+								if(selected) break;
+							}
+
+							if(selected) break;
+						}
+					}
+
+					ImGui.SetCursorPos(origin + new Vector2(scene.World.TileWidth * x, scene.World.TileHeight * y) * scale);
+					ImGui.PushID(tileID);
+					Vector2 c = ImGui.GetCursorScreenPos();
+					Vector2 s = new Vector2(scene.World.TileWidth, scene.World.TileHeight) * scale;
+					if(ImGui.InvisibleButton("##tile", s)) {
+						if(brush != null) {
+							brush.SetSize(1, 1, true);
+							brush.SetTile(0, 0, tileID, link.Slot);
+							brushChanged = true;
+						}
+					}
+
+					bool inMultiSelect = false;
+					if(multiSelect) {
+						inMultiSelect = multiSelectRect.IntersectsWith(new RectangleF(c.X, c.Y, s.X, s.Y));
+					}
+
+					if(ImGui.IsItemHovered() || inMultiSelect) {
+						ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
+						hoveredTile = true;
+					}
+
+					if(selected) {
+						ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
+						ImGui.GetWindowDrawList().AddRect(c, c + s, Utilities.GetPackedColor(255, 255, 255, 255));
+					}
+
+					ImGui.PopID();
+				}
+			}
+
+			if(!hoveredTile) {
+				ImGui.SetCursorPos(origin);
+				if(ImGui.InvisibleButton("##clear", ImGui.GetContentRegionAvail())) {
+					if(brush != null) {
+						brush.SetSize(1, 1, true);
+						brush.SetTile(0, 0, 0, 0);
+						if(Program.CanvasPanel.ActiveTool == brush) {
+							Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
+						}
+					}
+				}
+			}
+
+			if(brushChanged) {
+				Program.CanvasPanel.SetTool(brush);
+			}
+		} else {
+			ImGui.Text("No tileset selected...");
+		}
+
+		ImGui.EndChild(); // tileset-picker
+	}
+
+	private void AutomapListView(Scene scene, Tileset tileset, TilesetLink link, ImGuiWindowFlags windowFlags, Vector2 region, int scale) {
+		Texture texSource = tileset?.GetTexturePreview();
+
+		Vector2 areaPos = ImGui.GetCursorScreenPos();
+		Vector2 areaSize = new(region.X, texSource?.Height * scale + 34 ?? region.X);
+
+		var childFlags = ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.AlwaysHorizontalScrollbar;
+		if(!ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
+			windowFlags |= ImGuiWindowFlags.NoScrollWithMouse;
+		}
+
+		ImGui.BeginChild(
+			"automap-list",
+			areaSize,
+			ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders,
+			childFlags
+		);
+		
+		for(int i = 0; i < tileset.AutomapPatterns.Count; i++) {
+			AutomapPattern pattern = tileset.AutomapPatterns[i];
+			ImGui.PushID(i);
+			if(ImGui.Selectable(pattern.Name, false, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap)) {
+				
+				var brush = Program.CanvasPanel.TileBrush;
+				brush.SetAutomapPattern(pattern, 1, 1);
+				Program.CanvasPanel.SetTool(brush);
+			}
+			ImGui.PopID(); // i
+		}
+		
+		ImGui.EndChild(); // automap-list
+	}
+
 	public class AddOperation : IFileEditOperation {
 		private Scene scene;
 		private TilesetLink link;
