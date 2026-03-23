@@ -319,19 +319,10 @@ public class Tilemap {
 		gl.Viewport(0, 0, (uint)Program.FramebufferSize.X, (uint)Program.FramebufferSize.Y);
 	}
 
-	public unsafe void ExportToFile(string filename) {
-		GL gl = Program.GL;
-
+	public void ExportToFile(string filename) {
 		FileStream stream = null;
-		
 		try {
-			Render();
-			byte[] data = new byte[frameBufferWidth * frameBufferHeight * 4];
-			gl.BindFramebuffer(GLEnum.Framebuffer, frameBufferHandle);
-			gl.ReadBuffer(GLEnum.ColorAttachment0);
-			fixed(void* raw = data) {
-				gl.ReadPixels(0, 0, frameBufferWidth, frameBufferHeight, GLEnum.Rgba, GLEnum.UnsignedByte, raw);
-			}
+			ExportToPixels(out byte[] data);
 			stream = System.IO.File.Create(filename);
 			new StbImageWriteSharp.ImageWriter().WritePng(data, (int)frameBufferWidth, (int)frameBufferHeight, ColorComponents.RedGreenBlueAlpha, stream);
 			stream.Close();
@@ -339,6 +330,18 @@ public class Tilemap {
 			stream?.Close();
 			Log.Error(e, "Failed to export tilemap image!");
 		}
+	}
+
+	public unsafe void ExportToPixels(out byte[] buffer) {
+		GL gl = Program.GL;
+		Render();
+		buffer = new byte[frameBufferWidth * frameBufferHeight * 4];
+		gl.BindFramebuffer(GLEnum.Framebuffer, frameBufferHandle);
+		gl.ReadBuffer(GLEnum.ColorAttachment0);
+		fixed(void* raw = buffer) {
+			gl.ReadPixels(0, 0, frameBufferWidth, frameBufferHeight, GLEnum.Rgba, GLEnum.UnsignedByte, raw);
+		}
+		gl.BindFramebuffer(GLEnum.Framebuffer, 0);
 	}
 
 	public void ReleaseResources() {

@@ -1,5 +1,7 @@
 ﻿using System.Drawing;
 using System.Xml.Linq;
+using Serilog;
+using StbImageWriteSharp;
 
 namespace L2D;
 
@@ -225,6 +227,45 @@ public class Scene {
 			if(layer.Type == LayerType.Tiles) {
 				layer.Tilemap?.Resize(tileCountX, tileCountY);
 			}
+		}
+	}
+
+	public void ExportToFile(string filename) {
+		int pixelsWidth = tileCountX * file.World.TileWidth;
+		int pixelsHeight = tileCountY * file.World.TileHeight;
+		byte[] buffer = new byte[pixelsWidth * pixelsHeight * 4];
+		// Manual color blending becuase I'm tool lazy to deal with opengl
+		foreach(var layer in layers) {
+			if(layer.Type != LayerType.Tiles) continue;
+			layer.Tilemap.ExportToPixels(out byte[] data);
+			for(int p = 0; p < pixelsWidth * pixelsHeight; p++) {
+				int i = p * 4;
+				float src_r = data[i + 0] / 255.0F;
+				float src_g = data[i + 1] / 255.0F;
+				float src_b = data[i + 2] / 255.0F;
+				float src_a = data[i + 3] / 255.0F;
+				float dst_r = buffer[i + 0] / 255.0F;
+				float dst_g = buffer[i + 1] / 255.0F;
+				float dst_b = buffer[i + 2] / 255.0F;
+				float dst_a = buffer[i + 3] / 255.0F;
+				dst_r = float.Clamp(dst_r * (1.0F - src_a) + src_r * src_a, 0.0F, 1.0F);
+				dst_g = float.Clamp(dst_g * (1.0F - src_a) + src_g * src_a, 0.0F, 1.0F);
+				dst_b = float.Clamp(dst_b * (1.0F - src_a) + src_b * src_a, 0.0F, 1.0F);
+				dst_a = float.Clamp(dst_a + src_a, 0.0F, 1.0F);
+				buffer[i + 0] = (byte)(dst_r * 255.0F);
+				buffer[i + 1] = (byte)(dst_g * 255.0F);
+				buffer[i + 2] = (byte)(dst_b * 255.0F);
+				buffer[i + 3] = (byte)(dst_a * 255.0F);
+			}
+		}
+		FileStream stream = null;
+		try {
+			stream = System.IO.File.Create(filename);
+			new StbImageWriteSharp.ImageWriter().WritePng(buffer, pixelsWidth, pixelsHeight, ColorComponents.RedGreenBlueAlpha, stream);
+			stream.Close();
+		} catch(Exception e) {
+			stream?.Close();
+			Log.Error(e, "Failed to export scene image!");
 		}
 	}
 	

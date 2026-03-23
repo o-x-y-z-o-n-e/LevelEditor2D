@@ -8,21 +8,9 @@ using Silk.NET.Input;
 using Silk.NET.Maths;
 using Rectangle = System.Drawing.Rectangle;
 
-namespace L2D; 
+namespace L2D;
 
 public class TilesetsPanel : Panel {
-
-	private int[] test = new int[] {
-		0, 0, 0, 1, 1, 1, 0, 0, 0,
-		0, 0, 0, 1, 1, 1, 0, 0, 0,
-		0, 0, 0, 1, 1, 1, 0, 0, 0,
-		1, 1, 1, 1, 1, 1, 1, 1, 1,
-		1, 1, 1, 1, 1, 1, 1, 1, 1,
-		1, 1, 1, 1, 1, 1, 1, 1, 1,
-		0, 0, 0, 1, 1, 1, 0, 0, 0,
-		0, 0, 0, 1, 1, 1, 0, 0, 0,
-		0, 0, 0, 1, 1, 1, 0, 0, 0,
-	};
 
 	private enum EditMode {
 		TileColliders,
@@ -33,6 +21,11 @@ public class TilesetsPanel : Panel {
 	private enum ViewMode {
 		List,
 		Grid
+	}
+
+	public int PreviewScale {
+		get => previewScale;
+		set => previewScale = value;
 	}
 
 	private static ViewMode mode;
@@ -66,6 +59,7 @@ public class TilesetsPanel : Panel {
 	private string automapNameBuffer;
 	private int automapDeleteIndex;
 	private AutomapMaskType automapMaskTypeOption;
+	private int automapDemoIndex;
 
 	private FileEditEntry shapeEdit;
 	
@@ -95,6 +89,7 @@ public class TilesetsPanel : Panel {
 		automapBitmaskEdit = null;
 		automapDeleteIndex = -1;
 		automapMaskTypeOption = AutomapMaskType.Mask2x2;
+		automapDemoIndex = 0;
 	}
 
 	protected override void Update() {
@@ -821,7 +816,7 @@ public class TilesetsPanel : Panel {
 
 		Vector2 listSize = ImGui.GetContentRegionAvail();
 		listSize.X = 280;
-		listSize.Y -= 98;
+		listSize.Y -= 96;
 		Vector2 origin = ImGui.GetCursorPos();
 		ImGui.BeginChild("pattern-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeX);
 		listSize.X = ImGui.GetWindowSize().X;
@@ -968,17 +963,17 @@ public class TilesetsPanel : Panel {
 		ImGui.SetCursorPos(origin + new Vector2(listSize.X + 8, 0));
 		ImGui.BeginChild("pattern-preview", new Vector2(ImGui.GetContentRegionAvail().X, listSize.Y), ImGuiChildFlags.Borders, ImGuiWindowFlags.HorizontalScrollbar);
 
-		ImGui.Text("Preview");
+		// ImGui.Text("Preview");
 		
 		if(tileset != null && selectedAutomapPattern != null) {
 			var world = Program.File.World;
 			Vector2 size = new Vector2(world.TileWidth, world.TileHeight) * previewScale;
 
-			int w = 9;
-			int h = 9;
+			int w = AUTOMAP_DEMOS[automapDemoIndex].Width;
+			int h = AUTOMAP_DEMOS[automapDemoIndex].Height;
 			ImGui.Dummy(size * new Vector2(w, h));
-			for(int i = 0; i < test.Length; i++) {
-				if(test[i] == 0) continue;
+			for(int i = 0; i < AUTOMAP_DEMOS[automapDemoIndex].Array.Length; i++) {
+				if(AUTOMAP_DEMOS[automapDemoIndex].Array[i] == 0) continue;
 
 				int x = i % w;
 				int y = i / w;
@@ -990,7 +985,7 @@ public class TilesetsPanel : Panel {
 						int ix = x + tx;
 						int iy = y + ty;
 						if(ix >= 0 && ix < w && iy >= 0 && iy < h) {
-							if(test[ix + iy * w] > 0) {
+							if(AUTOMAP_DEMOS[automapDemoIndex].Array[ix + iy * w] > 0) {
 								bitmask |= (uint)(1 << index);
 							}
 						}
@@ -998,7 +993,7 @@ public class TilesetsPanel : Panel {
 					}
 				}
 
-				ImGui.SetCursorPos(new Vector2(10 + x * size.X, 32 + y * size.Y));
+				ImGui.SetCursorPos(new Vector2(10 + x * size.X, 10 + y * size.Y));
 				Vector2 t0 = ImGui.GetCursorScreenPos();
 				Vector2 t1 = t0 + size;
 
@@ -1015,6 +1010,18 @@ public class TilesetsPanel : Panel {
 		}
 
 		ImGui.EndChild(); // pattern-preview
+		
+		ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X - 300);
+		ImGui.SetNextItemWidth(250);
+		if(ImGui.BeginCombo("Preview", AUTOMAP_DEMOS[automapDemoIndex].Name)) {
+			for(int i = 0; i < AUTOMAP_DEMOS.Length; i++) {
+				if(ImGui.Selectable(AUTOMAP_DEMOS[i].Name)) {
+					automapDemoIndex = i;
+				}
+			}
+			ImGui.EndCombo();
+		}
+		
 		ImGui.EndDisabled(); // tileset == null
 	}
 
@@ -1170,5 +1177,47 @@ public class TilesetsPanel : Panel {
 			else return result; // IndexOfKey(key) since the comparer never returns 0 to signal key equality
 		}
 	}
+
+	public struct AutomapPreviewDemo {
+		public string Name;
+		public int Width;
+		public int Height;
+		public byte[] Array;
+	}
+
+	private readonly AutomapPreviewDemo[] AUTOMAP_DEMOS = new AutomapPreviewDemo[] {
+		new AutomapPreviewDemo {
+			Name = "Cardinal Cross",
+			Width = 9,
+			Height = 9,
+			Array = new byte[] {
+				0, 0, 0, 1, 1, 1, 0, 0, 0,
+				0, 0, 0, 1, 1, 1, 0, 0, 0,
+				0, 0, 0, 1, 1, 1, 0, 0, 0,
+				1, 1, 1, 1, 1, 1, 1, 1, 1,
+				1, 1, 1, 1, 1, 1, 1, 1, 1,
+				1, 1, 1, 1, 1, 1, 1, 1, 1,
+				0, 0, 0, 1, 1, 1, 0, 0, 0,
+				0, 0, 0, 1, 1, 1, 0, 0, 0,
+				0, 0, 0, 1, 1, 1, 0, 0, 0,
+			}
+		},
+		new AutomapPreviewDemo {
+			Name = "Miscellaneous",
+			Width = 9,
+			Height = 9,
+			Array = new byte[] {
+				1, 1, 1, 1, 1, 1, 1, 1, 1,
+				1, 0, 1, 0, 0, 0, 1, 0, 1,
+				1, 1, 1, 1, 0, 0, 1, 0, 1,
+				1, 0, 0, 0, 0, 0, 0, 0, 1,
+				1, 0, 0, 0, 1, 0, 1, 1, 1,
+				1, 0, 0, 0, 0, 0, 1, 0, 1,
+				1, 1, 1, 0, 0, 1, 1, 1, 1,
+				1, 0, 0, 1, 0, 0, 1, 0, 1,
+				1, 1, 1, 1, 1, 1, 1, 1, 1,
+			}
+		}
+	};
 	
 }

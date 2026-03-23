@@ -9,20 +9,20 @@ public class FileDialog {
 	private bool active;
 	private bool finished;
 	private string defaultPath;
-	private string filter;
+	private string extension;
 	private bool open;
 	private Action<string> callback;
 	private DialogResult result;
 	
 	private static FileDialog instance = new FileDialog();
 
-	public static void Save(string defaultPath, string filter, Action<string> onResult) {
+	public static void Save(string defaultPath, string extension, Action<string> onResult) {
 		lock(instance) {
 			if(instance.active) return;
 			instance.active = true;
 			instance.finished = false;
 			instance.defaultPath = defaultPath.Replace('/', Path.PathSeparator);
-			instance.filter = filter;
+			instance.extension = extension;
 			instance.callback = onResult;
 			instance.open = false;
 		}
@@ -31,13 +31,13 @@ public class FileDialog {
 		myThread.Start();
 	}
 	
-	public static void Open(string defaultPath, string filter, Action<string> onResult) {
+	public static void Open(string defaultPath, string extension, Action<string> onResult) {
 		lock(instance) {
 			if(instance.active) return;
 			instance.active = true;
 			instance.finished = false;
 			instance.defaultPath = defaultPath.Replace('/', Path.PathSeparator);
-			instance.filter = filter;
+			instance.extension = extension;
 			instance.callback = onResult;
 			instance.open = true;
 		}
@@ -51,7 +51,7 @@ public class FileDialog {
 		string filter;
 		lock(instance) {
 			defaultPath = instance.defaultPath;
-			filter = instance.filter;
+			filter = instance.extension;
 		}
 		var result = instance.open ? Dialog.FileOpen(filter, defaultPath) : Dialog.FileSave(filter, defaultPath);
 		lock(instance) {
@@ -66,7 +66,14 @@ public class FileDialog {
 			if(instance.finished) {
 				instance.finished = false;
 				if(instance.result.IsOk) {
-					instance.callback?.Invoke(instance.result.Path.Replace('\\', '/'));
+					string ext = $".{instance.extension.ToLower()}";
+					string path = instance.result.Path.Replace('\\', '/');
+					if(!instance.open) {
+						if(!path.ToLower().EndsWith(ext)) {
+							path = path + ext;
+						}
+					}
+					instance.callback?.Invoke(path);
 				} else {
 					instance.callback?.Invoke(null);
 				}

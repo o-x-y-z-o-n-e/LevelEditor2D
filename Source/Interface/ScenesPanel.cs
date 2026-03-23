@@ -64,6 +64,13 @@ public class ScenesPanel : Panel {
 				if(ImGui.MenuItem("Locate")) {
 					Program.CanvasPanel.LocateScene(scene);
 				}
+				if(ImGui.MenuItem("Export as Image")) {
+					FileDialog.Save("", "png", path => {
+						if(path != null) {
+							scene.ExportToFile(path);
+						}
+					});
+				}
 				ImGui.EndPopup();
 			}
 			

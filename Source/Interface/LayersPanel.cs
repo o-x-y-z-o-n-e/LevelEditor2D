@@ -81,8 +81,11 @@ public class LayersPanel : Panel {
 					}
 					if(layer.Type == LayerType.Tiles) {
 						if(ImGui.MenuItem("Export as Image")) {
-							// TODO
-							layer.Tilemap.ExportToFile("test.png");
+							FileDialog.Save("", "png", path => {
+								if(path != null) {
+									layer.Tilemap.ExportToFile(path);
+								}
+							});
 						}
 					}
 					ImGui.EndPopup();

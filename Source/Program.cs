@@ -641,6 +641,11 @@ public static class Program {
 								info.SelectedLayer = -1;
 							}
 							break;
+						case "TilesetPreviewScale":
+							if(!int.TryParse(split[1], out info.TilesetPreviewScale)) {
+								info.TilesetPreviewScale = 3;
+							}
+							break;
 					}
 				}
 			}
@@ -666,6 +671,7 @@ public static class Program {
 				writer.WriteLine($"CameraZoom={p.CameraZoom}");
 				writer.WriteLine($"SelectedScene={p.SelectedScene}");
 				writer.WriteLine($"SelectedLayer={p.SelectedLayer}");
+				writer.WriteLine($"TilesetPreviewScale={p.TilesetPreviewScale}");
 			}
 		} catch(Exception e) {
 			Log.Error(e, "Failed to save recent projects!");
@@ -688,6 +694,7 @@ public static class Program {
 			SetSelectedLayer(selectedScene?.GetLayer(info.SelectedLayer));
 			canvasPanel.Camera = info.CameraPosition;
 			canvasPanel.ZoomFactor = info.CameraZoom;
+			tilesetsPanel.PreviewScale = info.TilesetPreviewScale;
 			info.LastOpened = DateTime.Now;
 		}
 	}
@@ -712,6 +719,7 @@ public static class Program {
 		info.LastOpened = DateTime.Now;
 		info.CameraPosition = canvasPanel.Camera;
 		info.CameraZoom = canvasPanel.ZoomFactor;
+		info.TilesetPreviewScale = tilesetsPanel.PreviewScale;
 		if(selectedScene != null) {
 			info.SelectedScene = selectedScene.World.GetSceneIndex(selectedScene);
 		} else {
@@ -741,6 +749,7 @@ public class ProjectEditorState {
 	public float CameraZoom;
 	public int SelectedScene;
 	public int SelectedLayer;
+	public int TilesetPreviewScale;
 	public ProjectEditorState(string path) {
 		Path = path;
 		LastOpened = DateTime.Now;
@@ -748,5 +757,6 @@ public class ProjectEditorState {
 		CameraZoom = 0;
 		SelectedScene = -1;
 		SelectedLayer = -1;
+		TilesetPreviewScale = 3;
 	}
 }
