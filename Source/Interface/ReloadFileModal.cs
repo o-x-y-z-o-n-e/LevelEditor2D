@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 
-namespace L2D; 
+namespace L2D;
 
 public class ReloadFileModal {
 	

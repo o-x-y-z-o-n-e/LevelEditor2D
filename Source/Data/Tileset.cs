@@ -359,6 +359,69 @@ public class Tileset {
 		texturePreview = null;
 		textureArray = null;
 	}
+	
+	public class AddOperation : IFileEditOperation {
+		private World world;
+		private Tileset tileset;
+		private int index;
+		public AddOperation(World world, Tileset tileset) {
+			this.world = world;
+			this.tileset = tileset;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.world.AddTileset(op.tileset);
+			op.tileset.UpdateFileWatcher();
+			op.tileset.ReloadTexture();
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.world.RemoveTileset(op.tileset);
+			op.tileset.ReleaseResources();
+		}
+		public bool HasChanges() => true;
+	}
+
+	public class NameOperation : IFileEditOperation {
+		private Tileset tileset;
+		private string oldValue;
+		private string newValue;
+		public NameOperation(Tileset tileset, string newValue) {
+			this.tileset = tileset;
+			this.oldValue = tileset.ID;
+			this.newValue = newValue;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<NameOperation>();
+			op.tileset.ID = op.newValue;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<NameOperation>();
+			op.tileset.ID = op.oldValue;
+		}
+		public bool HasChanges() => oldValue != newValue;
+	}
+	
+	public class GroupOperation : IFileEditOperation {
+		private Tileset tileset;
+		private string oldValue;
+		private string newValue;
+		public GroupOperation(Tileset tileset, string newValue) {
+			this.tileset = tileset;
+			this.oldValue = tileset.Group;
+			this.newValue = newValue;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<GroupOperation>();
+			op.tileset.Group = op.newValue;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<GroupOperation>();
+			op.tileset.Group = op.oldValue;
+		}
+		public bool HasChanges() => oldValue != newValue;
+	}
+	
 }
 
 public class TileData {
@@ -372,6 +435,63 @@ public class TileData {
 	public TileData(int tile) {
 		this.tile = tile;
 		this.shapes = new List<TileShape>();
+	}
+	public class ShapeCountOperation : IFileEditOperation {
+		public List<TileShape> NewList => newList;
+		private TileData data;
+		private List<TileShape> oldList;
+		private List<TileShape> newList;
+		public ShapeCountOperation(TileData data, Tileset tileset, int newCount) {
+			this.data = data;
+			this.oldList = data.Shapes;
+			this.newList = new();
+			int i = 0;
+			while(i < newCount && i < data.Shapes.Count) {
+				this.newList.Add(data.Shapes[i]);
+				i++;
+			}
+			while(i < newCount) {
+				this.newList.Add(new TileShape(new(0, 0), new(tileset.SizeX, tileset.SizeY)));
+				i++;
+			}
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<ShapeCountOperation>();
+			op.data.Shapes = op.newList;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<ShapeCountOperation>();
+			op.data.Shapes = op.oldList;
+		}
+		public bool HasChanges() => oldList.Count != newList.Count;
+	}
+	public class ShapeEditOperation : IFileEditOperation {
+		public TileShape NewShape => newShape;
+		private TileData data;
+		private int index;
+		private TileShape oldShape;
+		private TileShape newShape;
+		public ShapeEditOperation(TileData data, int index) {
+			this.data = data;
+			this.index = index;
+			this.oldShape = data.Shapes[index];
+			this.newShape = data.Shapes[index];
+		}
+		public void SetPosition(Vector2 position) {
+			newShape.Position = position;
+		}
+		public void SetSize(Vector2 size) {
+			newShape.Size = size;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<ShapeEditOperation>();
+			op.data.Shapes[op.index] = op.newShape;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<ShapeEditOperation>();
+			op.data.Shapes[op.index] = op.oldShape;
+		}
+		public bool HasChanges() => oldShape != newShape;
 	}
 }
 
@@ -423,10 +543,10 @@ public class AutomapPattern {
 	private SortedList<int, uint> tileToBitmask;
 	private Dictionary<uint, List<int>> bitmaskToTiles;
 
-	public AutomapPattern(Tileset tileset, string name) {
+	public AutomapPattern(Tileset tileset, string name, AutomapMaskType maskType = AutomapMaskType.Mask2x2) {
 		this.tileset = tileset;
 		this.name = name;
-		this.maskType = AutomapMaskType.Mask2x2;
+		this.maskType = maskType;
 		this.tileToBitmask = new SortedList<int, uint>();
 		this.bitmaskToTiles = new Dictionary<uint, List<int>>();
 	}
@@ -529,10 +649,6 @@ public class AutomapPattern {
 			for(int tx = -1; tx <= 1; ++tx) {
 				int ix = x + tx;
 				int iy = y + ty;
-				if(tx == 0 && ty == 0) {
-					index++;
-					continue;
-				}
 				if(ix >= 0 && ix < tilemap.Width && iy >= 0 && iy < tilemap.Height) {
 					TileRef tile = tilemap.Get(ix, iy);
 					if(tile.TilesetSlot == tilesetSlot) {
@@ -545,6 +661,138 @@ public class AutomapPattern {
 			}
 		}
 		return Evaluate(bitmask);
+	}
+	
+	public class AddOperation : IFileEditOperation {
+		private Tileset tileset;
+		private AutomapPattern pattern;
+		public AddOperation(Tileset tileset, AutomapPattern pattern) {
+			this.tileset = tileset;
+			this.pattern = pattern;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.tileset.AutomapPatterns.Add(op.pattern);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.tileset.AutomapPatterns.Remove(op.pattern);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class MoveOperation : IFileEditOperation {
+		private Tileset tileset;
+		private int index1;
+		private int index2;
+		public MoveOperation(Tileset tileset, int index1, int index2) {
+			this.tileset = tileset;
+			this.index1 = index1;
+			this.index2 = index2;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			var t = op.tileset.AutomapPatterns[op.index1];
+			op.tileset.AutomapPatterns[op.index1] = op.tileset.AutomapPatterns[op.index2];
+			op.tileset.AutomapPatterns[op.index2] = t;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			var t = op.tileset.AutomapPatterns[op.index2];
+			op.tileset.AutomapPatterns[op.index2] = op.tileset.AutomapPatterns[op.index1];
+			op.tileset.AutomapPatterns[op.index1] = t;
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class RemoveOperation : IFileEditOperation {
+		private Tileset tileset;
+		private AutomapPattern pattern;
+		private int index;
+		public RemoveOperation(Tileset tileset, AutomapPattern pattern) {
+			this.tileset = tileset;
+			this.pattern = pattern;
+			this.index = tileset.AutomapPatterns.IndexOf(pattern);
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.tileset.AutomapPatterns.Remove(op.pattern);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.tileset.AutomapPatterns.Insert(op.index, op.pattern);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class NameOperation : IFileEditOperation {
+		private AutomapPattern pattern;
+		private string oldValue;
+		private string newValue;
+		public NameOperation(AutomapPattern pattern, string newValue) {
+			this.pattern = pattern;
+			this.oldValue = pattern.name;
+			this.newValue = newValue;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<NameOperation>();
+			op.pattern.name = op.newValue;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<NameOperation>();
+			op.pattern.name = op.oldValue;
+		}
+		public bool HasChanges() => oldValue != newValue;
+	}
+	
+	public class MaskTypeOperation : IFileEditOperation {
+		private AutomapPattern pattern;
+		private AutomapMaskType oldValue;
+		private AutomapMaskType newValue;
+		public MaskTypeOperation(AutomapPattern pattern, AutomapMaskType newValue) {
+			this.pattern = pattern;
+			this.oldValue = pattern.maskType;
+			this.newValue = newValue;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MaskTypeOperation>();
+			op.pattern.maskType = op.newValue;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MaskTypeOperation>();
+			op.pattern.maskType = op.oldValue;
+		}
+		public bool HasChanges() => oldValue != newValue;
+	}
+	
+	public class BitmaskOperation : IFileEditOperation {
+		public AutomapPattern Pattern => pattern;
+		public int TileID => tileID;
+		public bool Adding => adding;
+		private AutomapPattern pattern;
+		private int tileID;
+		private bool adding;
+		private uint oldBitmask;
+		private uint newBitmask;
+		public BitmaskOperation(AutomapPattern pattern, int tileID, bool adding) {
+			this.pattern = pattern;
+			this.tileID = tileID;
+			this.adding = adding;
+			this.oldBitmask = pattern.GetMask(tileID);
+			this.newBitmask = this.oldBitmask;
+		}
+		public void SetBitmask(uint bitmask) {
+			newBitmask = bitmask;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<BitmaskOperation>();
+			op.pattern.Set(op.tileID, op.newBitmask);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<BitmaskOperation>();
+			op.pattern.Set(op.tileID, op.oldBitmask);
+		}
+		public bool HasChanges() => newBitmask != oldBitmask;
 	}
 	
 	public static uint Convert2x2Mask(uint mask) {

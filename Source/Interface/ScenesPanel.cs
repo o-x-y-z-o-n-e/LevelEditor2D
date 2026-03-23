@@ -55,10 +55,7 @@ public class ScenesPanel : Panel {
 				int n_next = i + (ImGui.GetMouseDragDelta(0).Y < 0.0F ? -1 : 1);
 				if(n_next >= 0 && n_next < count) {
 					ImGui.ResetMouseDragDelta();
-					Program.File.ApplyEdit(this, new MoveOperation(world, i, n_next),
-						redo: MoveOperation.ApplyNextState,
-						undo: MoveOperation.ApplyPrevState
-					);
+					Program.File.ApplyEdit(this, new Scene.MoveOperation(world, i, n_next));
 				}
 			}
 			
@@ -111,10 +108,7 @@ public class ScenesPanel : Panel {
 				var newScene = world.CreateScene(sceneRenameBuffer, sceneResizeVar.X, sceneResizeVar.Y, sceneReposVar.X, sceneReposVar.Y);
 				Program.SetSelectedScene(newScene);
 				ImGui.CloseCurrentPopup();
-				Program.File.ApplyEdit(this, new AddOperation(world, newScene),
-					redo: AddOperation.ApplyNextState,
-					undo: AddOperation.ApplyPrevState
-				);
+				Program.File.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 			}
 			ImGui.EndDisabled();
 			
@@ -164,10 +158,7 @@ public class ScenesPanel : Panel {
 				Scene newScene = world.CopyScene(src, sceneRenameBuffer, sceneReposVar.X, sceneReposVar.Y);
 				Program.SetSelectedScene(newScene);
 				ImGui.CloseCurrentPopup();
-				Program.File.ApplyEdit(this, new AddOperation(world, newScene),
-					redo: AddOperation.ApplyNextState,
-					undo: AddOperation.ApplyPrevState
-				);
+				Program.File.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 			}
 			ImGui.EndDisabled();
 			
@@ -189,10 +180,7 @@ public class ScenesPanel : Panel {
 			ImGui.Text("Delete scene?");
 			if(ImGui.Button("Confirm")) {
 				ImGui.CloseCurrentPopup();
-				Program.File.ApplyEdit(this, new RemoveOperation(world, Program.SelectedScene),
-					redo: RemoveOperation.ApplyNextState,
-					undo: RemoveOperation.ApplyPrevState
-				);
+				Program.File.ApplyEdit(this, new Scene.RemoveOperation(world, Program.SelectedScene));
 				// if(world.SceneCount > 0) {
 				// 	Program.SetSelectedScene(world.GetScene(0));
 				// } else {
@@ -217,19 +205,13 @@ public class ScenesPanel : Panel {
 		}
 		ImGui.BeginDisabled(sceneIndex <= 0);
 		if(ImGui.Button(Codicons.ChevronUp)) {
-			Program.File.ApplyEdit(this, new MoveOperation(world, sceneIndex, sceneIndex-1),
-				redo: MoveOperation.ApplyNextState,
-				undo: MoveOperation.ApplyPrevState
-			);
+			Program.File.ApplyEdit(this, new Scene.MoveOperation(world, sceneIndex, sceneIndex-1));
 		}
 		ImGui.EndDisabled();
 		ImGui.SameLine();
 		ImGui.BeginDisabled(sceneIndex >= world.SceneCount - 1);
 		if(ImGui.Button(Codicons.ChevronDown)) { 
-			Program.File.ApplyEdit(this, new MoveOperation(world, sceneIndex, sceneIndex+1),
-				redo: MoveOperation.ApplyNextState,
-				undo: MoveOperation.ApplyPrevState
-			);
+			Program.File.ApplyEdit(this, new Scene.MoveOperation(world, sceneIndex, sceneIndex+1));
 		}
 		ImGui.EndDisabled();
 		
@@ -255,10 +237,7 @@ public class ScenesPanel : Panel {
 					}
 				}
 				if(valid) {
-					Program.File.ApplyEdit(this, new RenameOperation(scene, id),
-						redo: RenameOperation.ApplyNextState,
-						undo: RenameOperation.ApplyPrevState
-					);
+					Program.File.ApplyEdit(this, new Scene.RenameOperation(scene, id));
 				}
 			}
 			
@@ -290,10 +269,7 @@ public class ScenesPanel : Panel {
 				ImGui.BeginDisabled(!valid);
 				if(ImGui.Button("Confirm")) {
 					ImGui.CloseCurrentPopup();
-					Program.File.ApplyEdit(this, new RepositionOperation(scene, new(sceneReposVar.X, sceneReposVar.Y)),
-						redo: RepositionOperation.ApplyNextState,
-						undo: RepositionOperation.ApplyPrevState
-					);
+					Program.File.ApplyEdit(this, new Scene.RepositionOperation(scene, new(sceneReposVar.X, sceneReposVar.Y)));
 				}
 				ImGui.EndDisabled();
 				
@@ -363,105 +339,6 @@ public class ScenesPanel : Panel {
 		}
 	}
 
-	public class MoveOperation {
-		private World world;
-		private int index1;
-		private int index2;
-		public MoveOperation(World world, int index1, int index2) {
-			this.world = world;
-			this.index1 = index1;
-			this.index2 = index2;
-		}
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.world.SwapScenes(op.index1, op.index2);
-		}
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.world.SwapScenes(op.index2, op.index1);
-		}
-	}
 	
-	public class AddOperation {
-		private World world;
-		private Scene scene;
-		public AddOperation(World world, Scene scene) {
-			this.world = world;
-			this.scene = scene;
-		}
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.world.InsertScene(op.scene, op.world.SceneCount);
-		}
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.world.RemoveScene(op.scene);
-			if(op.scene == Program.SelectedScene) {
-				Program.SetSelectedScene(null);
-			}
-		}
-	}
-	
-	public class RemoveOperation {
-		private World world;
-		private Scene scene;
-		private int index;
-		public RemoveOperation(World world, Scene scene) {
-			this.world = world;
-			this.scene = scene;
-			this.index = world.GetSceneIndex(scene);
-		}
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.world.RemoveScene(op.scene);
-			if(op.scene == Program.SelectedScene) {
-				Program.SetSelectedScene(null);
-			}
-		}
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.world.InsertScene(op.scene, op.index);
-		}
-	}
-	
-	public class RenameOperation {
-		private Scene scene;
-		private string oldName;
-		private string newName;
-		public RenameOperation(Scene scene, string newName) {
-			this.scene = scene;
-			this.oldName = scene.ID;
-			this.newName = newName;
-		}
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RenameOperation>();
-			op.scene.ID = op.newName;
-		}
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RenameOperation>();
-			op.scene.ID = op.oldName;
-		}
-	}
-	
-	public class RepositionOperation {
-		private Scene scene;
-		private Point oldPosition;
-		private Point newPosition;
-		public RepositionOperation(Scene scene, Point newPosition) {
-			this.scene = scene;
-			this.oldPosition = new(scene.WorldX, scene.WorldY);
-			this.newPosition = newPosition;
-		}
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RepositionOperation>();
-			op.scene.WorldX = op.newPosition.X;
-			op.scene.WorldY = op.newPosition.Y;
-		}
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RepositionOperation>();
-			op.scene.WorldX = op.oldPosition.X;
-			op.scene.WorldY = op.oldPosition.Y;
-		}
-	}
 	
 }

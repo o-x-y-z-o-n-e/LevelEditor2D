@@ -137,5 +137,117 @@ public class Entity {
 		Position = Vector2.Zero;
 		Size = Vector2.Zero;
 	}
+	
+	public class AddOperation : IFileEditOperation {
+		private EntityCollection collection;
+		private Entity entity;
+		public AddOperation(EntityCollection collection, Entity entity) {
+			this.collection = collection;
+			this.entity = entity;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.collection.Insert(op.entity, op.collection.Count);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.collection.Remove(op.entity);
+			if(Program.SelectedEntity == op.entity) {
+				Program.SetSelectedEntity(null);
+			}
+		}
+		public bool HasChanges() => true;
+	}
+
+	public class MoveOperation : IFileEditOperation {
+		private EntityCollection collection;
+		private int index1;
+		private int index2;
+		public MoveOperation(EntityCollection collection, int index1, int index2) {
+			this.collection = collection;
+			this.index1 = index1;
+			this.index2 = index2;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.collection.Move(op.index1, op.index2);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.collection.Move(op.index2, op.index1);
+		}
+		public bool HasChanges() => index1 != index2;
+	}
+	
+	public class RemoveOperation : IFileEditOperation {
+		private EntityCollection collection;
+		private Entity entity;
+		private int index;
+		public RemoveOperation(EntityCollection collection, Entity entity) {
+			this.collection = collection;
+			this.entity = entity;
+			this.index = collection.IndexOf(entity);
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.collection.Remove(op.entity);
+			if(Program.SelectedEntity == op.entity) {
+				Program.SetSelectedEntity(null);
+			}
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.collection.Insert(op.entity, op.index);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class PositionOperation : IFileEditOperation {
+		public Entity Entity => entity;
+		private Entity entity;
+		private Vector2 oldPosition;
+		private Vector2 newPosition;
+		public PositionOperation(Entity entity, Vector2 newPosition) {
+			this.entity = entity;
+			this.oldPosition = entity.Position;
+			this.newPosition = newPosition;
+		}
+		public void SetPosition(Vector2 position) {
+			newPosition = position;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<PositionOperation>();
+			op.entity.Position = newPosition;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<PositionOperation>();
+			op.entity.Position = oldPosition;
+		}
+		public bool HasChanges() => oldPosition != newPosition;
+	}
+	
+	public class SizeOperation : IFileEditOperation {
+		public Entity Entity => entity;
+		private Entity entity;
+		private Vector2 oldSize;
+		private Vector2 newSize;
+		public SizeOperation(Entity entity, Vector2 newSize) {
+			this.entity = entity;
+			this.oldSize = entity.Size;
+			this.newSize = newSize;
+		}
+		public void SetSize(Vector2 size) {
+			newSize = size;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<SizeOperation>();
+			op.entity.Size = newSize;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<SizeOperation>();
+			op.entity.Size = oldSize;
+		}
+		public bool HasChanges() => oldSize != newSize;
+	}
 
 }

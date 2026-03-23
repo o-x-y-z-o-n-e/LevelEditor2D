@@ -9,6 +9,7 @@ namespace L2D;
 public class TileBrushTool : CanvasTool {
 	
 	public Tilemap Tilemap => tilemap;
+	public AutomapPattern Pattern => pattern;
 
 	public int Width => width;
 	public int Height => height;

@@ -227,6 +227,113 @@ public class Scene {
 			}
 		}
 	}
+	
+	public class AddOperation : IFileEditOperation {
+		private World world;
+		private Scene scene;
+		public AddOperation(World world, Scene scene) {
+			this.world = world;
+			this.scene = scene;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.world.InsertScene(op.scene, op.world.SceneCount);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.world.RemoveScene(op.scene);
+			if(op.scene == Program.SelectedScene) {
+				Program.SetSelectedScene(null);
+			}
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class MoveOperation : IFileEditOperation {
+		private World world;
+		private int index1;
+		private int index2;
+		public MoveOperation(World world, int index1, int index2) {
+			this.world = world;
+			this.index1 = index1;
+			this.index2 = index2;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.world.SwapScenes(op.index1, op.index2);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			op.world.SwapScenes(op.index2, op.index1);
+		}
+		public bool HasChanges() => index1 != index2;
+	}
+	
+	public class RemoveOperation : IFileEditOperation {
+		private World world;
+		private Scene scene;
+		private int index;
+		public RemoveOperation(World world, Scene scene) {
+			this.world = world;
+			this.scene = scene;
+			this.index = world.GetSceneIndex(scene);
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.world.RemoveScene(op.scene);
+			if(op.scene == Program.SelectedScene) {
+				Program.SetSelectedScene(null);
+			}
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.world.InsertScene(op.scene, op.index);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class RenameOperation : IFileEditOperation {
+		private Scene scene;
+		private string oldName;
+		private string newName;
+		public RenameOperation(Scene scene, string newName) {
+			this.scene = scene;
+			this.oldName = scene.ID;
+			this.newName = newName;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RenameOperation>();
+			op.scene.ID = op.newName;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RenameOperation>();
+			op.scene.ID = op.oldName;
+		}
+		public bool HasChanges() => oldName != newName;
+	}
+	
+	public class RepositionOperation : IFileEditOperation {
+		private Scene scene;
+		private Point oldPosition;
+		private Point newPosition;
+		public RepositionOperation(Scene scene, Point newPosition) {
+			this.scene = scene;
+			this.oldPosition = new(scene.WorldX, scene.WorldY);
+			this.newPosition = newPosition;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RepositionOperation>();
+			op.scene.WorldX = op.newPosition.X;
+			op.scene.WorldY = op.newPosition.Y;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RepositionOperation>();
+			op.scene.WorldX = op.oldPosition.X;
+			op.scene.WorldY = op.oldPosition.Y;
+		}
+		public bool HasChanges() => oldPosition != newPosition;
+	}
+	
 }
 
 public class TilesetLink {

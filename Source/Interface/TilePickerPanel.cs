@@ -9,10 +9,12 @@ public class TilePickerPanel : Panel {
 	private bool multiSelect;
 	private Vector2 multiSelectOrigin;
 	private int tilesetLinkTarget;
+	private int automapBrushSize;
 
 	public TilePickerPanel() {
 		Title = "Tile Picker";
 		tilesetLinkTarget = -1;
+		automapBrushSize = 1;
 	}
 
 	protected override void Update() {
@@ -374,12 +376,19 @@ public class TilePickerPanel : Panel {
 	}
 
 	private void AutomapListView(Scene scene, Tileset tileset, TilesetLink link, ImGuiWindowFlags windowFlags, Vector2 region, int scale) {
+		var style = ImGui.GetStyle();
+		
 		Texture texSource = tileset?.GetTexturePreview();
+		
+		Vector2 tileSize = new Vector2(scene.World.TileWidth, scene.World.TileHeight) * scale;
+		Vector2 patternSize = tileSize * 3;
+		
+		int patternsPerRow = int.Max((int)((region.X - style.WindowPadding.X * 2) / (patternSize.X + style.ItemSpacing.X)), 1);
 
 		Vector2 areaPos = ImGui.GetCursorScreenPos();
-		Vector2 areaSize = new(region.X, texSource?.Height * scale + 34 ?? region.X);
+		Vector2 areaSize = new(region.X, tileset.AutomapPatterns.Count * (patternSize.Y + style.ItemSpacing.Y) + style.WindowPadding.Y * 2 - style.ItemSpacing.Y); // TODO
 
-		var childFlags = ImGuiWindowFlags.HorizontalScrollbar | ImGuiWindowFlags.AlwaysHorizontalScrollbar;
+		var childFlags = ImGuiWindowFlags.None;
 		if(!ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
 			windowFlags |= ImGuiWindowFlags.NoScrollWithMouse;
 		}
@@ -394,12 +403,67 @@ public class TilePickerPanel : Panel {
 		for(int i = 0; i < tileset.AutomapPatterns.Count; i++) {
 			AutomapPattern pattern = tileset.AutomapPatterns[i];
 			ImGui.PushID(i);
-			if(ImGui.Selectable(pattern.Name, false, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap)) {
-				
-				var brush = Program.CanvasPanel.TileBrush;
-				brush.SetAutomapPattern(pattern, 1, 1);
-				Program.CanvasPanel.SetTool(brush);
+
+			int column = i % patternsPerRow;
+
+			if(column > 0) {
+				ImGui.SameLine();
 			}
+			
+			Vector2 cur = ImGui.GetCursorScreenPos();
+			
+			if(ImGui.InvisibleButton("button", patternSize)) {
+				ImGui.OpenPopup("set-brush-size");
+			}
+			ImGui.SetItemTooltip(pattern.Name);
+			
+			for(int t = 0; t < 9; t++) {
+				int x = t % 3;
+				int y = t / 3;
+				uint bitmask = 0;
+				int index = 0;
+				for(int ty = 1; ty >= -1; --ty) {
+					for(int tx = -1; tx <= 1; ++tx) {
+						int ix = x + tx;
+						int iy = y + ty;
+						if(ix >= 0 && ix < 3 && iy >= 0 && iy < 3) {
+							bitmask |= (uint)(1 << index);
+						}
+						index++;
+					}
+				}
+				Vector2 t0 = cur + new Vector2(x * tileSize.X, y * tileSize.Y);
+				Vector2 t1 = t0 + tileSize;
+				int matchedTile = pattern.Evaluate(bitmask);
+				if(matchedTile > 0) {
+					var rect = tileset.GetTileRegion(matchedTile - 1);
+					Vector2 uvMin = new Vector2(rect.Left / (float)tileset.GetTextureWidth(), rect.Top / (float)tileset.GetTextureHeight());
+					Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(), rect.Bottom / (float)tileset.GetTextureHeight());
+					ImGui.GetWindowDrawList().AddImage(new IntPtr(tileset.TexturePreview.Handle), t0, t1, uvMin, uvMax);
+				}
+			}
+
+			if(ImGui.IsItemHovered()) {
+				ImGui.GetWindowDrawList().AddRectFilled(cur, cur + patternSize, Utilities.GetPackedColor(200, 200, 200, 50));
+			}
+
+			if(Program.CanvasPanel.TileBrush.Pattern == pattern) {
+				ImGui.GetWindowDrawList().AddRectFilled(cur, cur + patternSize, Utilities.GetPackedColor(200, 200, 200, 50));
+				ImGui.GetWindowDrawList().AddRect(cur, cur + patternSize, Utilities.GetPackedColor(255, 255, 255, 255));
+			}
+
+			if(ImGui.BeginPopup("set-brush-size")) {
+				ImGui.SetNextItemWidth(100);
+				ImGui.DragInt("Brush Size", ref automapBrushSize, 0.03F, 1, 32);
+				if(ImGui.Button("Start", new Vector2(ImGui.GetWindowSize().X - style.WindowPadding.X * 2, ImGui.GetTextLineHeight() + style.FramePadding.Y * 2))) {
+					var brush = Program.CanvasPanel.TileBrush;
+					brush.SetAutomapPattern(pattern, automapBrushSize, automapBrushSize);
+					Program.CanvasPanel.SetTool(brush);
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.EndPopup();
+			}
+
 			ImGui.PopID(); // i
 		}
 		

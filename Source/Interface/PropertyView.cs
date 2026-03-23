@@ -142,10 +142,7 @@ public static class PropertyView {
 						if(p.Type == PropertyType.Boolean) {
 							newString = p.Boolean.ToString();
 						}
-						Program.File.ApplyEdit(collection, new ConvertOperation(p, newString),
-							redo: ConvertOperation.ApplyNextState,
-							undo: ConvertOperation.ApplyPrevState
-						);
+						Program.File.ApplyEdit(collection, new Property.ConvertOperation(p, newString));
 						close = true;
 					}
 					if(ImGui.Selectable("Integer", p.Type == PropertyType.Integer)) {
@@ -159,10 +156,7 @@ public static class PropertyView {
 						if(p.Type == PropertyType.Boolean) {
 							newInteger = p.Boolean ? 1 : 0;
 						}
-						Program.File.ApplyEdit(collection, new ConvertOperation(p, newInteger),
-							redo: ConvertOperation.ApplyNextState,
-							undo: ConvertOperation.ApplyPrevState
-						);
+						Program.File.ApplyEdit(collection, new Property.ConvertOperation(p, newInteger));
 						close = true;
 					}
 					if(ImGui.Selectable("Float", p.Type == PropertyType.Float)) {
@@ -176,10 +170,7 @@ public static class PropertyView {
 						if(p.Type == PropertyType.Boolean) {
 							newFloat = p.Boolean ? 1 : 0;
 						}
-						Program.File.ApplyEdit(collection, new ConvertOperation(p, newFloat),
-							redo: ConvertOperation.ApplyNextState,
-							undo: ConvertOperation.ApplyPrevState
-						);
+						Program.File.ApplyEdit(collection, new Property.ConvertOperation(p, newFloat));
 						close = true;
 					}
 
@@ -194,10 +185,7 @@ public static class PropertyView {
 						if(p.Type == PropertyType.Float) {
 							newBoolean = p.Float != 0.0F;
 						}
-						Program.File.ApplyEdit(collection, new ConvertOperation(p, newBoolean),
-							redo: ConvertOperation.ApplyNextState,
-							undo: ConvertOperation.ApplyPrevState
-						);
+						Program.File.ApplyEdit(collection, new Property.ConvertOperation(p, newBoolean));
 						close = true;
 					}
 
@@ -214,15 +202,9 @@ public static class PropertyView {
 		}
 
 		if(pDelete >= 0) {
-			Program.File.ApplyEdit(collection, new RemoveOperation(collection, pDelete),
-				redo: RemoveOperation.ApplyNextState,
-				undo: RemoveOperation.ApplyPrevState
-			);
+			Program.File.ApplyEdit(collection, new Property.RemoveOperation(collection, pDelete));
 		} else if(pMoveSrc >= 0 && pMoveDst >= 0) {
-			Program.File.ApplyEdit(collection, new MoveOperation(collection, pMoveSrc, pMoveDst),
-				redo: MoveOperation.ApplyNextState,
-				undo: MoveOperation.ApplyPrevState
-			);
+			Program.File.ApplyEdit(collection, new Property.MoveOperation(collection, pMoveSrc, pMoveDst));
 		}
 
 		if(ImGui.Button(Codicons.Add)) {
@@ -283,10 +265,7 @@ public static class PropertyView {
 				if(newPropertyType == PropertyType.Integer) property.Integer = newPropertyInteger;
 				if(newPropertyType == PropertyType.Float) property.Float = newPropertyFloat;
 				if(newPropertyType == PropertyType.Boolean) property.Boolean = newPropertyBoolean;
-				Program.File.ApplyEdit(collection, new AddOperation(collection, property),
-					redo: AddOperation.ApplyNextState,
-					undo: AddOperation.ApplyPrevState
-				);
+				Program.File.ApplyEdit(collection, new Property.AddOperation(collection, property));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -298,174 +277,6 @@ public static class PropertyView {
 		}
 		
 		ImGui.PopID();
-	}
-
-	public class MoveOperation {
-		private PropertyCollection collection;
-		private int index1;
-		private int index2;
-		public MoveOperation(PropertyCollection collection, int index1, int index2) {
-			this.collection = collection;
-			this.index1 = index1;
-			this.index2 = index2;
-		}
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.collection.Move(op.index1, op.index2);
-		}
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.collection.Move(op.index2, op.index1);
-		}
-	}
-
-	public class AddOperation {
-		private PropertyCollection collection;
-		private Property property;
-		public AddOperation(PropertyCollection collection, Property property) {
-			this.collection = collection;
-			this.property = property;
-		}
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.collection.Insert(op.property, op.collection.Count);
-		}
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.collection.Remove(op.collection.Count - 1);
-		}
-	}
-
-	public class RemoveOperation {
-		private PropertyCollection collection;
-		private Property property;
-		private int index;
-		public RemoveOperation(PropertyCollection collection, int index) {
-			this.collection = collection;
-			this.property = collection.Get(index);
-			this.index = index;
-		}
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.collection.Remove(op.index);
-		}
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.collection.Insert(op.property, op.index);
-		}
-	}
-
-	public class ConvertOperation {
-		
-		// public Property Property => property;
-		// public PropertyType OldType => oldType;
-		// public PropertyType NewType => newType;
-		
-		// public string OldString => oldString;
-		// public int OldInteger => oldInteger;
-		// public float OldFloat => oldFloat;
-		// public bool OldBoolean => oldBoolean;
-		// public string NewString => newString;
-		// public int NewInteger => newInteger;
-		// public float NewFloat => newFloat;
-		// public bool NewBoolean => newBoolean;
-		
-		private Property property;
-		private PropertyType oldType;
-		private PropertyType newType;
-		private string oldString;
-		private int oldInteger;
-		private float oldFloat;
-		private bool oldBoolean;
-		private string newString;
-		private int newInteger;
-		private float newFloat;
-		private bool newBoolean;
-
-		public static void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<ConvertOperation>();
-			op.property.Type = op.newType;
-			switch(op.newType) {
-				case PropertyType.String:
-					op.property.String = op.newString;
-					break;
-				case PropertyType.Integer:
-					op.property.Integer = op.newInteger;
-					break;
-				case PropertyType.Float:
-					op.property.Float = op.newFloat;
-					break;
-				case PropertyType.Boolean:
-					op.property.Boolean = op.newBoolean;
-					break;
-			}
-		}
-		
-		public static void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<ConvertOperation>();
-			op.property.Type = op.oldType;
-			op.property.String = op.oldString;
-			op.property.Integer = op.oldInteger;
-			op.property.Float = op.oldFloat;
-			op.property.Boolean = op.oldBoolean;
-		}
-		
-		public ConvertOperation(Property property, string newString) {
-			this.property = property;
-			this.oldType = property.Type;
-			this.oldString = property.String;
-			this.oldInteger = property.Integer;
-			this.oldFloat = property.Float;
-			this.oldBoolean = property.Boolean;
-			this.newType = PropertyType.String;
-			this.newString = newString;
-			this.newInteger = property.Integer;
-			this.newFloat = property.Float;
-			this.newBoolean = property.Boolean;
-		}
-		
-		public ConvertOperation(Property property, int newInteger) {
-			this.property = property;
-			this.oldType = property.Type;
-			this.oldString = property.String;
-			this.oldInteger = property.Integer;
-			this.oldFloat = property.Float;
-			this.oldBoolean = property.Boolean;
-			this.newType = PropertyType.Integer;
-			this.newInteger = newInteger;
-			this.newString = property.String;
-			this.newFloat = property.Float;
-			this.newBoolean = property.Boolean;
-		}
-		
-		public ConvertOperation(Property property, float newFloat) {
-			this.property = property;
-			this.oldType = property.Type;
-			this.oldString = property.String;
-			this.oldInteger = property.Integer;
-			this.oldFloat = property.Float;
-			this.oldBoolean = property.Boolean;
-			this.newType = PropertyType.Float;
-			this.newFloat = newFloat;
-			this.newString = property.String;
-			this.newInteger = property.Integer;
-			this.newBoolean = property.Boolean;
-		}
-		
-		public ConvertOperation(Property property, bool newBoolean) {
-			this.property = property;
-			this.oldType = property.Type;
-			this.oldString = property.String;
-			this.oldInteger = property.Integer;
-			this.oldFloat = property.Float;
-			this.oldBoolean = property.Boolean;
-			this.newType = PropertyType.Boolean;
-			this.newBoolean = newBoolean;
-			this.newString = property.String;
-			this.newInteger = property.Integer;
-			this.newFloat = property.Float;
-		}
-		
 	}
 	
 }
