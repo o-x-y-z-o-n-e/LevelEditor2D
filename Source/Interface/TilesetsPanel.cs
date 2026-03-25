@@ -64,7 +64,7 @@ public class TilesetsPanel : Panel {
 	private FileEditEntry shapeEdit;
 	
 	public TilesetsPanel() {
-		Title = "Tilesets";
+		Title = $"{Codicons.Table} Tilesets";
 
 		mode = ViewMode.List;
 		search = "";
@@ -855,6 +855,7 @@ public class TilesetsPanel : Panel {
 		if(ImGui.Button(Codicons.DiffAdded)) {
 			ImGui.OpenPopup("add-automap");
 		}
+		ImGui.SetItemTooltip("Create");
 		if(ImGui.BeginPopup("add-automap")) {
 			ImGui.Text("Create new automap");
 			ImGui.InputText("Name", ref automapNameBuffer, 512);
@@ -888,6 +889,7 @@ public class TilesetsPanel : Panel {
 		if(ImGui.Button(Codicons.Trash)) {
 			automapDeleteIndex = selectedAutomapIndex;
 		}
+		ImGui.SetItemTooltip("Delete");
 
 		if(automapDeleteIndex >= 0) {
 			ImGui.OpenPopup("delete-automap");
@@ -924,6 +926,7 @@ public class TilesetsPanel : Panel {
 		if(ImGui.Button(Codicons.ChevronUp)) {
 			moveUpIndex = selectedAutomapIndex;
 		}
+		ImGui.SetItemTooltip("Move Up");
 		ImGui.EndDisabled();
 
 		if(moveUpIndex >= 0) {
@@ -936,6 +939,7 @@ public class TilesetsPanel : Panel {
 		if(ImGui.Button(Codicons.ChevronDown)) {
 			moveDownIndex = selectedAutomapIndex;
 		}
+		ImGui.SetItemTooltip("Move Down");
 		ImGui.EndDisabled();
 		
 		if(moveDownIndex >= 0) {

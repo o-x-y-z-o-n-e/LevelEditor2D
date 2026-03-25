@@ -3,10 +3,12 @@
 namespace L2D; 
 
 public class Panel {
+	
+	public bool IsOpen => isOpen;
 
 	public string Title;
 
-	private bool open;
+	private bool isOpen;
 	protected ImGuiWindowFlags flags;
 	private bool focusNextFrame;
 
@@ -24,7 +26,8 @@ public class Panel {
 			focusNextFrame = false;
 			ImGui.SetNextWindowFocus();
 		}
-		if(ImGui.Begin(Title, flags)) {
+		isOpen = ImGui.Begin(Title, flags);
+		if(isOpen) {
 			Update();
 		}
 		ImGui.End();

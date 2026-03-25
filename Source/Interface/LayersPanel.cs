@@ -17,7 +17,7 @@ public class LayersPanel : Panel {
 	private FileEditEntry colorEdit;
 
 	public LayersPanel() {
-		Title = "Layers";
+		Title = $"{Codicons.Layers} Layers";
 		isolateLayerView = false;
 		layerRenameBuffer = "";
 		layerTypeOption = 0;
@@ -119,6 +119,7 @@ public class LayersPanel : Panel {
 		if(ImGui.Button(Codicons.DiffAdded)) {
 			ImGui.OpenPopup("add-layer");
 		}
+		ImGui.SetItemTooltip("Create");
 		
 		if(ImGui.BeginPopup("add-layer")) {
 			ImGui.Text("Create new layer");
@@ -164,6 +165,7 @@ public class LayersPanel : Panel {
 		if(ImGui.Button(Codicons.Copy)) {
 			ImGui.OpenPopup("copy-layer");
 		}
+		ImGui.SetItemTooltip("Copy");
 		
 		if(ImGui.BeginPopup("copy-layer")) {
 			ImGui.Text("Copy selected layer");
@@ -198,6 +200,7 @@ public class LayersPanel : Panel {
 		if(ImGui.Button(Codicons.Trash)) {
 			ImGui.OpenPopup("delete-layer");
 		}
+		ImGui.SetItemTooltip("Delete");
 		
 		if(ImGui.BeginPopup("delete-layer")) {
 			ImGui.Text("Delete selected layer?");
@@ -234,12 +237,14 @@ public class LayersPanel : Panel {
 		if(ImGui.Button(Codicons.ChevronUp)) {
 			Program.File.ApplyEdit(this, new Layer.MoveOperation(scene, layerIndex, layerIndex-1));
 		}
+		ImGui.SetItemTooltip("Move Up");
 		ImGui.EndDisabled();
 		ImGui.BeginDisabled(scene == null || layerIndex >= scene.LayerCount - 1);
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.ChevronDown)) {
 			Program.File.ApplyEdit(this, new Layer.MoveOperation(scene, layerIndex, layerIndex+1));
 		}
+		ImGui.SetItemTooltip("Move Down");
 		ImGui.EndDisabled();
 		
 		ImGui.SameLine();
@@ -247,6 +252,7 @@ public class LayersPanel : Panel {
 		if(ImGui.Button(isolateLayerView ? Codicons.GoToSearch : Codicons.SearchFuzzy)) {
 			isolateLayerView = !isolateLayerView;
 		}
+		ImGui.SetItemTooltip("Isolate");
 
 		ImGui.EndDisabled(); // Program.SelectedLayer == null
 		ImGui.EndDisabled(); // Program.SelectedScene == null

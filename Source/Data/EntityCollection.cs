@@ -7,25 +7,47 @@ public class EntityCollection {
 
 	public int Count => entities.Count;
 	
+	public Layer Layer => layer;
+	public World World => world;
+	
 	public IEnumerable<Entity> All => entities;
 
 	private List<Entity> entities;
+	private World world;
 	private Layer layer;
 
 	public EntityCollection(Layer layer) {
 		this.layer = layer;
+		this.world = layer.Scene.World;
+		entities = new();
+	}
+	
+	public EntityCollection(World world) {
+		this.world = world;
+		layer = null;
 		entities = new();
 	}
 	
 	public void SerializeToElement(XElement element) {
 		foreach(var entity in entities) {
 			var e = new XElement("entity");
-			e.Add(new XAttribute("name", entity.Name));
-			e.Add(new XAttribute("type", entity.Type));
-			e.Add(new XAttribute("position.x", entity.Position.X));
-			e.Add(new XAttribute("position.y", entity.Position.Y));
-			e.Add(new XAttribute("size.x", entity.Size.X));
-			e.Add(new XAttribute("size.y", entity.Size.Y));
+			if(entity.Template != null) {
+				e.Add(new XAttribute("template", entity.Template.Name));
+			}
+			if(entity.HasOwnName) {
+				e.Add(new XAttribute("name", entity.Name));
+			}
+			if(entity.HasOwnType) {
+				e.Add(new XAttribute("type", entity.Type));
+			}
+			if(entity.HasOwnPosition) {
+				e.Add(new XAttribute("position.x", entity.Position.X));
+				e.Add(new XAttribute("position.y", entity.Position.Y));
+			}
+			if(entity.HasOwnSize) {
+				e.Add(new XAttribute("size.x", entity.Size.X));
+				e.Add(new XAttribute("size.y", entity.Size.Y));
+			}
 			entity.Properties.SerializeToElement(e);
 			element.Add(e);
 		}
@@ -33,17 +55,31 @@ public class EntityCollection {
 	
 	public void ParseFromElement(XElement element) {
 		foreach(var e in element.Elements("entity")) {
-			string name = e.Attribute("name").ParseAsString();
-			string type = e.Attribute("type").ParseAsString();
-			float px = e.Attribute("position.x").ParseAsFloat();
-			float py = e.Attribute("position.y").ParseAsFloat();
-			float sx = e.Attribute("size.x").ParseAsFloat();
-			float sy = e.Attribute("size.y").ParseAsFloat();
-			Entity entity = new Entity(layer);
-			entity.Name = name;
-			entity.Type = type;
-			entity.Position = new(px, py);
-			entity.Size = new(sx, sy);
+			string templateName = e.Attribute("template").ParseAsString();
+			string? name = e.Attribute("name")?.ParseAsString() ?? null;
+			string? type = e.Attribute("type")?.ParseAsString() ?? null;
+			float? px = e.Attribute("position.x")?.ParseAsFloat() ?? null;
+			float? py = e.Attribute("position.y")?.ParseAsFloat() ?? null;
+			float? sx = e.Attribute("size.x")?.ParseAsFloat() ?? null;
+			float? sy = e.Attribute("size.y")?.ParseAsFloat() ?? null;
+			Entity template = null;
+			if(templateName != "") {
+				foreach(var t in world.Templates.All) {
+					if(t.Name == templateName) {
+						template = t;
+						break;
+					}
+				}
+			}
+			Entity entity = new Entity(this, template);
+			entity.SetName(name);
+			entity.SetType(type);
+			if(px != null || py != null) {
+				entity.SetPosition(new(px ?? 0.0F, py ?? 0.0F));
+			}
+			if(sx != null || sy != null) {
+				entity.SetSize(new(sx ?? 0.0F, sy ?? 0.0F));
+			}
 			entity.Properties.ParseFromElement(e);
 			entities.Add(entity);
 		}
@@ -58,18 +94,22 @@ public class EntityCollection {
 	}
 
 	public Entity Add() {
-		Entity entity = new Entity(layer);
+		Entity entity = new Entity(this);
 		entities.Add(entity);
 		return entity;
 	}
 
 	public Entity Copy(int index) {
 		Entity srcEntity = entities[index];
-		Entity dstEntity = new Entity(layer);
-		dstEntity.Name = srcEntity.Name;
-		dstEntity.Type = srcEntity.Type;
-		dstEntity.Position = srcEntity.Position;
-		dstEntity.Size = srcEntity.Size;
+		Entity dstEntity = new Entity(this, srcEntity.Template);
+		dstEntity.SetName(srcEntity.Name);
+		dstEntity.SetType(srcEntity.Type);
+		if(srcEntity.HasOwnPosition) {
+			dstEntity.SetPosition(srcEntity.Position);
+		}
+		if(srcEntity.HasOwnSize) {
+			dstEntity.SetSize(srcEntity.Size);
+		}
 		srcEntity.Properties.CopyTo(dstEntity.Properties);
 		entities.Add(dstEntity);
 		return dstEntity;
@@ -114,28 +154,122 @@ public class Entity {
 
 	public const float POINT_HANDLE_SIZE = 14;
 
-	public Layer Layer => layer;
+	public EntityCollection Collection => collection;
 
 	public bool IsPoint => Size.X == 0.0F && Size.Y == 0.0F;
+	public bool IsTemplate => collection.Layer == null;
+	public Entity Template => template;
 
-	public string Name;
-	public string Type;
-	public Vector2 Position;
-	public Vector2 Size;
+	public string Name {
+		get {
+			if(name != null) {
+				return name;
+			} else if(template != null) {
+				return template.Name;
+			} else {
+				return "";
+			}
+		}
+	}
 
-	private Layer layer;
+	public string Type {
+		get {
+			if(type != null) {
+				return type;
+			} else if(template != null) {
+				return template.Type;
+			} else {
+				return "";
+			}
+		}
+	}
+	
+	public Vector2 Position {
+		get {
+			if(position != null) {
+				return position.Value;
+			} else if(template != null) {
+				return template.Position;
+			} else {
+				return Vector2.Zero;
+			}
+		}
+	}
+
+	public Vector2 Size {
+		get {
+			if(size != null) {
+				return size.Value;
+			} else if(template != null) {
+				return template.Size;
+			} else {
+				return Vector2.Zero;
+			}
+		}
+	}
+
+	internal bool HasOwnName => name != null;
+	internal bool HasOwnType => type != null;
+	internal bool HasOwnPosition => position != null;
+	internal bool HasOwnSize => size != null;
+	internal string? OwnName => name;
+	internal string? OwnType => type;
+	internal Vector2? OwnPosition => position;
+	internal Vector2? OwnSize => size;
+
+	private string? name;
+	private string? type;
+	private Vector2? position;
+	private Vector2? size;
+
+	private EntityCollection collection;
+	private Entity template;
 
 	public PropertyCollection Properties => properties;
 
 	private PropertyCollection properties;
 
-	public Entity(Layer layer) {
-		this.layer = layer;
+	public Entity(EntityCollection collection) : this(collection, null) {}
+	
+	public Entity(EntityCollection collection, Entity template) {
+		this.collection = collection;
+		this.template = template;
 		properties = new();
-		Name = "";
-		Type = "";
-		Position = Vector2.Zero;
-		Size = Vector2.Zero;
+		if(template != null) {
+			name = null;
+			type = null;
+			position = Vector2.Zero;
+			size = null;
+		} else {
+			name = "";
+			type = "";
+			position = Vector2.Zero;
+			size = Vector2.Zero;
+		}
+	}
+
+	public void SetName(string? name) {
+		if(name == "") {
+			this.name = null;
+		} else {
+			this.name = name;
+		}
+	}
+
+	public void SetType(string? type) {
+		if(type == "") {
+			this.type = null;
+		} else {
+			this.type = type;
+		}
+	}
+	
+	public void SetPosition(Vector2? position) {
+		this.position = position;
+	}
+
+	public void SetSize(Vector2? size) {
+		this.size = size;
 	}
 	
 	public class AddOperation : IFileEditOperation {
@@ -202,26 +336,71 @@ public class Entity {
 		public bool HasChanges() => true;
 	}
 	
+	public class NameOperation : IFileEditOperation {
+		public Entity Entity => entity;
+		private Entity entity;
+		private string oldName;
+		private string newName;
+		public NameOperation(Entity entity, string newName) {
+			this.entity = entity;
+			this.oldName = entity.OwnName;
+			SetName(newName);
+		}
+		public void SetName(string name) {
+			newName = name;
+			entity.SetName(name);
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			entity.SetName(newName);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			entity.SetName(oldName);
+		}
+		public bool HasChanges() => oldName != newName;
+	}
+	
+	public class TypeOperation : IFileEditOperation {
+		public Entity Entity => entity;
+		private Entity entity;
+		private string? oldType;
+		private string? newType;
+		public TypeOperation(Entity entity, string newType) {
+			this.entity = entity;
+			this.oldType = entity.OwnType;
+			SetType(newType);
+		}
+		public void SetType(string? type) {
+			newType = type;
+			entity.SetType(type);
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			entity.SetType(newType);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			entity.SetType(oldType);
+		}
+		public bool HasChanges() => oldType != newType;
+	}
+	
 	public class PositionOperation : IFileEditOperation {
 		public Entity Entity => entity;
 		private Entity entity;
-		private Vector2 oldPosition;
-		private Vector2 newPosition;
-		public PositionOperation(Entity entity, Vector2 newPosition) {
+		private Vector2? oldPosition;
+		private Vector2? newPosition;
+		public PositionOperation(Entity entity, Vector2? newPosition) {
 			this.entity = entity;
-			this.oldPosition = entity.Position;
+			this.oldPosition = entity.OwnPosition;
 			this.newPosition = newPosition;
 		}
-		public void SetPosition(Vector2 position) {
+		public void SetPosition(Vector2? position) {
 			newPosition = position;
+			entity.SetPosition(position);
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<PositionOperation>();
-			op.entity.Position = newPosition;
+			entity.SetPosition(newPosition);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<PositionOperation>();
-			op.entity.Position = oldPosition;
+			entity.SetPosition(oldPosition);
 		}
 		public bool HasChanges() => oldPosition != newPosition;
 	}
@@ -229,23 +408,22 @@ public class Entity {
 	public class SizeOperation : IFileEditOperation {
 		public Entity Entity => entity;
 		private Entity entity;
-		private Vector2 oldSize;
-		private Vector2 newSize;
-		public SizeOperation(Entity entity, Vector2 newSize) {
+		private Vector2? oldSize;
+		private Vector2? newSize;
+		public SizeOperation(Entity entity, Vector2? newSize) {
 			this.entity = entity;
-			this.oldSize = entity.Size;
+			this.oldSize = entity.OwnSize;
 			this.newSize = newSize;
 		}
-		public void SetSize(Vector2 size) {
+		public void SetSize(Vector2? size) {
 			newSize = size;
+			entity.SetSize(size);
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<SizeOperation>();
-			op.entity.Size = newSize;
+			entity.SetSize(newSize);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<SizeOperation>();
-			op.entity.Size = oldSize;
+			entity.SetSize(oldSize);
 		}
 		public bool HasChanges() => oldSize != newSize;
 	}

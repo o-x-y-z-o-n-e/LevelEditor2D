@@ -40,6 +40,7 @@ public static class Program {
 	public static CanvasPanel CanvasPanel => canvasPanel;
 	public static LayersPanel LayersPanel => layersPanel;
 	public static EntitiesPanel EntitiesPanel => entitiesPanel;
+	public static TemplatesPanel TemplatesPanel => templatesPanel;
 	public static ScenesPanel ScenesPanel => scenesPanel;
 	public static TilePickerPanel TilePickerPanel => tilePickerPanel;
 	public static TilesetsPanel TilesetsPanel => tilesetsPanel;
@@ -80,11 +81,12 @@ public static class Program {
 	
 	private static CanvasPanel canvasPanel;
 	private static LayersPanel layersPanel;
-	private static EntitiesPanel entitiesPanel;
 	private static ScenesPanel scenesPanel;
 	private static TilePickerPanel tilePickerPanel;
 	private static TilesetsPanel tilesetsPanel;
 	private static TileFillModal tileFillModal;
+	private static EntitiesPanel entitiesPanel;
+	private static TemplatesPanel templatesPanel;
 	private static ConfirmModal confirmModal;
 	private static ReloadFileModal reloadFileModal;
 	private static NewProjectModal newProjectModal;
@@ -101,6 +103,8 @@ public static class Program {
 	private static IInputContext input;
 	private static bool requestClose;
 	private static float deltaTime;
+	private static bool firstLoop;
+	private static Panel focusNextFrame;
 
 	private static List<ProjectEditorState> recentProjects;
 
@@ -158,11 +162,12 @@ public static class Program {
 			menuBar = new MenuBar();
 			canvasPanel = new CanvasPanel();
 			layersPanel = new LayersPanel();
-			entitiesPanel = new EntitiesPanel();
 			scenesPanel = new ScenesPanel();
 			tilePickerPanel = new TilePickerPanel();
 			tilesetsPanel = new TilesetsPanel();
 			tileFillModal = new TileFillModal();
+			entitiesPanel = new EntitiesPanel();
+			templatesPanel = new TemplatesPanel();
 			confirmModal = new ConfirmModal();
 			reloadFileModal = new ReloadFileModal();
 			newProjectModal = new NewProjectModal();
@@ -171,6 +176,8 @@ public static class Program {
 			LoadRecentProjects();
 			
 			Tilemap.CreateShaders();
+
+			firstLoop = true;
 
 			foreach(string arg in System.Environment.GetCommandLineArgs()) {
 				if(file == null && arg.EndsWith(".l2d")) {
@@ -195,16 +202,25 @@ public static class Program {
 
 			ImGui.DockSpaceOverViewport();
 
+			if(focusNextFrame != null) {
+				focusNextFrame.Focus();
+				focusNextFrame = null;
+			}
+
 			menuBar.Execute();
 
-			// ImGui.ShowDemoWindow();
-
+			templatesPanel.Execute();
 			tilesetsPanel.Execute();
 			canvasPanel.Execute();
 			scenesPanel.Execute();
 			layersPanel.Execute();
 			entitiesPanel.Execute();
 			tilePickerPanel.Execute();
+
+			if(firstLoop) {
+				firstLoop = false;
+				SetSelectedLayer(SelectedLayer); // so that tickerpicker/entities panels are correctly focused on start
+			}
 
 			if(file != null && ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
 				if(ImGui.IsKeyPressed(ImGuiKey.S)) {
@@ -341,6 +357,10 @@ public static class Program {
 		requestClose = true;
 	}
 
+	public static void Focus(Panel panel) {
+		focusNextFrame = panel;
+	}
+
 	public static void SetSelectedScene(Scene scene) {
 		selectedScene = scene;
 		if(scene != null) {
@@ -370,9 +390,9 @@ public static class Program {
 
 		if(selectedLayer != null) {
 			if(selectedLayer.Type == LayerType.Entities) {
-				entitiesPanel.Focus();
+				focusNextFrame = entitiesPanel;
 			} else if(selectedLayer.Type == LayerType.Tiles) {
-				tilePickerPanel.Focus();
+				focusNextFrame = tilePickerPanel;
 			}
 		}
 	}
@@ -380,7 +400,7 @@ public static class Program {
 	public static void SetSelectedEntity(Entity entity) {
 		selectedEntity = entity;
 		if(selectedEntity != null) {
-			entitiesPanel.Focus();
+			focusNextFrame = entitiesPanel;
 		}
 	}
 	

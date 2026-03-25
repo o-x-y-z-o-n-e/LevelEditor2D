@@ -27,6 +27,8 @@ public class World {
 
 	public IEnumerable<Tileset> Tilesets => tilesets;
 	public IEnumerable<Scene> Scenes => scenes;
+	
+	public EntityCollection Templates => templates;
 
 	private File file;
 	private string name;
@@ -34,6 +36,7 @@ public class World {
 	private int tileHeight;
 	private List<Tileset> tilesets;
 	private List<Scene> scenes;
+	private EntityCollection templates;
 	private int maxTilesetSlots;
 	private bool disposed;
 
@@ -45,6 +48,7 @@ public class World {
 		tileHeight = 16;
 		tilesets = new();
 		scenes = new();
+		templates = new(this);
 		maxTilesetSlots = 16;
 	}
 
@@ -131,10 +135,14 @@ public class World {
 			} else if(srcLayer.Type == LayerType.Entities) {
 				foreach(var srcEntity in srcLayer.Entities.All) {
 					var newEntity = newLayer.Entities.Add();
-					newEntity.Name = srcEntity.Name;
-					newEntity.Type = srcEntity.Type;
-					newEntity.Position = srcEntity.Position;
-					newEntity.Size = srcEntity.Size;
+					newEntity.SetName(srcEntity.Name);
+					newEntity.SetType(srcEntity.Type);
+					if(srcEntity.HasOwnPosition) {
+						newEntity.SetPosition(srcEntity.Position);
+					}
+					if(srcEntity.HasOwnSize) {
+						newEntity.SetSize(srcEntity.Size);
+					}
 					foreach(var p in srcEntity.Properties.All) {
 						var newP = newEntity.Properties.Add(p.Name, p.Type);
 						newP.String = p.String;
@@ -170,7 +178,6 @@ public class World {
 	}
 	
 	public void RemoveTileset(Tileset tileset) {
-		if(!tilesets.Contains(tileset)) return;
 		tilesets.Remove(tileset);
 	}
 
@@ -178,15 +185,25 @@ public class World {
 		name = worldElement.Attribute("name").Value;
 		tileWidth = worldElement.Attribute("tile_width").ParseAsInt(16);
 		tileHeight = worldElement.Attribute("tile_height").ParseAsInt(16);
-		foreach(var tilesetElement in worldElement.Element("tilesets").Elements("tileset")) {
-			Tileset tileset = new Tileset(file);
-			tileset.Parse(tilesetElement);
-			tilesets.Add(tileset);
+		XElement templatesElement = worldElement.Element("templates");
+		if(templatesElement != null) {
+			templates.ParseFromElement(templatesElement);
 		}
-		foreach(var sceneElement in worldElement.Element("scenes").Elements("scene")) {
-			Scene scene = new Scene(file);
-			scene.Parse(sceneElement);
-			scenes.Add(scene);
+		XElement tilesetsElement = worldElement.Element("tilesets");
+		if(tilesetsElement != null) {
+			foreach(var tilesetElement in tilesetsElement.Elements("tileset")) {
+				Tileset tileset = new Tileset(file);
+				tileset.Parse(tilesetElement);
+				tilesets.Add(tileset);
+			}
+		}
+		XElement scenesElement = worldElement.Element("scenes");
+		if(scenesElement != null) {
+			foreach(var sceneElement in scenesElement.Elements("scene")) {
+				Scene scene = new Scene(file);
+				scene.Parse(sceneElement);
+				scenes.Add(scene);
+			}
 		}
 	}
 	
@@ -198,12 +215,15 @@ public class World {
 			new XAttribute("tile_width", tileWidth),
 			new XAttribute("tile_height", tileHeight)
 		);
-		var tilesetsParent = new XElement("tilesets");
+		XElement templatesParent = new XElement("templates");
+		templates.SerializeToElement(templatesParent);
+		rootElement.Add(templatesParent);
+		XElement tilesetsParent = new XElement("tilesets");
 		foreach(var tileset in tilesets) {
 			tilesetsParent.Add(tileset.Serialize());
 		}
 		rootElement.Add(tilesetsParent);
-		var scenesParent = new XElement("scenes");
+		XElement scenesParent = new XElement("scenes");
 		foreach(var scene in scenes) {
 			scenesParent.Add(scene.Serialize());
 		}

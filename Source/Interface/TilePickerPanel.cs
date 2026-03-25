@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using IconFonts;
 using ImGuiNET;
 
 namespace L2D; 
@@ -12,7 +13,7 @@ public class TilePickerPanel : Panel {
 	private int automapBrushSize;
 
 	public TilePickerPanel() {
-		Title = "Tile Picker";
+		Title = $"{Codicons.Combine} Tile Picker";
 		tilesetLinkTarget = -1;
 		automapBrushSize = 1;
 	}
@@ -131,7 +132,7 @@ public class TilePickerPanel : Panel {
 						if(match) continue;
 						atLeastOneOption = true;
 						if(ImGui.Selectable($"Slot: {s}")) {
-							Program.File.ApplyEdit(this, new SlotOperation(link, s));
+							Program.File.ApplyEdit(scene, new SlotOperation(link, s));
 						}
 					}
 					if(!atLeastOneOption) {
@@ -148,7 +149,7 @@ public class TilePickerPanel : Panel {
 				if(i == tilesetLinkTarget) {
 					Program.TilesetsPanel.SelectTilesetModal((selected, tileset) => {
 						if(selected) {
-							Program.File.ApplyEdit(this, new TilesetOperation(link, tileset));
+							Program.File.ApplyEdit(scene, new TilesetOperation(link, tileset));
 						}
 						tilesetLinkTarget = -1;
 					});
@@ -193,20 +194,20 @@ public class TilePickerPanel : Panel {
 		ImGui.BeginDisabled(nextSlotAvailable > maxTilesetSlots);
 		if(ImGui.Button("Add", new Vector2(region.X, 0))) {
 			TilesetLink link = new TilesetLink(scene.File, nextSlotAvailable, null);
-			Program.File.ApplyEdit(this, new AddOperation(scene, link));
+			Program.File.ApplyEdit(scene, new AddOperation(scene, link));
 		}
 		ImGui.EndDisabled();
 
 		if(moveUpIndex >= 0) {
-			Program.File.ApplyEdit(this, new MoveOperation(scene, moveUpIndex, moveUpIndex - 1));
+			Program.File.ApplyEdit(scene, new MoveOperation(scene, moveUpIndex, moveUpIndex - 1));
 		}
 		
 		if(moveDownIndex >= 0) {
-			Program.File.ApplyEdit(this, new MoveOperation(scene, moveDownIndex, moveDownIndex + 1));
+			Program.File.ApplyEdit(scene, new MoveOperation(scene, moveDownIndex, moveDownIndex + 1));
 		}
 
 		if(removeIndex >= 0) {
-			Program.File.ApplyEdit(this, new RemoveOperation(scene, removeIndex));
+			Program.File.ApplyEdit(scene, new RemoveOperation(scene, removeIndex));
 		}
 		
 		ImGui.EndChild(); // tileset-list

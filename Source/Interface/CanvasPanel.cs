@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using IconFonts;
 using ImGuiNET;
 
 namespace L2D;
@@ -52,7 +53,7 @@ public class CanvasPanel : Panel {
 	private const float ZOOM_RANGE_SCALE = 0.25F;
 
 	public CanvasPanel() {
-		Title = "Canvas";
+		Title = $"{Codicons.Inspect} Canvas";
 
 		flags |= ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar;
 		
@@ -449,8 +450,8 @@ public class CanvasPanel : Panel {
 							ImGui.SetCursorScreenPos(textPos);
 							
 							if(ImGui.InvisibleButton("select-entity", textSize)) {
-								Program.SetSelectedScene(entity.Layer.Scene);
-								Program.SetSelectedLayer(entity.Layer);
+								Program.SetSelectedScene(entity.Collection.Layer.Scene);
+								Program.SetSelectedLayer(entity.Collection.Layer);
 								Program.SetSelectedEntity(entity);
 							}
 							if(ImGui.IsItemHovered()) {
@@ -476,7 +477,7 @@ public class CanvasPanel : Panel {
 		uint lineBaseColor = Utilities.GetPackedColor(230, 230, 230, 220);
 		uint lineDashColor = Utilities.GetPackedColor(80, 80, 80, 255);
 
-		Scene scene = entity.Layer.Scene;
+		Scene scene = entity.Collection.Layer.Scene;
 		
 		Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
 		Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
@@ -576,7 +577,7 @@ public class CanvasPanel : Panel {
 	}
 
 	public void LocateEntity(Entity entity) {
-		Scene scene = entity.Layer.Scene;
+		Scene scene = entity.Collection.Layer.Scene;
 		float zoom = GetZoom();
 		Vector2 p = entity.Position + entity.Size / 2.0F;
 		p += new Vector2(scene.WorldX * scene.World.TileWidth, scene.WorldY * scene.World.TileHeight);
@@ -602,7 +603,7 @@ public class CanvasTool {
 
 	protected CanvasTool(string displayName, LayerType type) {
 		this.displayName = displayName;
-		this.layerType = layerType;
+		this.layerType = type;
 	}
 
 	public virtual void OnActive() {

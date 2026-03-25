@@ -27,12 +27,6 @@ public class PropertyCollection {
 		return null;
 	}
 	
-	public IEnumerable<Property> GetAll(string name) {
-		foreach(var entry in properties) {
-			if(entry.Name == name) yield return entry;
-		}
-	}
-	
 	public bool Get(string name, out Property property) {
 		foreach(var entry in properties) {
 			if(entry.Name == name) {
@@ -44,7 +38,19 @@ public class PropertyCollection {
 		return false;
 	}
 
+	public bool Contains(string name) {
+		foreach(var entry in properties) {
+			if(entry.Name == name) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public Property Add(string name, PropertyType type) {
+		if(Get(name, out var p)) {
+			return p;
+		}
 		Property property = new Property();
 		property.Name = name;
 		property.Type = type;
@@ -135,6 +141,7 @@ public class PropertyCollection {
 		foreach(var e in element.Elements("property")) {
 			string name = e.Attribute("name")?.Value ?? "";
 			if(name == "") continue;
+			if(Contains(name)) continue;
 			Property property = new Property();
 			property.Name = name;
 			string type = e.Attribute("type")?.Value ?? "string";
@@ -215,10 +222,10 @@ public class Property {
 		private PropertyCollection collection;
 		private Property property;
 		private int index;
-		public RemoveOperation(PropertyCollection collection, int index) {
+		public RemoveOperation(PropertyCollection collection, Property property) {
 			this.collection = collection;
-			this.property = collection.Get(index);
-			this.index = index;
+			this.property = property;
+			this.index = collection.IndexOf(property);
 		}
 		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<RemoveOperation>();

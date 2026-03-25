@@ -14,7 +14,7 @@ public class ScenesPanel : Panel {
 	private string sceneRenameBuffer;
 	
 	public ScenesPanel() {
-		Title = "Scenes";
+		Title = $"{Codicons.EditorLayout} Scenes";
 		sceneResizeVar = new(0);
 		sceneReposVar = new(0);
 		sceneRenameBuffer = "";
@@ -86,6 +86,7 @@ public class ScenesPanel : Panel {
 			sceneRenameBuffer = "";
 			ImGui.OpenPopup("add-scene");
 		}
+		ImGui.SetItemTooltip("Create");
 		
 		if(ImGui.BeginPopup("add-scene")) {
 			ImGui.Text("New scene");
@@ -135,6 +136,7 @@ public class ScenesPanel : Panel {
 			sceneRenameBuffer = "";
 			ImGui.OpenPopup("copy-scene");
 		}
+		ImGui.SetItemTooltip("Copy");
 		
 		if(ImGui.BeginPopup("copy-scene")) {
 			ImGui.Text("Copy scene");
@@ -182,6 +184,7 @@ public class ScenesPanel : Panel {
 		if(ImGui.Button(Codicons.Trash)) {
 			ImGui.OpenPopup("delete-scene");
 		}
+		ImGui.SetItemTooltip("Delete");
 		
 		if(ImGui.BeginPopup("delete-scene")) {
 			ImGui.Text("Delete scene?");
@@ -214,19 +217,23 @@ public class ScenesPanel : Panel {
 		if(ImGui.Button(Codicons.ChevronUp)) {
 			Program.File.ApplyEdit(this, new Scene.MoveOperation(world, sceneIndex, sceneIndex-1));
 		}
+		ImGui.SetItemTooltip("Move Up");
 		ImGui.EndDisabled();
 		ImGui.SameLine();
 		ImGui.BeginDisabled(sceneIndex >= world.SceneCount - 1);
 		if(ImGui.Button(Codicons.ChevronDown)) { 
 			Program.File.ApplyEdit(this, new Scene.MoveOperation(world, sceneIndex, sceneIndex+1));
 		}
+		ImGui.SetItemTooltip("Move Down");
 		ImGui.EndDisabled();
 		
 		ImGui.SameLine();
 		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(Codicons.OpenInProduct).X - 12);
 		if(ImGui.Button(Codicons.OpenInProduct)) {
 			Program.CanvasPanel.LocateScene(Program.SelectedScene);
+			Program.Focus(Program.CanvasPanel);
 		}
+		ImGui.SetItemTooltip("Locate");
 		
 		ImGui.EndDisabled();
 

@@ -11,7 +11,7 @@ public class EntityEditTool : CanvasTool {
 	private Vector2 dragOrigin;
 	private FileEditEntry edit;
 
-	public EntityEditTool() : base($"{Codicons.Layout} Entities", LayerType.Entities) {
+	public EntityEditTool() : base($"{Codicons.SymbolMisc} Entities", LayerType.Entities) {
 		dragMode = EntityEditMode.Move;
 		dragOrigin = Vector2.Zero;
 		edit = null;
@@ -221,9 +221,9 @@ public class EntityEditTool : CanvasTool {
 				bool end = false;
 				if(dragMode == EntityEditMode.Move) {
 					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
-					dragEntity.Position += drag;
+					dragEntity.SetPosition(dragEntity.Position + drag);
 					Vector2 leftOver = new Vector2(dragEntity.Position.X % 1.0F, dragEntity.Position.Y % 1.0F);
-					dragEntity.Position = new Vector2((int)dragEntity.Position.X, (int)dragEntity.Position.Y);
+					dragEntity.SetPosition(new Vector2((int)dragEntity.Position.X, (int)dragEntity.Position.Y));
 					dragOrigin = mPos - leftOver * zoom;
 					op.SetPosition(dragEntity.Position);
 				}
@@ -232,11 +232,11 @@ public class EntityEditTool : CanvasTool {
 					float p = dragEntity.Position.X + drag.X;
 					float leftOver = p % 1.0F;
 					p = float.Floor(p);
-					dragEntity.Size.X += dragEntity.Position.X - p;
-					dragEntity.Position.X = p;
+					dragEntity.SetSize(new Vector2(dragEntity.Size.X + dragEntity.Position.X - p, dragEntity.Size.Y));
+					dragEntity.SetPosition(new Vector2(p, dragEntity.Position.Y));
 					dragOrigin = mPos - new Vector2(leftOver * zoom, 0);
 					if(dragEntity.Size.X < 0) {
-						dragEntity.Size.X = 0;
+						dragEntity.SetSize(new Vector2(0, dragEntity.Size.Y));
 						end = true;
 					}
 					op.SetPosition(dragEntity.Position);
@@ -244,12 +244,12 @@ public class EntityEditTool : CanvasTool {
 				}
 				if(dragMode == EntityEditMode.ResizeRight) {
 					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
-					dragEntity.Size.X += drag.X;
+					dragEntity.SetSize(new Vector2(dragEntity.Size.X + drag.X, dragEntity.Size.Y));
 					float leftOver = dragEntity.Size.X % 1.0F;
-					dragEntity.Size.X = (int)dragEntity.Size.X;
+					dragEntity.SetSize(new Vector2((int)dragEntity.Size.X, dragEntity.Size.Y));
 					dragOrigin = mPos - new Vector2(leftOver * zoom, 0);
 					if(dragEntity.Size.X < 0) {
-						dragEntity.Size.X = 0;
+						dragEntity.SetSize(new Vector2(0, dragEntity.Size.Y));
 						end = true;
 					}
 					op.SetSize(dragEntity.Size);
@@ -259,11 +259,11 @@ public class EntityEditTool : CanvasTool {
 					float p = dragEntity.Position.Y + drag.Y;
 					float leftOver = p % 1.0F;
 					p = float.Floor(p);
-					dragEntity.Size.Y += dragEntity.Position.Y - p;
-					dragEntity.Position.Y = p;
+					dragEntity.SetSize(new Vector2(dragEntity.Size.X, dragEntity.Size.Y + dragEntity.Position.Y - p));
+					dragEntity.SetPosition(new Vector2(dragEntity.Position.X, p));
 					dragOrigin = mPos - new Vector2(0, leftOver * zoom);
 					if(dragEntity.Size.Y < 0) {
-						dragEntity.Size.Y = 0;
+						dragEntity.SetSize(new Vector2(dragEntity.Size.X, 0));
 						end = true;
 					}
 					op.SetPosition(dragEntity.Position);
@@ -271,12 +271,12 @@ public class EntityEditTool : CanvasTool {
 				}
 				if(dragMode == EntityEditMode.ResizeBottom) {
 					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
-					dragEntity.Size.Y += drag.Y;
+					dragEntity.SetSize(new Vector2(dragEntity.Size.X, dragEntity.Size.Y + drag.Y));
 					float leftOver = dragEntity.Size.Y % 1.0F;
-					dragEntity.Size.Y = (int)dragEntity.Size.Y;
+					dragEntity.SetSize(new Vector2(dragEntity.Size.X, (int)dragEntity.Size.Y));
 					dragOrigin = mPos - new Vector2(0, leftOver * zoom);
 					if(dragEntity.Size.Y < 0) {
-						dragEntity.Size.Y = 0;
+						dragEntity.SetSize(new Vector2(dragEntity.Size.X, 0));
 						end = true;
 					}
 					op.SetSize(dragEntity.Size);
@@ -287,15 +287,15 @@ public class EntityEditTool : CanvasTool {
 					Vector2 leftOver = new(p.X % 1.0F, p.Y % 1.0F);
 					p.X = float.Floor(p.X);
 					p.Y = float.Floor(p.Y);
-					dragEntity.Size += dragEntity.Position - p;
-					dragEntity.Position = p;
+					dragEntity.SetSize(dragEntity.Size + dragEntity.Position - p);
+					dragEntity.SetPosition(p);
 					dragOrigin = mPos - leftOver * zoom;
 					if(dragEntity.Size.X < 0) {
-						dragEntity.Size.X = 0;
+						dragEntity.SetSize(new Vector2(0, dragEntity.Size.Y));
 						end = true;
 					}
 					if(dragEntity.Size.Y < 0) {
-						dragEntity.Size.Y = 0;
+						dragEntity.SetSize(new Vector2(dragEntity.Size.X, 0));
 						end = true;
 					}
 					op.SetPosition(dragEntity.Position);
@@ -308,16 +308,15 @@ public class EntityEditTool : CanvasTool {
 					Vector2 leftOver = new(s % 1.0F, p % 1.0F);
 					p = float.Floor(p);
 					s = float.Floor(s);
-					dragEntity.Size.X = s;
-					dragEntity.Size.Y += dragEntity.Position.Y - p;
-					dragEntity.Position.Y = p;
+					dragEntity.SetSize(new Vector2(s, dragEntity.Size.Y + dragEntity.Position.Y - p));
+					dragEntity.SetPosition(new Vector2(dragEntity.Position.X, p));
 					dragOrigin = mPos - leftOver * zoom;
 					if(dragEntity.Size.X < 0) {
-						dragEntity.Size.X = 0;
+						dragEntity.SetSize(new Vector2(0, dragEntity.Size.Y));
 						end = true;
 					}
 					if(dragEntity.Size.Y < 0) {
-						dragEntity.Size.Y = 0;
+						dragEntity.SetSize(new Vector2(dragEntity.Size.X, 0));
 						end = true;
 					}
 					op.SetPosition(dragEntity.Position);
@@ -330,16 +329,15 @@ public class EntityEditTool : CanvasTool {
 					Vector2 leftOver = new(p % 1.0F, s % 1.0F);
 					p = float.Floor(p);
 					s = float.Floor(s);
-					dragEntity.Size.Y = s;
-					dragEntity.Size.X += dragEntity.Position.X - p;
-					dragEntity.Position.X = p;
+					dragEntity.SetSize(new Vector2(dragEntity.Size.X + dragEntity.Position.X - p, s));
+					dragEntity.SetPosition(new Vector2(p, dragEntity.Position.Y));
 					dragOrigin = mPos - leftOver * zoom;
 					if(dragEntity.Size.X < 0) {
-						dragEntity.Size.X = 0;
+						dragEntity.SetSize(new Vector2(0, dragEntity.Size.Y));
 						end = true;
 					}
 					if(dragEntity.Size.Y < 0) {
-						dragEntity.Size.Y = 0;
+						dragEntity.SetSize(new Vector2(dragEntity.Size.X, 0));
 						end = true;
 					}
 					op.SetPosition(dragEntity.Position);
@@ -347,16 +345,16 @@ public class EntityEditTool : CanvasTool {
 				}
 				if(dragMode == EntityEditMode.ResizeRightBottom) {
 					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
-					dragEntity.Size += drag;
+					dragEntity.SetSize(dragEntity.Size + drag);
 					Vector2 leftOver = new Vector2(dragEntity.Size.X % 1.0F, dragEntity.Size.Y % 1.0F);
-					dragEntity.Size = new Vector2((int)dragEntity.Size.X, (int)dragEntity.Size.Y);
+					dragEntity.SetSize(new Vector2((int)dragEntity.Size.X, (int)dragEntity.Size.Y));
 					dragOrigin = mPos - leftOver * zoom;
 					if(dragEntity.Size.X < 0) {
-						dragEntity.Size.X = 0;
+						dragEntity.SetSize(new Vector2(0, dragEntity.Size.Y));
 						end = true;
 					}
 					if(dragEntity.Size.Y < 0) {
-						dragEntity.Size.Y = 0;
+						dragEntity.SetSize(new Vector2(dragEntity.Size.X, 0));
 						end = true;
 					}
 					op.SetPosition(dragEntity.Position);
@@ -374,14 +372,14 @@ public class EntityEditTool : CanvasTool {
 	public class EditOperation : IFileEditOperation {
 		public Entity Entity => entity;
 		private Entity entity;
-		private Vector2 oldPosition;
-		private Vector2 oldSize;
-		private Vector2 newPosition;
-		private Vector2 newSize;
+		private Vector2? oldPosition;
+		private Vector2? oldSize;
+		private Vector2? newPosition;
+		private Vector2? newSize;
 		public EditOperation(Entity entity) {
 			this.entity = entity;
-			this.oldPosition = entity.Position;
-			this.oldSize = entity.Size;
+			this.oldPosition = entity.OwnPosition;
+			this.oldSize = entity.OwnSize;
 			this.newPosition = this.oldPosition;
 			this.newSize = this.oldSize;
 		}
@@ -393,13 +391,13 @@ public class EntityEditTool : CanvasTool {
 		}
 		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<EditOperation>();
-			op.entity.Position = op.newPosition;
-			op.entity.Size = op.newSize;
+			op.entity.SetPosition(op.newPosition);
+			op.entity.SetSize(op.newSize);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
 			var op = entry.GetData<EditOperation>();
-			op.entity.Position = op.oldPosition;
-			op.entity.Size = op.oldSize;
+			op.entity.SetPosition(op.oldPosition);
+			op.entity.SetSize(op.oldSize);
 		}
 		public bool HasChanges() => oldPosition != newPosition || oldSize != newSize;
 	}
