@@ -64,6 +64,7 @@ public class Tileset {
 	public TextureArray TextureArray => textureArray;
 	
 	public List<AutomapPattern> AutomapPatterns => automapPatterns;
+	public List<PresetPattern> PresetPatterns => presetPatterns;
 
 	private File file;
 	private string id;
@@ -78,6 +79,7 @@ public class Tileset {
 	private TextureArray textureArray;
 	
 	private List<AutomapPattern> automapPatterns;
+	private List<PresetPattern> presetPatterns;
 	
 	private string textureFileFullPath;
 	private FileSystemWatcher textureFileWatcher;
@@ -93,6 +95,7 @@ public class Tileset {
 		size = new(0, 0);
 		tileData = new();
 		automapPatterns = new();
+		presetPatterns = new();
 		textureFileWatcher = null;
 	}
 
@@ -120,6 +123,9 @@ public class Tileset {
 				automap.Set(id, bitmask);
 			}
 			automapPatterns.Add(automap);
+		}
+		foreach(var presetElement in tilesetElement.Elements("preset")) {
+			// TODO
 		}
 		foreach(var tileElement in tilesetElement.Elements("tile")) {
 			int id = tileElement.Attribute("num").ParseAsInt();
@@ -163,6 +169,9 @@ public class Tileset {
 				automapElement.Add(tileElement);
 			}
 			element.Add(automapElement);
+		}
+		foreach(var preset in presetPatterns) {
+			// TODO
 		}
 		foreach(var data in tileData) {
 			XElement tileElement = new XElement("tile");
@@ -515,6 +524,44 @@ public struct TileShape {
 	public override bool Equals(object obj) {
 		return obj is TileShape shape && (this.Position == shape.Position && this.Size == shape.Size);
 	}
+}
+
+public class PresetPattern {
+	
+	public Tileset Tileset => tileset;
+
+	public string Name {
+		get => name;
+		set => name = value;
+	}
+
+	public int Width => width;
+	public int Height => height;
+
+	private Tileset tileset;
+	private string name;
+	private int width;
+	private int height;
+	private int[] tiles;
+
+	public PresetPattern(Tileset tileset, string name, int width, int height) {
+		this.tileset = tileset;
+		this.name = name;
+		this.width = width;
+		this.height = height;
+		this.tiles = new int[width * height];
+	}
+
+	public void SetTile(int x, int y, int tileID) {
+		if(x < 0 || x >= width || y < 0 || y >= height) return;
+		tiles[x + y * width] = tileID;
+	}
+
+	public int GetTile(int x, int y) {
+		if(x < 0 || x >= width || y < 0 || y >= height) return 0;
+		return tiles[x + y * width];
+	}
+
 }
 
 public enum AutomapMaskType {

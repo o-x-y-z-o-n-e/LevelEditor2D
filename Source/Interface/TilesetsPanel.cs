@@ -55,6 +55,7 @@ public class TilesetsPanel : Panel {
 
 	private EditMode editMode;
 	private AutomapPattern selectedAutomapPattern;
+	private PresetPattern selectedPresetPattern;
 	private FileEditEntry automapBitmaskEdit;
 	private string automapNameBuffer;
 	private int automapDeleteIndex;
@@ -366,6 +367,7 @@ public class TilesetsPanel : Panel {
 		if(tileset != lastSelectedTileset) {
 			tileEditIndex = 0;
 			selectedAutomapPattern = null;
+			selectedPresetPattern = null;
 		}
 
 		string id = tileset != null ? tileset.ID : "";
@@ -589,7 +591,7 @@ public class TilesetsPanel : Panel {
 		ImGui.BeginTabBar("tab-bar");
 		if(ImGui.BeginTabItem("Tile Colliders")) {
 			editMode = EditMode.TileColliders;
-			TileEdit();
+			TileColliderEdit();
 			ImGui.EndTabItem();
 		}
 		if(ImGui.BeginTabItem("Automap Patterns")) {
@@ -599,7 +601,7 @@ public class TilesetsPanel : Panel {
 		}
 		if(ImGui.BeginTabItem("Preset Patterns")) {
 			editMode = EditMode.PresetPatterns;
-			ImGui.Text("Under construction...");
+			PresetPatternEdit();
 			ImGui.EndTabItem();
 		}
 		ImGui.EndTabBar();
@@ -610,7 +612,7 @@ public class TilesetsPanel : Panel {
 		lastSelectedTileset = tileset;
 	}
 
-	private void TileEdit() {
+	private void TileColliderEdit() {
 		Tileset tileset = Program.SelectedTileset;
 
 		ImGui.BeginDisabled(tileset == null);
@@ -818,7 +820,7 @@ public class TilesetsPanel : Panel {
 		listSize.X = 280;
 		listSize.Y -= 96;
 		Vector2 origin = ImGui.GetCursorPos();
-		ImGui.BeginChild("pattern-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeX);
+		ImGui.BeginChild("automap-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeX);
 		listSize.X = ImGui.GetWindowSize().X;
 		if(tileset != null) {
 			for(int i = 0; i < tileset.AutomapPatterns.Count; i++) {
@@ -850,7 +852,7 @@ public class TilesetsPanel : Panel {
 				ImGui.PopID(); // i
 			}
 		}
-		ImGui.EndChild(); // pattern-list
+		ImGui.EndChild(); // automap-list
 		
 		if(ImGui.Button(Codicons.DiffAdded)) {
 			ImGui.OpenPopup("add-automap");
@@ -1026,6 +1028,56 @@ public class TilesetsPanel : Panel {
 			}
 			ImGui.EndCombo();
 		}
+		
+		ImGui.EndDisabled(); // tileset == null
+	}
+
+	private void PresetPatternEdit() {
+		Tileset tileset = Program.SelectedTileset;
+		ImGui.BeginDisabled(tileset == null);
+		
+		// int selectedAutomapIndex = tileset != null && selectedAutomapPattern != null ? tileset.AutomapPatterns.IndexOf(selectedAutomapPattern) : -1;
+
+		int moveUpIndex = -1;
+		int moveDownIndex = -1;
+
+		Vector2 listSize = ImGui.GetContentRegionAvail();
+		listSize.X = 280;
+		listSize.Y -= 96;
+		Vector2 origin = ImGui.GetCursorPos();
+		ImGui.BeginChild("preset-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeX);
+		listSize.X = ImGui.GetWindowSize().X;
+		if(tileset != null) {
+			for(int i = 0; i < tileset.PresetPatterns.Count; i++) {
+				PresetPattern pattern = tileset.PresetPatterns[i];
+				ImGui.PushID(i);
+				bool selected = selectedPresetPattern == pattern;
+				if(ImGui.Selectable(pattern.Name, selected, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap)) {
+					if(selected) {
+						selectedPresetPattern = null;
+					} else {
+						selectedPresetPattern = pattern;
+					}
+				}
+				
+				ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
+				if(ImGui.BeginPopup("context")) {
+					if(ImGui.MenuItem("Move Up")) {
+						moveUpIndex = i;
+					}
+					if(ImGui.MenuItem("Move Down")) {
+						moveDownIndex = i;
+					}
+					if(ImGui.MenuItem("Delete")) {
+						
+					}
+					ImGui.EndPopup();
+				}
+				
+				ImGui.PopID(); // i
+			}
+		}
+		ImGui.EndChild(); // preset-list
 		
 		ImGui.EndDisabled(); // tileset == null
 	}
