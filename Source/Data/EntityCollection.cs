@@ -71,7 +71,7 @@ public class EntityCollection {
 					}
 				}
 			}
-			Entity entity = new Entity(this, template);
+			Entity entity = new Entity(this, templateName);
 			entity.SetName(name);
 			entity.SetType(type);
 			if(px != null || py != null) {
@@ -92,7 +92,21 @@ public class EntityCollection {
 	public Entity Get(int index) {
 		return entities[index];
 	}
+	
+	public Entity Get(string name) {
+		if(name == null) return null;
+		foreach(var e in entities) {
+			if(e.Name == name) return e;
+		}
+		return null;
+	}
 
+	public void Add(Entity entity) {
+		if(entity.Collection != this) return;
+		if(entities.Contains(entity)) return;
+		entities.Add(entity);
+	}
+	
 	public Entity Add() {
 		Entity entity = new Entity(this);
 		entities.Add(entity);
@@ -101,15 +115,11 @@ public class EntityCollection {
 
 	public Entity Copy(int index) {
 		Entity srcEntity = entities[index];
-		Entity dstEntity = new Entity(this, srcEntity.Template);
-		dstEntity.SetName(srcEntity.Name);
-		dstEntity.SetType(srcEntity.Type);
-		if(srcEntity.HasOwnPosition) {
-			dstEntity.SetPosition(srcEntity.Position);
-		}
-		if(srcEntity.HasOwnSize) {
-			dstEntity.SetSize(srcEntity.Size);
-		}
+		Entity dstEntity = new Entity(this, srcEntity.Template?.Name);
+		dstEntity.SetName(srcEntity.OwnName);
+		dstEntity.SetType(srcEntity.OwnType);
+		dstEntity.SetPosition(srcEntity.OwnPosition);
+		dstEntity.SetSize(srcEntity.OwnSize);
 		srcEntity.Properties.CopyTo(dstEntity.Properties);
 		entities.Add(dstEntity);
 		return dstEntity;
@@ -144,7 +154,7 @@ public class EntityCollection {
 	}
 	
 	public void Insert(Entity entity, int index) {
-		if(entity == null || entities.Contains(entity)) return;
+		if(entity == null || entity.Collection != this || entities.Contains(entity)) return;
 		entities.Insert(index, entity);
 	}
 
@@ -158,14 +168,15 @@ public class Entity {
 
 	public bool IsPoint => Size.X == 0.0F && Size.Y == 0.0F;
 	public bool IsTemplate => collection.Layer == null;
-	public Entity Template => template;
+
+	public Entity Template => collection.World.Templates.Get(template);
 
 	public string Name {
 		get {
 			if(name != null) {
 				return name;
 			} else if(template != null) {
-				return template.Name;
+				return Template?.Name ?? "";
 			} else {
 				return "";
 			}
@@ -177,7 +188,7 @@ public class Entity {
 			if(type != null) {
 				return type;
 			} else if(template != null) {
-				return template.Type;
+				return Template?.Type ?? "";
 			} else {
 				return "";
 			}
@@ -189,7 +200,7 @@ public class Entity {
 			if(position != null) {
 				return position.Value;
 			} else if(template != null) {
-				return template.Position;
+				return Template?.Position ?? Vector2.Zero;
 			} else {
 				return Vector2.Zero;
 			}
@@ -201,7 +212,7 @@ public class Entity {
 			if(size != null) {
 				return size.Value;
 			} else if(template != null) {
-				return template.Size;
+				return Template?.Size ?? Vector2.Zero;
 			} else {
 				return Vector2.Zero;
 			}
@@ -223,7 +234,7 @@ public class Entity {
 	private Vector2? size;
 
 	private EntityCollection collection;
-	private Entity template;
+	private string template;
 
 	public PropertyCollection Properties => properties;
 
@@ -231,7 +242,7 @@ public class Entity {
 
 	public Entity(EntityCollection collection) : this(collection, null) {}
 	
-	public Entity(EntityCollection collection, Entity template) {
+	public Entity(EntityCollection collection, string template) {
 		this.collection = collection;
 		this.template = template;
 		properties = new();

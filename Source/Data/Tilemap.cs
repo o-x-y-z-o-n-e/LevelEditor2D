@@ -22,6 +22,7 @@ public class Tilemap {
 	private TileRef[,] grid;
 	private int width;
 	private int height;
+	private bool dirty;
 	
 	private float[] tileBuffer;
 	private uint tileBufferHandle;
@@ -90,15 +91,18 @@ public class Tilemap {
 		width = w;
 		height = h;
 		grid = newGrid;
+		dirty = true;
 	}
 
 	public void Set(int x, int y, int tile, int tileset) {
 		grid[x, y].TileID = tile;
 		grid[x, y].TilesetSlot = tileset;
+		dirty = true;
 	}
 	
 	public void Set(int x, int y, TileRef tile) {
 		grid[x, y] = tile;
+		dirty = true;
 	}
 	
 	public void Get(int x, int y, out int tile, out int tileset) {
@@ -270,6 +274,8 @@ public class Tilemap {
 	}
 
 	public unsafe void Render() {
+		if(!dirty) return;
+		
 		CreateShaders();
 		CreateFrameBuffer();
 		CreateTileBuffer();
@@ -317,6 +323,12 @@ public class Tilemap {
 		gl.BindFramebuffer(GLEnum.Framebuffer, 0);
 		
 		gl.Viewport(0, 0, (uint)Program.FramebufferSize.X, (uint)Program.FramebufferSize.Y);
+		
+		dirty = false;
+	}
+
+	public void MarkDirty() {
+		dirty = true;
 	}
 
 	public void ExportToFile(string filename) {

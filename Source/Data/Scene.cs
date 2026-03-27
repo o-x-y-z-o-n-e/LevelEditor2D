@@ -33,9 +33,7 @@ public class Scene {
 		get => tileCountY;
 	}
 
-	public int LayerCount => layers.Count;
-
-	public List<Layer> Layers => layers;
+	public Layer Root => root;
 	
 	public List<TilesetLink> Tilesets => tilesets;
 
@@ -50,8 +48,7 @@ public class Scene {
 	private int tileCountX;
 	private int tileCountY;
 	private List<TilesetLink> tilesets;
-	private List<LayerGroup> groups;
-	private List<Layer> layers;
+	private Layer root;
 	private PropertyCollection properties;
 	private bool disposed;
 
@@ -63,9 +60,9 @@ public class Scene {
 		tileCountX = 64;
 		tileCountY = 64;
 		tilesets = new();
-		groups = new();
-		layers = new();
 		properties = new();
+		root = new Layer(this, LayerType.Group);
+		root.Name = "Root";
 	}
 
 	internal void Parse(XElement sceneElement) {
@@ -75,21 +72,22 @@ public class Scene {
 		tileCountX = sceneElement.Attribute("tiles.x").ParseAsInt();
 		tileCountY = sceneElement.Attribute("tiles.y").ParseAsInt();
 
-		foreach(var linkElement in sceneElement.Element("links").Elements("link")) {
-			TilesetLink tileset = new TilesetLink(file);
-			tilesets.Add(tileset);
-			tileset.Parse(linkElement);
+		var linksElement = sceneElement.Element("links");
+		if(linksElement != null) {
+			foreach(var linkElement in linksElement.Elements("link")) {
+				TilesetLink tileset = new TilesetLink(file);
+				tilesets.Add(tileset);
+				tileset.Parse(linkElement);
+			}
 		}
 
-		foreach(var groupElement in sceneElement.Element("groups").Elements("group")) {
-			// LayerGroup group = new LayerGroup();
-			// groups.Add(group);
-		}
-
-		foreach(var layerElement in sceneElement.Element("layers").Elements("layer")) {
-			Layer layer = new Layer(this);
-			layer.Parse(layerElement);
-			layers.Add(layer);
+		var layersElement = sceneElement.Element("layers");
+		if(layersElement != null) {
+			foreach(var layerElement in layersElement.Elements("layer")) {
+				Layer layer = new Layer(this);
+				layer.Parse(layerElement);
+				root.AddChild(layer);
+			}
 		}
 
 		properties.ParseFromElement(sceneElement);
@@ -113,123 +111,83 @@ public class Scene {
 		}
 		element.Add(linksParent);
 
-		var groupsParent = new XElement("groups");
-		element.Add(groupsParent);
-
-		var layersParent = new XElement("layers");
-		foreach(var layer in layers) {
-			layersParent.Add(layer.Serialize());
+		var rootElement = new XElement("layers");
+		foreach(var layer in root.Children) {
+			rootElement.Add(layer.Serialize());
 		}
-		element.Add(layersParent);
+		element.Add(rootElement);
         
 		return element;
 	}
 
-	public Layer AddLayer(LayerType type) {
-		Layer layer = new Layer(this, type);
-		int n = layers.Count + 1;
+	public IEnumerable<Layer> GetAllLayers() => GetAllLayers(root);
+	
+	private IEnumerable<Layer> GetAllLayers(Layer parent) {
+		foreach(var child1 in parent.Children) {
+			yield return child1;
+			if(child1.Type == LayerType.Group) {
+				foreach(var child2 in GetAllLayers(child1)) {
+					yield return child2;
+				}
+			}
+		}
+	}
+
+	public int GetLayerTreeIndex(Layer layer) {
+		int index = 0;
+		foreach(var l in GetAllLayers(root)) {
+			if(layer == l) {
+				return index;
+			}
+			index++;
+		}
+		return -1;
+	}
+
+	public Layer GetLayer(int treeIndex) {
+		int index = 0;
+		foreach(var l in GetAllLayers(root)) {
+			if(index == treeIndex) {
+				return l;
+			}
+			index++;
+		}
+		return null;
+	}
+
+	public string GetNewDefaultLayerName() {
+		List<Layer> allLayers = new(GetAllLayers());
+		string name = "";
+		int n = allLayers.Count + 1;
 		bool looking = true;
 		while(looking) {
-			layer.Name = $"new_layer_{n}";
+			name = $"new_layer_{n}";
 			looking = false;
-			foreach(var l in layers) {
-				if(l.Name == layer.Name) {
+			foreach(var l in allLayers) {
+				if(l.Name == name) {
 					looking = true;
 					break;
 				}
 			}
 			n++;
 		}
-		layers.Add(layer);
-		return layer;
-	}
-	
-	public Layer GetLayer(int index) {
-		if(index < 0 || index >= layers.Count) return null;
-		return layers[index];
-	}
-	
-	public int GetLayerIndex(Layer layer) {
-		return layers.IndexOf(layer);
-	}
-
-	public void SwapLayers(int index1, int index2) {
-		if(index1 < 0 || index1 >= layers.Count || index2 < 0 || index2 >= layers.Count) return;
-		var t = layers[index1];
-		layers[index1] = layers[index2];
-		layers[index2] = t;
-	}
-	
-	public void SwapLayers(Layer layer1, Layer layer2) {
-		SwapLayers(layers.IndexOf(layer1), layers.IndexOf(layer2));
-	}
-
-	public void RemoveLayer(int index) {
-		RemoveLayer(layers[index]);
-	}
-	
-	public void RemoveLayer(Layer layer) {
-		if(layer == null || layer.Scene != this || !layers.Contains(layer)) return;
-		if(LastActiveLayer == layer) LastActiveLayer = null;
-		layers.Remove(layer);
-	}
-
-	public void InsertLayer(Layer layer, int index) {
-		if(layer == null || layer.Scene != this || layers.Contains(layer)) return;
-		layers.Insert(index, layer);
-	}
-	
-	public Layer CopyLayer(int index) {
-		return CopyLayer(layers[index]);
-	}
-	
-	public Layer CopyLayer(Layer srcLayer) {
-		if(srcLayer.Scene != this) return null;
-
-		Layer newLayer = AddLayer(srcLayer.Type);
-		newLayer.Visible = srcLayer.Visible;
-		newLayer.Color = srcLayer.Color;
-		srcLayer.Properties.CopyTo(newLayer.Properties);
-		if(srcLayer.Type == LayerType.Tiles) {
-			for(int y = 0; y < tileCountY; y++) {
-				for(int x = 0; x < tileCountX; x++) {
-					newLayer.Tilemap.Grid[x, y] = srcLayer.Tilemap.Grid[x, y];
-				}
-			}
-		} else if(srcLayer.Type == LayerType.Entities) {
-			foreach(var srcEntity in srcLayer.Entities.All) {
-				var newEntity = newLayer.Entities.Add();
-				newEntity.SetName(srcEntity.Name);
-				newEntity.SetType(srcEntity.Type);
-				if(srcEntity.HasOwnPosition) {
-					newEntity.SetPosition(srcEntity.Position);
-				}
-				if(srcEntity.HasOwnSize) {
-					newEntity.SetSize(srcEntity.Size);
-				}
-				foreach(var p in srcEntity.Properties.All) {
-					var newP = newEntity.Properties.Add(p.Name, p.Type);
-					newP.String = p.String;
-					newP.Integer = p.Integer;
-					newP.Float = p.Float;
-					newP.Boolean = p.Boolean;
-				}
-			}
-		}
-
-		return newLayer;
-	}
-
-	public bool HasLayer(Layer layer) {
-		return layers.Contains(layer);
+		return name;
 	}
 
 	public void Resize(int tilesX, int tilesY) {
 		tileCountX = tilesX;
 		tileCountY = tilesY;
-		foreach(var layer in layers) {
+		foreach(var layer in GetAllLayers()) {
 			if(layer.Type == LayerType.Tiles) {
 				layer.Tilemap?.Resize(tileCountX, tileCountY);
+			}
+		}
+	}
+
+	public void MarkTilemapsAsDirty() {
+		foreach(var layer in GetAllLayers()) {
+			if(layer.Type == LayerType.Tiles) {
+				layer.Tilemap.MarkDirty();
 			}
 		}
 	}
@@ -239,7 +197,7 @@ public class Scene {
 		int pixelsHeight = tileCountY * file.World.TileHeight;
 		byte[] buffer = new byte[pixelsWidth * pixelsHeight * 4];
 		// Manual color blending becuase I'm tool lazy to deal with opengl
-		foreach(var layer in layers) {
+		foreach(var layer in GetAllLayers()) {
 			if(layer.Type != LayerType.Tiles) continue;
 			layer.Tilemap.ExportToPixels(out byte[] data);
 			for(int p = 0; p < pixelsWidth * pixelsHeight; p++) {
@@ -434,15 +392,5 @@ public class TilesetLink {
 			new XAttribute("tileset", tileset?.ID ?? "")
 		);
 		return linkElement;
-	}
-}
-
-public class LayerGroup {
-
-	private string id;
-	private Color color;
-	internal LayerGroup() {
-		id = "new_group";
-		color = Color.White;
 	}
 }

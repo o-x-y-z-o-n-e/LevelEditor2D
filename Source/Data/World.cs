@@ -77,7 +77,11 @@ public class World {
 		scene.WorldX = x;
 		scene.WorldY = y;
 		scene.Resize(width, height);
-		if(blankLayer) scene.AddLayer(LayerType.Tiles);
+		if(blankLayer) {
+			Layer layer = new Layer(scene, LayerType.Tiles);
+			layer.Name = scene.GetNewDefaultLayerName();
+			scene.Root.AddChild(layer);
+		}
 		scenes.Add(scene);
 		return scene;
 	}
@@ -109,8 +113,6 @@ public class World {
 		
 		srcScene.Properties.CopyTo(newScene.Properties);
 		
-		// TODO: groups
-
 		for(int i = 0; i < srcScene.Tilesets.Count; i++) {
 			var src = srcScene.Tilesets[i];
 			var link = new TilesetLink(file, src.Slot);
@@ -118,41 +120,7 @@ public class World {
 			newScene.Tilesets.Add(link);
 		}
 		
-		for(int i = 0; i < srcScene.LayerCount; i++) {
-			Layer srcLayer = srcScene.Layers[i];
-			Layer newLayer = newScene.AddLayer(srcLayer.Type);
-			
-			newLayer.Name = srcLayer.Name;
-			newLayer.Visible = srcLayer.Visible;
-			newLayer.Color = srcLayer.Color;
-			srcLayer.Properties.CopyTo(newLayer.Properties);
-			if(srcLayer.Type == LayerType.Tiles) {
-				for(int ty = 0; ty < srcScene.TileCountY; ty++) {
-					for(int tx = 0; tx < srcScene.TileCountX; tx++) {
-						newLayer.Tilemap.Grid[tx, ty] = srcLayer.Tilemap.Grid[tx, ty];
-					}
-				}
-			} else if(srcLayer.Type == LayerType.Entities) {
-				foreach(var srcEntity in srcLayer.Entities.All) {
-					var newEntity = newLayer.Entities.Add();
-					newEntity.SetName(srcEntity.Name);
-					newEntity.SetType(srcEntity.Type);
-					if(srcEntity.HasOwnPosition) {
-						newEntity.SetPosition(srcEntity.Position);
-					}
-					if(srcEntity.HasOwnSize) {
-						newEntity.SetSize(srcEntity.Size);
-					}
-					foreach(var p in srcEntity.Properties.All) {
-						var newP = newEntity.Properties.Add(p.Name, p.Type);
-						newP.String = p.String;
-						newP.Integer = p.Integer;
-						newP.Float = p.Float;
-						newP.Boolean = p.Boolean;
-					}
-				}
-			}
-		}
+		Layer.Copy(srcScene.Root, newScene.Root);
 		
 		return newScene;
 	}
@@ -165,9 +133,9 @@ public class World {
 	public void RemoveScene(Scene scene) {
 		if(!scenes.Contains(scene)) return;
 		scenes.Remove(scene);
-		for(int i = 0; i < scene.LayerCount; i++) {
-			if(scene.Layers[i].Type == LayerType.Tiles) {
-				scene.Layers[i].Tilemap?.ReleaseResources();
+		foreach(var layer in scene.GetAllLayers()) {
+			if(layer.Type == LayerType.Tiles) {
+				layer.Tilemap?.ReleaseResources();
 			}
 		}
 	}
@@ -236,9 +204,9 @@ public class World {
 		for(int i = 0; i < tilesets.Count; i++) tilesets[i]?.ReleaseResources();
 		
 		for(int s = 0; s < scenes.Count; s++) {
-			for(int i = 0; i < scenes[s].LayerCount; i++) {
-				if(scenes[s].Layers[i].Type == LayerType.Tiles) {
-					scenes[s].Layers[i].Tilemap?.ReleaseResources();
+			foreach(var layer in scenes[s].GetAllLayers()) {
+				if(layer.Type == LayerType.Tiles) {
+					layer.Tilemap?.ReleaseResources();
 				}
 			}
 		}

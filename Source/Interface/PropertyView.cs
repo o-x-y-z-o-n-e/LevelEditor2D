@@ -65,7 +65,7 @@ public static class PropertyView {
 		}
 
 		if(ImGui.BeginPopup("add-property")) {
-			ImGui.InputText("Name", ref newPropertyName, 512);
+			ImGui.InputText("Name", ref newPropertyName, Program.IMGUI_STRING_MAX);
 			if(ImGui.BeginCombo("Type", newPropertyType.ToString())) {
 				if(ImGui.Selectable("String", newPropertyType == PropertyType.String)) {
 					newPropertyType = PropertyType.String;
@@ -86,7 +86,7 @@ public static class PropertyView {
 				ImGui.EndCombo();
 			}
 			if(newPropertyType == PropertyType.String) {
-				ImGui.InputText("Value", ref newPropertyString, 512);
+				ImGui.InputText("Value", ref newPropertyString, Program.IMGUI_STRING_MAX);
 			}
 			if(newPropertyType == PropertyType.Integer) {
 				ImGui.InputInt("Value", ref newPropertyInteger);
@@ -160,7 +160,7 @@ public static class PropertyView {
 		
 		if(property.Type == PropertyType.String) {
 			string str = property.String;
-			if(ImGui.InputText("##", ref str, 512)) {
+			if(ImGui.InputText("##", ref str, Program.IMGUI_STRING_MAX)) {
 				if(ImGui.IsItemDeactivatedAfterEdit()) {
 					if(isTemplate) {
 						Property newProperty = new Property();
@@ -294,7 +294,6 @@ public static class PropertyView {
 			// ImGui.EndDisabled();
 			
 			if(ImGui.MenuItem("Remove")) {
-				// TODO: pDelete = index;
 				delete = true;
 				ImGui.CloseCurrentPopup();
 			}
@@ -308,7 +307,8 @@ public static class PropertyView {
 
 		if(ImGui.BeginPopup("rename")) {
 			string name = property.Name;
-			if(ImGui.InputText("Name", ref name, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+			if(ImGui.InputText("Name", ref name, Program.IMGUI_STRING_MAX)) {}
+			if(ImGui.IsItemDeactivatedAfterEdit()) {
 				if(collection.Contains(name)) {
 					// TODO: delete & replace
 				} else {
@@ -317,6 +317,7 @@ public static class PropertyView {
 						undo: entry => { property.Name = entry.GetData<Tuple<string, string>>().Item1; }
 					);
 				}
+				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndPopup();
 		}

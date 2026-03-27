@@ -242,7 +242,8 @@ public class ScenesPanel : Panel {
 			
 			Scene scene = Program.SelectedScene;
 			string id = scene.ID;
-			if(ImGui.InputText("ID", ref id, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+			if(ImGui.InputText("ID", ref id, 512)) { }
+			if(ImGui.IsItemDeactivatedAfterEdit()) {
 				bool valid = true;
 				foreach(var s in world.Scenes) {
 					if(s.ID == id) {

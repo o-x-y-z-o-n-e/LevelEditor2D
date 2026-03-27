@@ -330,19 +330,18 @@ public class CanvasPanel : Panel {
 		//ImGui.PopID();
 		
 		// Layers
-		for(int i = 0; i < scene.LayerCount; i++) {
-			Layer layer = scene.Layers[i];
-			bool hide = !layer.Visible;
+		foreach(var layer in scene.GetAllLayers()) {
+			bool hide = !layer.IsGloballyVisible;
 			if(Program.LayersPanel.IsolateLayerView && scene == Program.SelectedScene) {
 				hide = layer != Program.SelectedLayer;
 			}
 			if(hide) continue;
-			if(layer.Type == LayerType.Tiles && layer.HasTilemap) {
+			if(layer.Type == LayerType.Tiles) {
 				layer.Tilemap.Render();
 				uint tex = layer.Tilemap.GetFrameBufferTexture();
 				drawList.AddImage((nint)tex, p0, p3, new(0,0), new(1,1));
 			}
-			if(layer.Type == LayerType.Entities && layer.HasEntities) {
+			if(layer.Type == LayerType.Entities) {
 				Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
 				Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
 				foreach(var entity in layer.Entities.All) {
@@ -418,18 +417,21 @@ public class CanvasPanel : Panel {
 	}
 
 	private void DrawEntityLabels(ImDrawListPtr drawList, Matrix4x4 transform, World world) {
-		for(int i = 0; i < world.SceneCount; i++) {
-			ImGui.PushID(i);
-			Scene scene = world.GetScene(i);
-			for(int j = 0; j < scene.LayerCount; j++) {
-				Layer layer = scene.Layers[j];
-				bool hide = !layer.Visible;
+		for(int s = 0; s < world.SceneCount; s++) {
+			ImGui.PushID(s);
+			Scene scene = world.GetScene(s);
+			int l = 0;
+			foreach(var layer in scene.GetAllLayers()) {
+				bool hide = !layer.IsGloballyVisible;
 				if(Program.LayersPanel.IsolateLayerView && scene == Program.SelectedScene) {
 					hide = layer != Program.SelectedLayer;
 				}
-				if(hide) continue;
-				ImGui.PushID(j);
-				if(layer.Type == LayerType.Entities && layer.HasEntities) {
+				if(hide) {
+					l++;
+					continue;
+				}
+				ImGui.PushID(l);
+				if(layer.Type == LayerType.Entities) {
 					Vector2 scale = new(1.0F / scene.World.TileWidth, 1.0F / scene.World.TileHeight);
 					Vector2 offset = new Vector2(scene.WorldX, scene.WorldY);
 					int e = 0;
@@ -464,6 +466,7 @@ public class CanvasPanel : Panel {
 					}
 				}
 				ImGui.PopID();
+				l++;
 			}
 			ImGui.PopID();
 		}

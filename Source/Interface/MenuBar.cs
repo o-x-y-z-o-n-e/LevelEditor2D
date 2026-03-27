@@ -1,4 +1,6 @@
-﻿using ImGuiNET;
+﻿using System.Numerics;
+using IconFonts;
+using ImGuiNET;
 using NativeFileDialogSharp;
 
 namespace L2D; 
@@ -10,6 +12,7 @@ public class MenuBar {
 	}
 	
 	internal void Execute() {
+		ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0.0F);
 		if(ImGui.BeginMainMenuBar()) {
 			if(ImGui.BeginMenu("File")) {
 				if(ImGui.MenuItem("New")) {
@@ -108,8 +111,30 @@ public class MenuBar {
 				ImGui.EndMenu();
 			}
 
+			/* custom title bar experiment
+			ImGui.SetCursorPosX(
+				ImGui.GetCursorPosX() +
+				ImGui.GetContentRegionAvail().X - 
+				ImGui.CalcTextSize(Codicons.ChromeMinimize).X -
+				ImGui.CalcTextSize(Codicons.ChromeRestore).X -
+				ImGui.CalcTextSize(Codicons.ChromeClose).X -
+				ImGui.GetStyle().FramePadding.X * 5
+				+ 4
+			);
+			ImGui.PushStyleColor(ImGuiCol.Button, 0);
+			ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0);
+			ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, Vector2.Zero);
+			ImGui.Button(Codicons.ChromeMinimize);
+			ImGui.Button(Codicons.ChromeRestore);
+			ImGui.Button(Codicons.ChromeClose);
+			ImGui.PopStyleVar();
+			ImGui.PopStyleVar();
+			ImGui.PopStyleColor();
+			*/
+
 			ImGui.EndMainMenuBar();
 		}
+		ImGui.PopStyleVar();
 	}
 	
 }

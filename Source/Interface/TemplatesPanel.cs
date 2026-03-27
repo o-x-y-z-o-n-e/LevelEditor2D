@@ -15,6 +15,7 @@ public class TemplatesPanel : Panel {
 	private int deleteIndex;
 	private int copyIndex;
 	private string newIdBuffer;
+	private bool gridView;
 
 	private FileEditEntry sizeEdit;
 	
@@ -46,6 +47,10 @@ public class TemplatesPanel : Panel {
 		int selectedIndex = -1;
 		int moveUpIndex = -1;
 		int moveDownIndex = -1;
+		
+		if(selectedTemplate != null) {
+			selectedIndex = world.Templates.IndexOf(selectedTemplate);
+		}
 		
 		if(ImGui.Button(Codicons.DiffAdded)) {
 			newIdBuffer = "new entity";
@@ -93,57 +98,46 @@ public class TemplatesPanel : Panel {
 		ImGui.SameLine();
 		float gridButtonX = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize("Grid").X - style.FramePadding.X * 2;
 		ImGui.SetCursorPosX(gridButtonX);
+		ImGui.BeginDisabled(gridView);
 		if(ImGui.Button("Grid")) {
-			
+			gridView = true;
 		}
+		ImGui.EndDisabled();
 		ImGui.SameLine();
 		ImGui.SetCursorPosX(gridButtonX - ImGui.CalcTextSize("Grid").X - style.FramePadding.X * 2 - style.ItemSpacing.X);
+		ImGui.BeginDisabled(!gridView);
 		if(ImGui.Button("List")) {
-			
+			gridView = false;
 		}
-		
-		ImGui.BeginChild("list", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Borders);
+		ImGui.EndDisabled();
 
-		for(int i = 0; i < world.Templates.Count; i++) {
-			ImGui.PushID(i);
-			Entity template = world.Templates.Get(i);
-
-			bool selected = template == selectedTemplate;
-			if(ImGui.Selectable(template.Name, selected)) {
-				if(selectedTemplate != template) {
-					selectedTemplate = template;
-				} else {
-					selectedTemplate = null;
-				}
-				selected = true;
-			}
-			if(selected) {
-				selectedIndex = i;
-			}
+		selectedTemplate = Items(selectedTemplate, index => {
+			ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
 			if(ImGui.BeginPopup("context")) {
 				if(ImGui.MenuItem("Copy")) {
 					newIdBuffer = "new entity";
-					copyIndex = i;
+					copyIndex = index;
 				}
 				if(ImGui.MenuItem("Delete")) {
-					deleteIndex = i;
+					deleteIndex = index;
 				}
 				if(ImGui.MenuItem("Move Up")) {
-					moveUpIndex = i;
+					moveUpIndex = index;
 				}
 				if(ImGui.MenuItem("Move Down")) {
-					moveDownIndex = i;
+					moveDownIndex = index;
 				}
 				ImGui.EndPopup();
 			}
-			ImGui.PopID();
+		});
+
+		if(selectedTemplate != null) {
+			selectedIndex = world.Templates.IndexOf(selectedTemplate);
 		}
-		
-		ImGui.EndChild();
 		
 		if(ImGui.BeginPopup("add-template")) {
 			ImGui.Text("Create new template");
-			ImGui.InputText("ID", ref newIdBuffer, 512);
+			ImGui.InputText("ID", ref newIdBuffer, Program.IMGUI_STRING_MAX);
 			bool validId = newIdBuffer != "";
 			foreach(var s in world.Templates.All) {
 				if(s.Name == newIdBuffer) {
@@ -181,7 +175,7 @@ public class TemplatesPanel : Panel {
 		}
 		if(ImGui.BeginPopup("copy-template")) {
 			ImGui.Text("Copy template?");
-			ImGui.InputText("ID", ref newIdBuffer, 512);
+			ImGui.InputText("ID", ref newIdBuffer, Program.IMGUI_STRING_MAX);
 			bool validId = newIdBuffer != "";
 			foreach(var s in world.Templates.All) {
 				if(s.Name == newIdBuffer) {
@@ -254,41 +248,10 @@ public class TemplatesPanel : Panel {
 		
 		ImGui.BeginChild("preview", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY);
 
-		Vector2 previewArea = ImGui.GetContentRegionAvail();
-		Vector2 previewCenter = ImGui.GetWindowPos() + ImGui.GetStyle().WindowPadding + previewArea / 2.0F;
-
 		if(selectedTemplate != null) {
-			var drawList = ImGui.GetWindowDrawList();
-			uint fillColor = Utilities.GetPackedColor(200, 200, 200, 30);
-			uint borderColor = Utilities.GetPackedColor(200, 200, 200, 180);
-
-			float scale = float.Min(
-				(previewArea.X / 2.0F) / float.Max(selectedTemplate.Size.X, 1.0F),
-				(previewArea.Y / 2.0F) / float.Max(selectedTemplate.Size.Y, 1.0F)
-			);
-			
-			Vector2 e0 = previewCenter - (selectedTemplate.Size / 2.0F) * scale;
-			Vector2 e1 = previewCenter + (selectedTemplate.Size / 2.0F) * scale;
-			if(selectedTemplate.IsPoint) {
-				float size = Entity.POINT_HANDLE_SIZE;
-				drawList.AddCircleFilled(e0, size, fillColor);
-				drawList.AddCircle(e0, size, borderColor);
-				drawList.AddLine(e0 + new Vector2(-size / 3, 0), e0 + new Vector2(size / 3, 0), borderColor);
-				drawList.AddLine(e0 + new Vector2(0, -size / 3), e0 + new Vector2(0, size / 3), borderColor);
-			} else {
-				drawList.AddRectFilled(e0, e1, fillColor);
-				drawList.AddRect(e0, e1, borderColor);
-			}
-			Vector2 textSize = ImGui.CalcTextSize(selectedTemplate.Name);
-			Vector2 textPos = new Vector2((e0.X + e1.X) / 2.0F, e0.Y) - (textSize / 2.0F) - new Vector2(0, 16);
-			if(textSize.X > 0 && textPos.Y > 0) {
-				if(selectedTemplate.IsPoint) textPos.Y -= Entity.POINT_HANDLE_SIZE;
-				else if(selectedTemplate == Program.SelectedEntity) textPos.Y -= 14;
-				drawList.AddRectFilled(textPos - new Vector2(2, -1), textPos + textSize + new Vector2(8, 4), Utilities.GetPackedColor(10, 10, 10, 64), 4.0F);
-				drawList.AddRectFilled(textPos - new Vector2(4, 1), textPos + textSize + new Vector2(6, 2), Utilities.GetPackedColor(180, 180, 180, 192), 4.0F);
-				drawList.AddText(textPos + new Vector2(1), Utilities.GetPackedColor(10, 10, 10, 128), selectedTemplate.Name);
-				drawList.AddText(textPos, Utilities.GetPackedColor(255, 255, 255, 255), selectedTemplate.Name);
-			}
+			Vector2 areaMin = ImGui.GetWindowPos() + ImGui.GetStyle().WindowPadding;
+			Vector2 areaMax = areaMin + ImGui.GetContentRegionAvail();
+			DrawPreview(selectedTemplate, areaMin, areaMax);
 		}
 
 		ImGui.EndChild();
@@ -297,11 +260,22 @@ public class TemplatesPanel : Panel {
 		if(selectedTemplate != null) {
 			ImGui.SeparatorText("Entity Options");
 			string name = selectedTemplate.Name;
-			if(ImGui.InputText("Name", ref name, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
-				Program.File.ApplyEdit(this, new Entity.NameOperation(selectedTemplate, name));
+			if(ImGui.InputText("Name", ref name, Program.IMGUI_STRING_MAX)) {}
+			if(ImGui.IsItemDeactivatedAfterEdit()) {
+				bool invalidName = name == "";
+				foreach(var t in selectedTemplate.Collection.All) {
+					if(t.Name == name) {
+						invalidName = true;
+						break;
+					}
+				}
+				if(!invalidName) {
+					Program.File.ApplyEdit(this, new Entity.NameOperation(selectedTemplate, name));
+				}
 			}
 			string type = selectedTemplate.Type;
-			if(ImGui.InputText("Type", ref type, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+			if(ImGui.InputText("Type", ref type, Program.IMGUI_STRING_MAX)) {}
+			if(ImGui.IsItemDeactivatedAfterEdit()) {
 				Program.File.ApplyEdit(this, new Entity.TypeOperation(selectedTemplate, type));
 			}
 			Vector2 size = selectedTemplate.Size;
@@ -321,6 +295,116 @@ public class TemplatesPanel : Panel {
 		}
 		ImGui.EndChild();
 	}
+	
+	private void DrawPreview(Entity template, Vector2 areaMin, Vector2 areaMax, float areaUsed = 0.5F) {
+		if(template == null) return;
+
+		areaUsed = float.Clamp(areaUsed, 0.1F, 1.0F);
+		
+		Vector2 previewSize = areaMax - areaMin;
+		Vector2 previewCenter = (areaMax + areaMin) / 2.0F;
+
+		var drawList = ImGui.GetWindowDrawList();
+		uint fillColor = Utilities.GetPackedColor(200, 200, 200, 30);
+		uint borderColor = Utilities.GetPackedColor(200, 200, 200, 180);
+
+		float scale = float.Min(
+			(previewSize.X * areaUsed) / float.Max(template.Size.X, 1.0F),
+			(previewSize.Y * areaUsed) / float.Max(template.Size.Y, 1.0F)
+		);
+			
+		Vector2 e0 = previewCenter - (template.Size / 2.0F) * scale;
+		Vector2 e1 = previewCenter + (template.Size / 2.0F) * scale;
+		if(template.IsPoint) {
+			float size = Entity.POINT_HANDLE_SIZE;
+			drawList.AddCircleFilled(e0, size, fillColor);
+			drawList.AddCircle(e0, size, borderColor);
+			drawList.AddLine(e0 + new Vector2(-size / 3, 0), e0 + new Vector2(size / 3, 0), borderColor);
+			drawList.AddLine(e0 + new Vector2(0, -size / 3), e0 + new Vector2(0, size / 3), borderColor);
+		} else {
+			drawList.AddRectFilled(e0, e1, fillColor);
+			drawList.AddRect(e0, e1, borderColor);
+		}
+		Vector2 textSize = ImGui.CalcTextSize(template.Name);
+		Vector2 textPos = new Vector2((e0.X + e1.X) / 2.0F, e0.Y) - (textSize / 2.0F) - new Vector2(0, 16);
+		if(textSize.X > 0 && textPos.Y > 0) {
+			if(template.IsPoint) textPos.Y -= Entity.POINT_HANDLE_SIZE;
+			drawList.AddRectFilled(textPos - new Vector2(2, -1), textPos + textSize + new Vector2(8, 4), Utilities.GetPackedColor(10, 10, 10, 64), 4.0F);
+			drawList.AddRectFilled(textPos - new Vector2(4, 1), textPos + textSize + new Vector2(6, 2), Utilities.GetPackedColor(180, 180, 180, 192), 4.0F);
+			drawList.AddText(textPos + new Vector2(1), Utilities.GetPackedColor(10, 10, 10, 128), template.Name);
+			drawList.AddText(textPos, Utilities.GetPackedColor(255, 255, 255, 255), template.Name);
+		}
+	}
+
+	private Entity Items(Entity selected, Action<int> contextPopup = null) {
+		World world = Program.File.World;
+		
+		ImGui.BeginChild("items", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Borders);
+		
+		var drawList = ImGui.GetWindowDrawList();
+		Vector2 areaPos = ImGui.GetCursorScreenPos();
+		Vector2 areaSize = ImGui.GetContentRegionAvail();
+		Vector2 areaOffset = new Vector2(0, 0);
+		Vector2 itemSize = new Vector2(200, 200);
+		Vector2 itemSpacing = new Vector2(4, 4);
+
+		int columns = (int)(areaSize.X / (itemSize.X + itemSpacing.X));
+		itemSize = new Vector2(areaSize.X / columns - itemSpacing.X);
+		
+		for(int i = 0; i < world.Templates.Count; i++) {
+			ImGui.PushID(i);
+			Entity template = world.Templates.Get(i);
+
+			if(gridView) {
+				Vector2 p0 = areaPos + areaOffset;
+				Vector2 p1 = p0 + itemSize;
+				
+				drawList.AddRectFilled(p0, p1, Utilities.GetPackedColor(40, 40, 40, 255));
+				drawList.AddRect(p0, p1, Utilities.GetPackedColor(80, 80, 80, 255));
+				
+				ImGui.SetCursorScreenPos(areaPos + areaOffset);
+				ImGui.PushClipRect(p0, p1, true);
+				if(template == selected) {
+					drawList.AddRectFilled(p0, p1, Utilities.GetPackedColor(80, 80, 80, 80));
+				}
+				DrawPreview(template, p0, p1, 0.65F);
+				if(ImGui.InvisibleButton("select", itemSize)) {
+					if(selected != template) {
+						selected = template;
+					} else {
+						selected = null;
+					}
+				}
+				if(ImGui.IsItemHovered()) {
+					drawList.AddRectFilled(p0, p1, Utilities.GetPackedColor(120, 120, 120, 40));
+				}
+				ImGui.PopClipRect();
+				
+				// Calculate next item offset from areaPos
+				areaOffset.X += itemSize.X + itemSpacing.X;
+				if(areaSize.X - areaOffset.X < itemSize.X) {
+					areaOffset.X = 0;
+					areaOffset.Y += itemSize.Y + itemSpacing.Y;
+				}
+			} else {
+				if(ImGui.Selectable(template.Name, template == selected)) {
+					if(selected != template) {
+						selected = template;
+					} else {
+						selected = null;
+					}
+				}
+			}
+
+			contextPopup?.Invoke(i);
+			
+			ImGui.PopID();
+		}
+		
+		ImGui.EndChild();
+
+		return selected;
+	}
 
 	public void SelectModal(Action<Entity> onSelect) {
 		Entity result = null;
@@ -331,42 +415,29 @@ public class TemplatesPanel : Panel {
 		if(ImGui.BeginPopupModal("Select Template", ref open)) {
 			Vector2 area = ImGui.GetContentRegionAvail();
 			var style = ImGui.GetStyle();
-			
-			// TODO
-			/*
-			float searchWidth = 300 + ImGui.CalcTextSize("Search").X + style.FramePadding.X * 2.0F;
-			float buttonWidth1 = ImGui.CalcTextSize("List").X + style.FramePadding.X * 2.0F;
-			float buttonWidth2 = ImGui.CalcTextSize("Grid").X + style.FramePadding.X * 2.0F;
-			float widthNeeded = buttonWidth1 + style.ItemSpacing.X + buttonWidth2 + searchWidth + style.FramePadding.X;
-		
-			ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - widthNeeded);
-		
-			ImGui.BeginDisabled(mode == ViewMode.List);
+
+			ImGui.BeginDisabled(!gridView);
 			if(ImGui.Button("List")) {
-				mode = ViewMode.List;
+				gridView = false;
 			}
 			ImGui.EndDisabled();
+			
 			ImGui.SameLine();
-			ImGui.BeginDisabled(mode == ViewMode.Grid);
+			ImGui.BeginDisabled(gridView);
 			if(ImGui.Button("Grid")) {
-				mode = ViewMode.Grid;
+				gridView = true;
 			}
 			ImGui.EndDisabled();
+			
 			ImGui.SameLine();
-			ImGui.SetNextItemWidth(300);
-			if(ImGui.InputText("Search", ref search, 512)) {
-				MatchSearch();
-			}
-			if(ImGui.BeginPopupContextItem()) {
-				if(ImGui.MenuItem("Clear")) {
-					search = "";
-					ImGui.CloseCurrentPopup();
-				}
-				ImGui.EndPopup();
-			}
-            
+			
+			string search = "";
+			float searchWidth = 300;
+			ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - searchWidth - ImGui.CalcTextSize("Search").X - ImGui.GetStyle().FramePadding.X);
+			ImGui.SetNextItemWidth(searchWidth);
+			ImGui.InputText("Search", ref search, Program.IMGUI_STRING_MAX);
+
 			result = Items(null);
-			*/
 			
 			if(result != null) {
 				open = false;

@@ -30,7 +30,7 @@ public class NewProjectModal {
 				});
 			}
 			ImGui.SameLine();
-			ImGui.InputText("Path", ref path, 512);
+			ImGui.InputText("Path", ref path, Program.IMGUI_STRING_MAX);
 			
 			ImGui.Spacing();
 			ImGui.Spacing();

@@ -159,7 +159,7 @@ public class TilesetsPanel : Panel {
 		ImGui.EndDisabled();
 		ImGui.SameLine();
 		ImGui.SetNextItemWidth(300);
-		if(ImGui.InputText("Search", ref search, 512)) {
+		if(ImGui.InputText("Search", ref search, Program.IMGUI_STRING_MAX)) {
 			MatchSearch();
 		}
 		if(ImGui.BeginPopupContextItem()) {
@@ -253,10 +253,8 @@ public class TilesetsPanel : Panel {
 			Vector2 areaOffset = new Vector2(0, 0);
 			int i = 0;
 			foreach(var entry in matchedSearchList) {
-				var tileset = entry.Value;
-			// for(int i = 0; i < world.TilesetCount; i++) {
+				Tileset tileset = entry.Value;
 				ImGui.PushID(i);
-				// Tileset tileset = world.GetTileset(i);
 
 				ImDrawListPtr drawList = ImGui.GetWindowDrawList();
 			
@@ -371,7 +369,8 @@ public class TilesetsPanel : Panel {
 		}
 
 		string id = tileset != null ? tileset.ID : "";
-		if(ImGui.InputText("ID", ref id, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+		if(ImGui.InputText("ID", ref id, Program.IMGUI_STRING_MAX)) {}
+		if(ImGui.IsItemDeactivatedAfterEdit()) {
 			bool allowed = id != "";
 			foreach(var ts in Program.File.World.Tilesets) {
 				if(ts.ID == id) {
@@ -385,7 +384,8 @@ public class TilesetsPanel : Panel {
 		}
 
 		string group = tileset != null ? tileset.Group : "";
-		if(ImGui.InputText("Group", ref group, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+		if(ImGui.InputText("Group", ref group, Program.IMGUI_STRING_MAX)) { }
+		if(ImGui.IsItemDeactivatedAfterEdit()) {
 			Program.File.ApplyEdit(this, new Tileset.GroupOperation(tileset, group));
 		}
 		
@@ -858,7 +858,7 @@ public class TilesetsPanel : Panel {
 		ImGui.SetItemTooltip("Create");
 		if(ImGui.BeginPopup("add-automap")) {
 			ImGui.Text("Create new automap");
-			ImGui.InputText("Name", ref automapNameBuffer, 512);
+			ImGui.InputText("Name", ref automapNameBuffer, Program.IMGUI_STRING_MAX);
 			if(ImGui.BeginCombo("Mask Type", automapMaskTypeOption.ToString())) {
 				if(ImGui.Selectable(nameof(AutomapMaskType.Mask2x2), automapMaskTypeOption == AutomapMaskType.Mask2x2)) {
 					automapMaskTypeOption = AutomapMaskType.Mask2x2;
@@ -948,7 +948,8 @@ public class TilesetsPanel : Panel {
 		
 		string nameValue = selectedAutomapPattern?.Name ?? "";
 		ImGui.SetNextItemWidth(listSize.X);
-		if(ImGui.InputText("Name", ref nameValue, 512, ImGuiInputTextFlags.EnterReturnsTrue)) {
+		if(ImGui.InputText("Name", ref nameValue, Program.IMGUI_STRING_MAX)) {}
+		if(ImGui.IsItemDeactivatedAfterEdit()) {
 			Program.File.ApplyEdit(tileset, new AutomapPattern.NameOperation(selectedAutomapPattern, nameValue));
 		}
 		string maskValueLabel = selectedAutomapPattern?.MaskType.ToString() ?? "";
@@ -1045,7 +1046,7 @@ public class TilesetsPanel : Panel {
 				});
 			}
 			
-			ImGui.InputText("Path", ref importPath, 512);
+			ImGui.InputText("Path", ref importPath, Program.IMGUI_STRING_MAX);
 
 			string fullPath = Program.File.GetPath(importPath);
 			
@@ -1063,9 +1064,9 @@ public class TilesetsPanel : Panel {
 			
 			ImGui.BeginDisabled(reimport);
 
-			ImGui.InputText("ID", ref importID, 512);
+			ImGui.InputText("ID", ref importID, Program.IMGUI_STRING_MAX);
 			
-			ImGui.InputText("Group", ref importGroup, 512);
+			ImGui.InputText("Group", ref importGroup, Program.IMGUI_STRING_MAX);
 			
 			ImGui.EndDisabled();
 			
@@ -1149,7 +1150,7 @@ public class TilesetsPanel : Panel {
 			ImGui.EndDisabled();
 			ImGui.SameLine();
 			ImGui.SetNextItemWidth(300);
-			if(ImGui.InputText("Search", ref search, 512)) {
+			if(ImGui.InputText("Search", ref search, Program.IMGUI_STRING_MAX)) {
 				MatchSearch();
 			}
 			if(ImGui.BeginPopupContextItem()) {

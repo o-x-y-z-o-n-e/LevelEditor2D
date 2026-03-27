@@ -8,8 +8,6 @@ namespace L2D;
 
 public class EntitiesPanel : Panel {
 
-	private FileEditEntry nameEdit;
-	private FileEditEntry typeEdit;
 	private FileEditEntry positionEdit;
 	private FileEditEntry sizeEdit;
 
@@ -78,13 +76,16 @@ public class EntitiesPanel : Panel {
 			ImGui.SetCursorPosX(x);
 			ImGui.Text(")");
 			ImGui.SameLine();
-			
-			string type = entity.Template != null && entity.Type == "" ? entity.Template.Type : entity.Type;
-			x -= ImGui.CalcTextSize(type).X;
-			ImGui.SetCursorPosX(x);
-			ImGui.Text(type);
-			ImGui.SameLine();
-			
+
+			Entity template = entity.Template;
+			string type = template != null && entity.Type == "" ? template.Type : entity.Type;
+			if(type != null) {
+				x -= ImGui.CalcTextSize(type).X;
+				ImGui.SetCursorPosX(x);
+				ImGui.Text(type);
+				ImGui.SameLine();
+			}
+
 			x -= ImGui.CalcTextSize("(").X;
 			ImGui.SetCursorPosX(x);
 			ImGui.Text("(");
@@ -133,9 +134,21 @@ public class EntitiesPanel : Panel {
 		
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.Extensions)) {
-			moveDownIndex = layer.Entities.IndexOf(Program.SelectedEntity);
+			ImGui.OpenPopup("Select Template");
 		}
 		ImGui.SetItemTooltip("Templates");
+
+		Program.TemplatesPanel.SelectModal(selected => {
+			if(selected != null) {
+				Entity newEntity = new Entity(layer.Entities, selected.Name);
+				newEntity.SetPosition(
+					-Program.CanvasPanel.Camera
+					-new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight)
+				);
+				Program.File.ApplyEdit(this, new Entity.AddOperation(layer.Entities, newEntity));
+				Program.SetSelectedEntity(newEntity);
+			}
+		});
 		
 		ImGui.SameLine();
 		ImGui.BeginDisabled(Program.SelectedEntity == null);
@@ -154,7 +167,7 @@ public class EntitiesPanel : Panel {
 		
 		ImGui.SameLine();
 		
-		if(ImGui.Button(Codicons.Trash)) {
+		if(ImGui.Button(Codicons.Trash) || ImGui.IsKeyPressed(ImGuiKey.Delete)) {
 			deleteIndex = layer.Entities.IndexOf(Program.SelectedEntity);
 		}
 		ImGui.SetItemTooltip("Delete");
@@ -241,16 +254,9 @@ public class EntitiesPanel : Panel {
 					ImGui.PushStyleVar(ImGuiStyleVar.Alpha, style.DisabledAlpha);
 				}
 				string name = selected.Name;
-				if(ImGui.InputText("Name", ref name, 512, ImGuiInputTextFlags.AutoSelectAll)) {
-					if(name == "") name = null;
-					if(nameEdit == null || nameEdit.GetData<Entity.NameOperation>().Entity != selected) {
-						nameEdit = Program.File.BeginEdit(layer, new Entity.NameOperation(selected, name));
-					} else {
-						nameEdit.GetData<Entity.NameOperation>().SetName(name);
-					}
-				}
-				if(ImGui.IsItemDeactivatedAfterEdit() && nameEdit != null) {
-					Program.File.EndEdit(ref nameEdit, !nameEdit.GetData<Entity.NameOperation>().HasChanges());
+				if(ImGui.InputText("Name", ref name, 512, ImGuiInputTextFlags.AutoSelectAll)) {}
+				if(ImGui.IsItemDeactivatedAfterEdit()) {
+					Program.File.ApplyEdit(layer, new Entity.NameOperation(selected, name));
 				}
 				if(fallbackOnTemplate) {
 					ImGui.PopStyleVar(); // ImGuiStyleVar.Alpha
@@ -271,16 +277,9 @@ public class EntitiesPanel : Panel {
 					ImGui.PushStyleVar(ImGuiStyleVar.Alpha, style.DisabledAlpha);
 				}
 				string type = selected.Type;
-				if(ImGui.InputText("Type", ref type, 512, ImGuiInputTextFlags.AutoSelectAll)) {
-					if(type == "") type = null;
-					if(typeEdit == null || typeEdit.GetData<Entity.TypeOperation>().Entity != selected) {
-						typeEdit = Program.File.BeginEdit(layer, new Entity.TypeOperation(selected, type));
-					} else {
-						typeEdit.GetData<Entity.TypeOperation>().SetType(type);
-					}
-				}
-				if(ImGui.IsItemDeactivatedAfterEdit() && typeEdit != null) {
-					Program.File.EndEdit(ref typeEdit, !typeEdit.GetData<Entity.TypeOperation>().HasChanges());
+				if(ImGui.InputText("Type", ref type, 512, ImGuiInputTextFlags.AutoSelectAll)) {}
+				if(ImGui.IsItemDeactivatedAfterEdit()) {
+					Program.File.ApplyEdit(layer, new Entity.TypeOperation(selected, type));
 				}
 				if(fallbackOnTemplate) {
 					ImGui.PopStyleVar(); // ImGuiStyleVar.Alpha

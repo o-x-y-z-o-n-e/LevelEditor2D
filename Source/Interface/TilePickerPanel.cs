@@ -132,7 +132,7 @@ public class TilePickerPanel : Panel {
 						if(match) continue;
 						atLeastOneOption = true;
 						if(ImGui.Selectable($"Slot: {s}")) {
-							Program.File.ApplyEdit(scene, new SlotOperation(link, s));
+							Program.File.ApplyEdit(scene, new SlotOperation(scene, link, s));
 						}
 					}
 					if(!atLeastOneOption) {
@@ -149,7 +149,7 @@ public class TilePickerPanel : Panel {
 				if(i == tilesetLinkTarget) {
 					Program.TilesetsPanel.SelectTilesetModal((selected, tileset) => {
 						if(selected) {
-							Program.File.ApplyEdit(scene, new TilesetOperation(link, tileset));
+							Program.File.ApplyEdit(scene, new TilesetOperation(scene, link, tileset));
 						}
 						tilesetLinkTarget = -1;
 					});
@@ -313,7 +313,7 @@ public class TilePickerPanel : Panel {
 					if(brush != null && brush.Tilemap != null && !brush.Resizing) {
 						for(int by = 0; by < brush.Height; by++) {
 							for(int bx = 0; bx < brush.Width; bx++) {
-								var tile = brush.Tilemap.Grid[bx, by];
+								var tile = brush.Tilemap.Get(bx, by);
 								selected = tile.TileID == tileID && tile.TilesetSlot == link.Slot;
 								if(selected) break;
 							}
@@ -387,7 +387,7 @@ public class TilePickerPanel : Panel {
 		int patternsPerRow = int.Max((int)((region.X - style.WindowPadding.X * 2) / (patternSize.X + style.ItemSpacing.X)), 1);
 
 		Vector2 areaPos = ImGui.GetCursorScreenPos();
-		Vector2 areaSize = new(region.X, tileset.AutomapPatterns.Count * (patternSize.Y + style.ItemSpacing.Y) + style.WindowPadding.Y * 2 - style.ItemSpacing.Y); // TODO
+		Vector2 areaSize = new(region.X, tileset.AutomapPatterns.Count * (patternSize.Y + style.ItemSpacing.Y) + style.WindowPadding.Y * 2 - style.ItemSpacing.Y);
 
 		var childFlags = ImGuiWindowFlags.None;
 		if(!ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
@@ -481,10 +481,12 @@ public class TilePickerPanel : Panel {
 		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<AddOperation>();
 			op.scene.Tilesets.Add(op.link);
+			op.scene.MarkTilemapsAsDirty();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
 			var op = entry.GetData<AddOperation>();
 			op.scene.Tilesets.Remove(op.link);
+			op.scene.MarkTilemapsAsDirty();
 		}
 		public bool HasChanges() => true;
 	}
@@ -501,10 +503,12 @@ public class TilePickerPanel : Panel {
 		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<RemoveOperation>();
 			op.scene.Tilesets.RemoveAt(op.index);
+			op.scene.MarkTilemapsAsDirty();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
 			var op = entry.GetData<RemoveOperation>();
 			op.scene.Tilesets.Insert(op.index, op.link);
+			op.scene.MarkTilemapsAsDirty();
 		}
 		public bool HasChanges() => true;
 	}
@@ -534,10 +538,12 @@ public class TilePickerPanel : Panel {
 	}
 	
 	public class SlotOperation : IFileEditOperation {
+		private Scene scene;
 		private TilesetLink link;
 		private int oldSlot;
 		private int newSlot;
-		public SlotOperation(TilesetLink link, int slot) {
+		public SlotOperation(Scene scene, TilesetLink link, int slot) {
+			this.scene = scene;
 			this.link = link;
 			this.oldSlot = link.Slot;
 			this.newSlot = slot;
@@ -545,19 +551,23 @@ public class TilePickerPanel : Panel {
 		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<SlotOperation>();
 			op.link.Slot = op.newSlot;
+			op.scene.MarkTilemapsAsDirty();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
 			var op = entry.GetData<SlotOperation>();
 			op.link.Slot = op.oldSlot;
+			op.scene.MarkTilemapsAsDirty();
 		}
 		public bool HasChanges() => true;
 	}
 	
 	public class TilesetOperation : IFileEditOperation {
+		private Scene scene;
 		private TilesetLink link;
 		private Tileset oldTileset;
 		private Tileset newTileset;
-		public TilesetOperation(TilesetLink link, Tileset tileset) {
+		public TilesetOperation(Scene scene, TilesetLink link, Tileset tileset) {
+			this.scene = scene;
 			this.link = link;
 			this.oldTileset = link.Tileset;
 			this.newTileset = tileset;
@@ -565,10 +575,12 @@ public class TilePickerPanel : Panel {
 		public void ApplyNextState(FileEditEntry entry) {
 			var op = entry.GetData<TilesetOperation>();
 			op.link.Tileset = op.newTileset;
+			op.scene.MarkTilemapsAsDirty();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
 			var op = entry.GetData<TilesetOperation>();
 			op.link.Tileset = op.oldTileset;
+			op.scene.MarkTilemapsAsDirty();
 		}
 		public bool HasChanges() => true;
 	}

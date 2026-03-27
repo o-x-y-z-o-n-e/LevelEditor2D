@@ -18,31 +18,43 @@ public class Layer {
 		get => visible;
 		set => visible = value;
 	}
+
+	public bool IsGloballyVisible {
+		get {
+			if(group != null) {
+				return group.IsGloballyVisible && visible;
+			} else {
+				return visible;
+			}
+		}
+	}
 	
 	public Vector3 Color {
 		get => color;
 		set => color = value;
 	}
+
+	public bool Collapsed = false; // Only used for groups
+	
+	public Layer Group => group;
 	
 	public Tilemap Tilemap => tilemap;
 	
 	public EntityCollection Entities => entities;
-
 	public PropertyCollection Properties => properties;
-	
-	public bool HasGroup => group != null;
-	public bool HasTilemap => tilemap != null;
-	public bool HasEntities => entities != null;
+	public IEnumerable<Layer> Children => children;
+	public int ChildrenCount => children?.Count ?? 0;
 
 	private Scene scene;
 	private string name;
 	private bool visible;
 	private Vector3 color;
+	private Layer group;
 	private LayerType type;
-	private LayerGroup group;
 	private Tilemap tilemap;
 	private EntityCollection entities;
 	private PropertyCollection properties;
+	private List<Layer> children;
 	private bool disposed;
 
 	internal Layer(Scene scene, LayerType type) {
@@ -51,12 +63,13 @@ public class Layer {
 		name = "new_layer";
 		visible = true;
 		color = Vector3.One;
-		group = null;
 		properties = new();
 		if(type == LayerType.Tiles) {
 			tilemap = new Tilemap(this);
-		} else {
+		} else if(type == LayerType.Entities) {
 			entities = new EntityCollection(this);
+		} else if(type == LayerType.Group) {
+			children = new();
 		}
 	}
 	
@@ -66,7 +79,6 @@ public class Layer {
 		name = "new_layer";
 		visible = true;
 		color = Vector3.One;
-		group = null;
 		properties = new();
 	}
 
@@ -74,6 +86,7 @@ public class Layer {
 		name = layerElement.Attribute("name").Value;
 		visible = layerElement.Attribute("visible").ParseAsBool(true);
 		color = layerElement.Attribute("color").ParseAsColor(Vector3.One);
+		properties.ParseFromElement(layerElement);
 		string type = layerElement.Attribute("type")?.Value ?? "tiles";
 		if(type == "entities") {
 			this.type = LayerType.Entities;
@@ -81,6 +94,14 @@ public class Layer {
 			var entitiesElement = layerElement.Element("entities");
 			if(entitiesElement != null) {
 				entities.ParseFromElement(entitiesElement);
+			}
+		} else if(type == "group") {
+			this.type = LayerType.Group;
+			children = new();
+			foreach(var childElement in layerElement.Elements("layer")) {
+				Layer layer = new Layer(scene);
+				layer.Parse(childElement);
+				AddChild(layer);
 			}
 		} else {
 			this.type = LayerType.Tiles;
@@ -90,20 +111,24 @@ public class Layer {
 				tilemap.Parse(tilemapElement);
 			}
 		}
-		properties.ParseFromElement(layerElement);
 	}
 
 	internal XElement Serialize() {
 		var element = new XElement("layer");
 		element.Add(
 			new XAttribute("name", name),
-			new XAttribute("group", ""), // TODO
+			new XAttribute("type", type.ToString().ToLower()),
 			new XAttribute("visible", visible),
-			new XAttribute("color", Utilities.SerializeColor(color)),
-			new XAttribute("type", type.ToString().ToLower())
+			new XAttribute("color", Utilities.SerializeColor(color))
 		);
 		
 		properties.SerializeToElement(element);
+
+		if(type == LayerType.Group && children != null) {
+			foreach(var child in children) {
+				element.Add(child.Serialize());
+			}
+		}
 
 		if(type == LayerType.Tiles && tilemap != null) {
 			element.Add(tilemap.Serialize());
@@ -116,46 +141,165 @@ public class Layer {
 		}
 		return element;
 	}
+
+	public static void Copy(Layer src, Layer dst) {
+		if(src.Type != dst.Type) return;
+		
+		dst.Visible = src.Visible;
+		dst.Color = src.Color;
+		src.Properties.CopyTo(dst.Properties);
+		if(src.Type == LayerType.Tiles) {
+			for(int y = 0; y < src.Scene.TileCountY && y < dst.Scene.TileCountY; y++) {
+				for(int x = 0; x < src.Scene.TileCountX && x < dst.Scene.TileCountX; x++) {
+					dst.Tilemap.Set(x, y, src.Tilemap.Get(x, y));
+				}
+			}
+		} else if(src.Type == LayerType.Entities) {
+			foreach(var srcEntity in src.Entities.All) {
+				var newEntity = new Entity(dst.Entities, srcEntity.Template?.Name);
+				newEntity.SetName(srcEntity.OwnName);
+				newEntity.SetType(srcEntity.OwnType);
+				newEntity.SetPosition(srcEntity.OwnPosition);
+				newEntity.SetSize(srcEntity.OwnSize);
+				foreach(var p in srcEntity.Properties.All) {
+					var newP = newEntity.Properties.Add(p.Name, p.Type);
+					newP.String = p.String;
+					newP.Integer = p.Integer;
+					newP.Float = p.Float;
+					newP.Boolean = p.Boolean;
+				}
+				dst.Entities.Add(newEntity);
+			}
+		} else if(src.Type == LayerType.Group) {
+			foreach(var srcChild in src.Children) {
+				Layer dstChild = new Layer(dst.Scene, srcChild.Type);
+				dstChild.Name = srcChild.Name;
+				dst.AddChild(dstChild);
+				Layer.Copy(srcChild, dstChild);
+			}
+		}
+	}
+
+	public bool AddChild(Layer layer) {
+		if(type != LayerType.Group) return false;
+		return AddChild(layer, children.Count);
+	}
+
+	public bool AddChild(Layer layer, int i) {
+		if(type != LayerType.Group) return false;
+		if(children.Contains(layer)) return false;
+		children.Insert(i, layer);
+		layer.group = this;
+		return true;
+	}
+
+	public bool RemoveChild(Layer layer) {
+		if(type != LayerType.Group) return false;
+		return RemoveChild(children.IndexOf(layer));
+	}
+	
+	public bool RemoveChild(int i) {
+		if(type != LayerType.Group) return false;
+		if(i < 0 || i >= children.Count) return false;
+		children[i].group = null;
+		if(scene.LastActiveLayer == children[i]) {
+			scene.LastActiveLayer = null;
+		}
+		children.RemoveAt(i);
+		return true;
+	}
+
+	public Layer GetChild(int i) {
+		if(type != LayerType.Group) return null;
+		if(i < 0 || i >= children.Count) return null;
+		return children[i];
+	}
+
+	public int GetChildIndex(Layer layer) {
+		if(type != LayerType.Group) return -1;
+		return children.IndexOf(layer);
+	}
+	
+	public void SwapChildren(int index1, int index2) {
+		if(type != LayerType.Group) return;
+		if(index1 < 0 || index1 >= children.Count || index2 < 0 || index2 >= children.Count) return;
+		var t = children[index1];
+		children[index1] = children[index2];
+		children[index2] = t;
+	}
+	
+	public void SwapChildren(Layer layer1, Layer layer2) {
+		if(type != LayerType.Group) return;
+		SwapChildren(children.IndexOf(layer1), children.IndexOf(layer2));
+	}
+
+	public bool IsChildOf(Layer group) {
+		if(this.group == null) return false;
+		if(this.group == group) return true;
+		return this.group.IsChildOf(group);
+	}
 	
 	public class AddOperation : IFileEditOperation {
-		private Scene scene;
+		private Layer group;
 		private Layer layer;
-		public AddOperation(Scene scene, Layer layer) {
-			this.scene = scene;
+		private int index;
+		public AddOperation(Layer group, Layer layer, int index) {
+			this.group = group;
 			this.layer = layer;
+			this.index = index;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.scene.InsertLayer(op.layer, op.scene.LayerCount);
+			group.AddChild(layer, index);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.scene.RemoveLayer(op.layer);
-			if(Program.SelectedLayer == op.layer) {
+			group.RemoveChild(layer);
+			if(Program.SelectedLayer == layer) {
 				Program.SetSelectedLayer(null);
 			}
 		}
 		public bool HasChanges() => true;
 	}
 
-	public class MoveOperation : IFileEditOperation {
-		private Scene scene;
+	public class SwapOperation : IFileEditOperation {
+		private Layer group;
 		private int index1;
 		private int index2;
-		public MoveOperation(Scene scene, int index1, int index2) {
-			this.scene = scene;
+		public SwapOperation(Layer group, int index1, int index2) {
+			this.group = group;
 			this.index1 = index1;
 			this.index2 = index2;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.scene.SwapLayers(op.index1, op.index2);
+			group.SwapChildren(index1, index2);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.scene.SwapLayers(op.index2, op.index1);
+			group.SwapChildren(index2, index1);
 		}
 		public bool HasChanges() => index1 != index2;
+	}
+	
+	public class MoveOperation : IFileEditOperation {
+		private Layer oldGroup;
+		private int oldIndex;
+		private Layer newGroup;
+		private int newIndex;
+		public MoveOperation(Layer oldGroup, int oldIndex, Layer newGroup, int newIndex) {
+			this.oldGroup = oldGroup;
+			this.oldIndex = oldIndex;
+			this.newGroup = newGroup;
+			this.newIndex = newIndex;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			Layer layer = oldGroup.GetChild(oldIndex);
+			oldGroup.RemoveChild(oldIndex);
+			newGroup.AddChild(layer, newIndex);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			Layer layer = newGroup.GetChild(newIndex);
+			newGroup.RemoveChild(newIndex);
+			oldGroup.AddChild(layer, oldIndex);
+		}
+		public bool HasChanges() => oldGroup != newGroup || oldIndex != newIndex;
 	}
 	
 	public class VisiblityOperation : IFileEditOperation {
@@ -199,24 +343,22 @@ public class Layer {
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
-		private Scene scene;
+		private Layer group;
 		private Layer layer;
 		private int index;
-		public RemoveOperation(Scene scene, Layer layer) {
-			this.scene = scene;
+		public RemoveOperation(Layer group, Layer layer) {
+			this.group = group;
 			this.layer = layer;
-			this.index = scene.GetLayerIndex(layer);
+			this.index = group.GetChildIndex(layer);
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.scene.RemoveLayer(op.layer);
-			if(op.layer == Program.SelectedLayer) {
+			group.RemoveChild(layer);
+			if(layer == Program.SelectedLayer) {
 				Program.SetSelectedLayer(null);
 			}
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.scene.InsertLayer(op.layer, op.index);
+			group.AddChild(layer, index);
 		}
 		public bool HasChanges() => true;
 	}
@@ -253,4 +395,5 @@ public class Layer {
 public enum LayerType {
 	Tiles,
 	Entities,
+	Group
 }

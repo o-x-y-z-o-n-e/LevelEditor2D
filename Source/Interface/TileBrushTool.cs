@@ -53,8 +53,7 @@ public class TileBrushTool : CanvasTool {
 		int fillTileID = pattern.Evaluate(0b111111111);
 		for(int y = 0; y < height; y++) {
 			for(int x = 0; x < width; x++) {
-				tilemap.Grid[x, y].TileID = fillTileID;
-				tilemap.Grid[x, y].TilesetSlot = tilesetSlot;
+				tilemap.Set(x, y, fillTileID, tilesetSlot);
 			}
 		}
 	}
@@ -78,8 +77,7 @@ public class TileBrushTool : CanvasTool {
 	public void SetTile(int x, int y, int tileID, int tilesetSlot) {
 		if(resizing || x < 0 || y < 0 || x >= tilemap.Width || y >= tilemap.Height) return;
 		pattern = null;
-		tilemap.Grid[x, y].TileID = tileID;
-		tilemap.Grid[x, y].TilesetSlot = tilesetSlot;
+		tilemap.Set(x, y, tileID, tilesetSlot);
 	}
 
 	public bool HasTile(int x, int y) {
@@ -267,15 +265,15 @@ public class TileBrushTool : CanvasTool {
 					int tx = offsetX + mx - scene.WorldX + x;
 					int ty = offsetY + my - scene.WorldY + y;
 					if(tx < 0 || ty < 0 || tx >= scene.TileCountX || ty >= scene.TileCountY) {
-						tilemap.Grid[x, y] = new TileRef(0, 0);
+						tilemap.Set(x, y, 0, 0);
 					} else {
-						tilemap.Grid[x, y] = layer.Tilemap.Grid[tx, ty];
+						tilemap.Set(x, y, layer.Tilemap.Get(tx, ty));
 					}
 				}
 			}
 
 			if(w <= 0 || h <= 0) {
-				tilemap.Grid[0, 0] = new TileRef(0, 0);
+				tilemap.Set(0, 0, 0, 0);
 			}
 		}
 		
@@ -303,7 +301,7 @@ public class TileBrushTool : CanvasTool {
 				clearAfterPlace = false;
 				Imprint(new Point(offset.X + mx, offset.Y + my), layer);
 				SetSize(1, 1);
-				tilemap.Grid[0, 0] = new TileRef();
+				tilemap.Set(0, 0, 0, 0);
 				pattern = null;
 			} else {
 				if(!imprinting) {
@@ -462,7 +460,7 @@ public class TileBrushTool : CanvasTool {
 					pattern.Print(operation.Tilemap, tx, ty, operation.Set);
 				} else {
 					if(this.tilemap.Grid[x, y].TileID == 0 || this.tilemap.Grid[x, y].TilesetSlot == 0) continue;
-					operation.Set(tx, ty, this.tilemap.Grid[x, y]);
+					operation.Set(tx, ty, this.tilemap.Get(x, y));
 				}
 			}
 		}
@@ -603,15 +601,15 @@ public class TileBrushTool : CanvasTool {
 				int tx = region.X - layer.Scene.WorldX + x;
 				int ty = region.Y - layer.Scene.WorldY + y;
 				if(tx < 0 || ty < 0 || tx >= layer.Scene.TileCountX || ty >= layer.Scene.TileCountY) {
-					tilemap.Grid[x, y] = new TileRef(0, 0);
+					tilemap.Set(x, y, 0, 0);
 				} else {
-					tilemap.Grid[x, y] = layer.Tilemap.Grid[tx, ty];
+					tilemap.Set(x, y, layer.Tilemap.Get(tx, ty));
 				}
 			}
 		}
 
 		if(region.Width <= 0 || region.Height <= 0) {
-			tilemap.Grid[0, 0] = new TileRef(0, 0);
+			tilemap.Set(0, 0, 0, 0);
 		}
 	}
 
@@ -649,13 +647,13 @@ public class TileBrushTool : CanvasTool {
 		var grid = new TileRef[w, h];
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
-				grid[x, y] = tilemap.Grid[x, y];
+				grid[x, y] = tilemap.Get(x, y);
 			}
 		}
 		SetSize(h, w);
 		for(int y = 0; y < w; y++) {
 			for(int x = 0; x < h; x++) {
-				tilemap.Grid[x, y] = grid[w - y - 1, x];
+				tilemap.Set(x, y, grid[w - y - 1, x]);
 			}
 		}
 	}
@@ -668,13 +666,13 @@ public class TileBrushTool : CanvasTool {
 		var grid = new TileRef[w, h];
 		for(int y = 0; y < h; y++) {
 			for(int x = 0; x < w; x++) {
-				grid[x, y] = tilemap.Grid[x, y];
+				grid[x, y] = tilemap.Get(x, y);
 			}
 		}
 		SetSize(h, w);
 		for(int y = 0; y < w; y++) {
 			for(int x = 0; x < h; x++) {
-				tilemap.Grid[x, y] = grid[y, h - x - 1];
+				tilemap.Set(x, y, grid[y, h - x - 1]);
 			}
 		}
 	}
