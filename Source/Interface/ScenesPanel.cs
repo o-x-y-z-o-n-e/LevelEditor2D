@@ -327,12 +327,8 @@ public class ScenesPanel : Panel {
 				
 				ImGui.BeginDisabled(!valid);
 				if(ImGui.Button("Confirm")) {
+					Program.File.ApplyEdit(this, new Scene.ResizeOperation(scene, new(sceneResizeVar.X, sceneResizeVar.Y)));
 					ImGui.CloseCurrentPopup();
-					
-					// TODO: undo/redo
-					scene.Resize(sceneResizeVar.X, sceneResizeVar.Y);
-					Program.File.MarkDirty();
-					Program.File.ClearEditHistory();
 				}
 				ImGui.EndDisabled();
 				

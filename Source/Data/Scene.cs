@@ -336,6 +336,48 @@ public class Scene {
 		}
 		public bool HasChanges() => oldPosition != newPosition;
 	}
+
+	public class ResizeOperation : IFileEditOperation {
+		private Scene scene;
+		private Point oldSize;
+		private Point newSize;
+		private List<Tuple<Tilemap, TileRef[,], TileRef[,]>> tilemapGrids;
+		public ResizeOperation(Scene scene, Point newSize) {
+			this.scene = scene;
+			this.oldSize = new(scene.TileCountX, scene.TileCountY);
+			this.newSize = newSize;
+			this.tilemapGrids = new();
+			foreach(var layer in scene.GetAllLayers()) {
+				if(layer.Type == LayerType.Tiles) {
+					TileRef[,] oldGrid = layer.Tilemap.Grid;
+					TileRef[,] newGrid = new TileRef[newSize.X, newSize.Y];
+					for(int x = 0; x < oldSize.X && x < newSize.X; x++) {
+						for(int y = 0; y < oldSize.Y && y < newSize.Y; y++) {
+							newGrid[x, y] = oldGrid[x, y];
+						}
+					}
+					this.tilemapGrids.Add(new(layer.Tilemap, oldGrid, newGrid));
+				}
+			}
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			scene.tileCountX = newSize.X;
+			scene.tileCountY = newSize.Y;
+			foreach(var tilemapData in tilemapGrids) {
+				(var tilemap, var oldGrid, var newGrid) = tilemapData;
+				tilemap.SetGrid(newSize.X, newSize.Y, newGrid);
+			}
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			scene.tileCountX = oldSize.X;
+			scene.tileCountY = oldSize.Y;
+			foreach(var tilemapData in tilemapGrids) {
+				(var tilemap, var oldGrid, var newGrid) = tilemapData;
+				tilemap.SetGrid(oldSize.X, oldSize.Y, oldGrid);
+			}
+		}
+		public bool HasChanges() => oldSize != newSize;
+	}
 	
 }
 

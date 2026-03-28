@@ -261,7 +261,7 @@ public class TileFillModal {
 			}
 		}
 		
-		var edit = Program.File.BeginEdit(Program.CanvasPanel, operation,
+		var edit = Program.File.BeginEdit(layer.Scene, operation,
 			redo: entry => {
 				var data = entry.GetData<TileFillOperation>();
 				var area = data.Area;

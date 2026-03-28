@@ -99,6 +99,14 @@ public class Tilemap {
 		dirty = true;
 	}
 
+	public void SetGrid(int w, int h, TileRef[,] newGrid) {
+		if(w < 1 || h < 1) return;
+		width = w;
+		height = h;
+		grid = newGrid;
+		dirty = true;
+	}
+
 	public void Set(int x, int y, int tile, int tileset) {
 		grid[x, y].TileID = tile;
 		grid[x, y].TilesetSlot = tileset;
@@ -470,7 +478,7 @@ public struct TileRef {
 	}
 }
 
-public class TileEditOperation {
+public class TileEditOperation : IFileEditOperation {
 		
 	public Tilemap Tilemap => tilemap;
 
@@ -514,24 +522,16 @@ public class TileEditOperation {
 		return null;
 	}
 
-	public void ApplyNextState() {
+	public void ApplyNextState(FileEditEntry edit) {
 		for(int i = 0; i < changes.Count; i++) {
 			tilemap.Set(changes[i].X, changes[i].Y, changes[i].Next);
 		}
 	}
 
-	public void ApplyPrevState() {
+	public void ApplyPrevState(FileEditEntry edit) {
 		for(int i = 0; i < changes.Count; i++) {
 			tilemap.Set(changes[i].X, changes[i].Y, changes[i].Prev);
 		}
-	}
-
-	public static void ApplyNextState(FileEditEntry edit) {
-		edit.GetData<TileEditOperation>().ApplyNextState();
-	}
-
-	public static void ApplyPrevState(FileEditEntry edit) {
-		edit.GetData<TileEditOperation>().ApplyPrevState();
 	}
 
 	public struct TileStateChange {

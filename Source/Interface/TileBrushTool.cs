@@ -465,10 +465,7 @@ public class TileBrushTool : CanvasTool {
 			Program.File.EndEdit(ref edit, discard: true);
 		}
 		var operation = new TileEditOperation(layer.Tilemap);
-		edit = Program.File.BeginEdit(Program.CanvasPanel, operation,
-			redo: TileEditOperation.ApplyNextState,
-			undo: TileEditOperation.ApplyPrevState
-		);
+		edit = Program.File.BeginEdit(Scene, operation);
 	}
 
 	private void UpdateImprint(Point offset) {
@@ -512,10 +509,7 @@ public class TileBrushTool : CanvasTool {
 		}
 		
 		if(operation.HasChanges()) {
-			Program.File.ApplyEdit(this, operation,
-				redo: TileEditOperation.ApplyNextState,
-				undo: TileEditOperation.ApplyPrevState
-			);
+			Program.File.ApplyEdit(Scene, operation);
 		}
 		
 		clearAfterPlace = true;
