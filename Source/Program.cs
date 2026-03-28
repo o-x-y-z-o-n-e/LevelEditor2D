@@ -128,14 +128,14 @@ public static class Program {
 			WindowOptions options = WindowOptions.Default with {
 				WindowState = WindowState.Maximized,
 				Title = "L2D",
-				API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default,
-					new APIVersion(4, 1))
+				API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(4, 1))
 			};
 			window = Window.Create(options);
 			window.VSync = false;
 			window.FramesPerSecond = 0;
 			window.UpdatesPerSecond = 0;
 			window.Load += Load;
+			window.Update += Update;
 			window.Render += Render;
 			window.Closing += Closing;
 
@@ -192,6 +192,12 @@ public static class Program {
 			Log.Fatal(e, "Program crashed!");
 			Log.CloseAndFlush();
 			Environment.Exit(1);
+		}
+	}
+
+	private static void Update(double deltaTime) {
+		if(window.IsClosing) {
+			window.IsClosing = false;
 		}
 	}
 
@@ -327,7 +333,7 @@ public static class Program {
 			UpdateMouseCursor();
 
 			if(requestClose) {
-				window?.Close();
+				Closing();
 			}
 		} catch(Exception e) {
 			Log.Fatal(e, "Program crashed!");
@@ -337,6 +343,17 @@ public static class Program {
 	}
 
 	private static void Closing() {
+		if(!requestClose && Program.File != null && Program.File.UnsavedChanges) {
+			Program.ConfirmModal.Open(
+				"Confirm Quit",
+				"You have unsaved changes.\nAre you sure you want to quit?",
+				Program.Close
+			);
+			window.IsClosing = false;
+			return;
+		} else {
+			window.IsClosing = true;
+		}
 		Log.Information("Program closing...");
 		try {
 			if(file != null) {

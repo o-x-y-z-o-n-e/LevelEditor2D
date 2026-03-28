@@ -168,7 +168,7 @@ public class LayersPanel : Panel {
 		DeletePopup();
 		
 		if(moveOperation != null) {
-			Program.File.ApplyEdit(this, moveOperation);
+			Program.File.ApplyEdit(Program.SelectedScene, moveOperation);
 		}
 		
 		if(Program.SelectedLayer != null) {
@@ -422,7 +422,7 @@ public class LayersPanel : Panel {
 				ImGui.EndCombo();
 			}
 			ImGui.BeginDisabled(invalidName);
-			if(ImGui.Button("Ok")) {
+			if(ImGui.Button("Confirm")) {
 				LayerType type = layerTypeOption switch {
 					0 => LayerType.Tiles,
 					1 => LayerType.Entities,
@@ -455,6 +455,7 @@ public class LayersPanel : Panel {
 		}
 		if(ImGui.BeginPopup("copy-layer")) {
 			ImGui.Text("Copy selected layer");
+			ImGui.SetNextItemWidth(250);
 			ImGui.InputText("New Name", ref layerRenameBuffer, Program.IMGUI_STRING_MAX);
 			bool invalidName = layerRenameBuffer == "";
 			foreach(var l in copyLayer.Scene.GetAllLayers()) {
@@ -464,7 +465,7 @@ public class LayersPanel : Panel {
 				}
 			}
 			ImGui.BeginDisabled(invalidName);
-			if(ImGui.Button("Ok")) {
+			if(ImGui.Button("Confirm")) {
 				Layer newLayer = new Layer(copyLayer.Scene, copyLayer.Type);
 				newLayer.Name = layerRenameBuffer;
 				Layer.Copy(copyLayer, newLayer);
@@ -491,20 +492,12 @@ public class LayersPanel : Panel {
 			}
 		}
 		if(ImGui.BeginPopup("delete-layer")) {
-			ImGui.Text("Delete selected layer?");
-			if(ImGui.Button("Ok")) {
+			ImGui.Text("Delete selected layer");
+			if(ImGui.Button("Confirm")) {
 				Program.File.ApplyEdit(this, new Layer.RemoveOperation(deleteLayer.Group, deleteLayer));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.SameLine();
-			ImGui.Dummy(new Vector2(80, 0));
-			ImGui.SameLine();
-			ImGui.SetCursorPosX(
-				ImGui.GetCursorPosX() +
-				ImGui.GetContentRegionAvail().X -
-				ImGui.CalcTextSize("Cancel").X -
-				ImGui.GetStyle().FramePadding.X * 2
-			);
 			if(ImGui.Button("Cancel")) {
 				ImGui.CloseCurrentPopup();
 			}

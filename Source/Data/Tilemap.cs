@@ -23,6 +23,7 @@ public class Tilemap {
 	private int width;
 	private int height;
 	private bool dirty;
+	private StringBuilder strBuilder;
 	
 	private float[] tileBuffer;
 	private uint tileBufferHandle;
@@ -64,7 +65,11 @@ public class Tilemap {
 
 	internal XElement Serialize() {
 		var element = new XElement("tilemap");
-		StringBuilder strBuilder = new StringBuilder();
+		if(strBuilder == null) {
+			strBuilder = new StringBuilder();
+		} else {
+			strBuilder.Clear();
+		}
 		for(int y = 0; y < height; y++) {
 			for(int x = 0; x < width; x++) {
 				var tile = grid[x, y];

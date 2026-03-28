@@ -1,7 +1,9 @@
-﻿using System.Drawing;
+﻿using System.ComponentModel;
+using System.Drawing;
 using System.Globalization;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using System.Xml;
 using IconFonts;
 using ImGuiNET;
 using Silk.NET.Input;
@@ -62,6 +64,17 @@ public class TilesetsPanel : Panel {
 	private AutomapMaskType automapMaskTypeOption;
 	private int automapDemoIndex;
 
+	private string presetNameEdit;
+	private int presetWidthEdit;
+	private int presetHeightEdit;
+	private bool presetAddPopup;
+	private bool presetCopyPopup;
+	private PresetPattern presetCopyTarget;
+	private bool presetDeletePopup;
+	private PresetPattern presetDeleteTarget;
+	private bool presetResizePopup;
+	private PresetPattern presetResizeTarget;
+
 	private FileEditEntry shapeEdit;
 	
 	public TilesetsPanel() {
@@ -91,6 +104,15 @@ public class TilesetsPanel : Panel {
 		automapDeleteIndex = -1;
 		automapMaskTypeOption = AutomapMaskType.Mask2x2;
 		automapDemoIndex = 0;
+
+		presetNameEdit = "";
+		presetWidthEdit = 3;
+		presetHeightEdit = 3;
+		presetAddPopup = false;
+		presetCopyPopup = false;
+		presetCopyTarget = null;
+		presetDeletePopup = false;
+		presetDeleteTarget = null;
 	}
 
 	protected override void Update() {
@@ -347,7 +369,7 @@ public class TilesetsPanel : Panel {
 		return selected;
 	}
 	
-	private void Edit() {
+	private unsafe void Edit() {
 		ImGui.BeginChild("tileset-edit");
 		
 		World world = Program.File.World;
@@ -506,6 +528,19 @@ public class TilesetsPanel : Panel {
 								selected = true;
 							}
 						}
+
+						if(editMode == EditMode.PresetPatterns) {
+							if(ImGui.BeginDragDropSource()) {
+								ImGui.Text($"Tile: {tileID}");
+								var rect = tileset.GetTileRegion(tileID - 1);
+								Vector2 uvMin = new Vector2(rect.Left / (float)tileset.GetTextureWidth(), rect.Top / (float)tileset.GetTextureHeight());
+								Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(), rect.Bottom / (float)tileset.GetTextureHeight());
+								ImGui.Image((IntPtr)tileset.TexturePreview.Handle, new Vector2(world.TileWidth, world.TileHeight) * previewScale, uvMin, uvMax);
+								ImGui.SetDragDropPayload("PRESET_TILE_ID", (IntPtr)(&tileID), sizeof(int));
+								ImGui.EndDragDropSource();
+							}
+						}
+						
 						if(ImGui.IsItemHovered()) {
 							ImGui.GetWindowDrawList().AddRectFilled(c, c + s, Utilities.GetPackedColor(200, 200, 200, 50));
 							hoveredTile = tileID;
@@ -969,8 +1004,6 @@ public class TilesetsPanel : Panel {
 		
 		ImGui.SetCursorPos(origin + new Vector2(listSize.X + 8, 0));
 		ImGui.BeginChild("pattern-preview", new Vector2(ImGui.GetContentRegionAvail().X, listSize.Y), ImGuiChildFlags.Borders, ImGuiWindowFlags.HorizontalScrollbar);
-
-		// ImGui.Text("Preview");
 		
 		if(tileset != null && selectedAutomapPattern != null) {
 			var world = Program.File.World;
@@ -1032,14 +1065,13 @@ public class TilesetsPanel : Panel {
 		ImGui.EndDisabled(); // tileset == null
 	}
 
-	private void PresetPatternEdit() {
+	private unsafe void PresetPatternEdit() {
 		Tileset tileset = Program.SelectedTileset;
 		ImGui.BeginDisabled(tileset == null);
 		
-		// int selectedAutomapIndex = tileset != null && selectedAutomapPattern != null ? tileset.AutomapPatterns.IndexOf(selectedAutomapPattern) : -1;
-
-		int moveUpIndex = -1;
-		int moveDownIndex = -1;
+		int selectedPresetIndex = tileset != null && selectedPresetPattern != null ? tileset.PresetPatterns.IndexOf(selectedPresetPattern) : -1;
+		
+		PresetPattern.MoveOperation moveOperation = null;
 
 		Vector2 listSize = ImGui.GetContentRegionAvail();
 		listSize.X = 280;
@@ -1048,38 +1080,366 @@ public class TilesetsPanel : Panel {
 		ImGui.BeginChild("preset-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeX);
 		listSize.X = ImGui.GetWindowSize().X;
 		if(tileset != null) {
+			Vector2 cur = ImGui.GetCursorPos();
 			for(int i = 0; i < tileset.PresetPatterns.Count; i++) {
-				PresetPattern pattern = tileset.PresetPatterns[i];
+				PresetPattern preset = tileset.PresetPatterns[i];
 				ImGui.PushID(i);
-				bool selected = selectedPresetPattern == pattern;
-				if(ImGui.Selectable(pattern.Name, selected, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap)) {
+				cur = ImGui.GetCursorPos();
+				bool selected = selectedPresetPattern == preset;
+				if(ImGui.Selectable(preset.Name, selected, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap)) {
 					if(selected) {
 						selectedPresetPattern = null;
+						selectedPresetIndex = -1;
 					} else {
-						selectedPresetPattern = pattern;
+						selectedPresetPattern = preset;
+						selectedPresetIndex = i;
 					}
 				}
-				
+				Vector2 nextCur = ImGui.GetCursorPos();
 				ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
 				if(ImGui.BeginPopup("context")) {
 					if(ImGui.MenuItem("Move Up")) {
-						moveUpIndex = i;
+						moveOperation = new PresetPattern.MoveOperation(tileset, i, i - 1);
 					}
 					if(ImGui.MenuItem("Move Down")) {
-						moveDownIndex = i;
+						moveOperation = new PresetPattern.MoveOperation(tileset, i, i + 1);
 					}
 					if(ImGui.MenuItem("Delete")) {
-						
+						presetDeletePopup = true;
+						presetDeleteTarget = preset;
 					}
 					ImGui.EndPopup();
 				}
+				if(ImGui.BeginDragDropSource()) {
+					ImGui.Text(preset.Name);
+					ImGui.SetDragDropPayload("MOVE_PRESET_DATA", (IntPtr)(&i), sizeof(int));
+					ImGui.EndDragDropSource();
+				}
+				ImGui.SetCursorPos(cur - new Vector2(0, 4));
+				Vector2 scur = ImGui.GetCursorScreenPos();
+				ImGui.Dummy(new Vector2(ImGui.GetContentRegionAvail().X, 6));
+				if(moveOperation == null) {
+					if(ImGui.BeginDragDropTarget()) {
+						ImGuiPayloadPtr payloadPtr = ImGui.AcceptDragDropPayload("MOVE_PRESET_DATA", ImGuiDragDropFlags.AcceptNoDrawDefaultRect | ImGuiDragDropFlags.AcceptBeforeDelivery);
+						if(payloadPtr.NativePtr != null) {
+							if(payloadPtr.IsPreview()) {
+								ImGui.GetWindowDrawList().AddRectFilled(
+									scur,
+									scur + new Vector2(ImGui.GetContentRegionAvail().X, 3),
+									Utilities.GetPackedColor(50, 80, 220, 255)
+								);
+							}
+							if(payloadPtr.IsDelivery()) {
+								int index = ((int*)payloadPtr.Data)[0];
+								int insertIndex = i;
+								if(index < i) insertIndex--;
+								if(index != insertIndex) {
+									moveOperation = new PresetPattern.MoveOperation(tileset, index, insertIndex);
+								}
+							}
+						}
+						ImGui.EndDragDropTarget();
+					}
+				}
+				ImGui.SetCursorPos(nextCur);
 				
 				ImGui.PopID(); // i
+			}
+			if(tileset.PresetPatterns.Count > 0) {
+				float height = ImGui.GetCursorPosY() - cur.Y;
+				ImGui.SetCursorPos(cur + new Vector2(0, height - 4));
+				Vector2 scur = ImGui.GetCursorScreenPos();
+				ImGui.Dummy(new Vector2(ImGui.GetContentRegionAvail().X, 6));
+				if(moveOperation == null) {
+					if(ImGui.BeginDragDropTarget()) {
+						ImGuiPayloadPtr payloadPtr = ImGui.AcceptDragDropPayload("MOVE_PRESET_DATA", ImGuiDragDropFlags.AcceptNoDrawDefaultRect | ImGuiDragDropFlags.AcceptBeforeDelivery);
+						if(payloadPtr.NativePtr != null) {
+							if(payloadPtr.IsPreview()) {
+								ImGui.GetWindowDrawList().AddRectFilled(
+									scur,
+									scur + new Vector2(ImGui.GetContentRegionAvail().X, 3),
+									Utilities.GetPackedColor(50, 80, 220, 255)
+								);
+							}
+							if(payloadPtr.IsDelivery()) {
+								int index = ((int*)payloadPtr.Data)[0];
+								if(index < tileset.PresetPatterns.Count - 1) {
+									moveOperation = new PresetPattern.MoveOperation(tileset, index, tileset.PresetPatterns.Count - 1);
+								}
+							}
+						}
+						ImGui.EndDragDropTarget();
+					}
+				}
 			}
 		}
 		ImGui.EndChild(); // preset-list
 		
+		if(ImGui.Button(Codicons.DiffAdded)) {
+			presetAddPopup = true;
+		}
+		ImGui.SetItemTooltip("Create");
+		
+		ImGui.BeginDisabled(selectedPresetPattern == null);
+		
+		ImGui.SameLine();
+		if(ImGui.Button(Codicons.Copy)) {
+			presetCopyPopup = true;
+			presetCopyTarget = selectedPresetPattern;
+		}
+		ImGui.SetItemTooltip("Copy");
+		
+		ImGui.SameLine();
+		if(ImGui.Button(Codicons.Trash)) {
+			presetDeletePopup = true;
+			presetDeleteTarget = selectedPresetPattern;
+		}
+		ImGui.SetItemTooltip("Delete");
+		
+		ImGui.BeginDisabled(selectedPresetIndex <= 0);
+		ImGui.SameLine();
+		if(ImGui.Button(Codicons.ChevronUp)) {
+			moveOperation = new PresetPattern.MoveOperation(tileset, selectedPresetIndex, selectedPresetIndex - 1);
+		}
+		ImGui.SetItemTooltip("Move Up");
+		ImGui.EndDisabled();
+		
+		ImGui.BeginDisabled(tileset == null || selectedPresetIndex >= tileset.PresetPatterns.Count - 1);
+		ImGui.SameLine();
+		if(ImGui.Button(Codicons.ChevronDown)) {
+			moveOperation = new PresetPattern.MoveOperation(tileset, selectedPresetIndex, selectedPresetIndex + 1);
+		}
+		ImGui.SetItemTooltip("Move Down");
+		ImGui.EndDisabled();
+
+		string name = selectedPresetPattern?.Name ?? "";
+		ImGui.SetNextItemWidth(listSize.X);
+		ImGui.InputText("Name", ref name, Program.IMGUI_STRING_MAX);
+		if(ImGui.IsItemDeactivatedAfterEdit()) {
+			Program.File.ApplyEdit(tileset, new PresetPattern.NameOperation(selectedPresetPattern, name));
+		}
+
+		Vector2 buttonSize = new Vector2(listSize.X, ImGui.GetTextLineHeight() + ImGui.GetStyle().FramePadding.Y * 2);
+		if(selectedPresetPattern != null) {
+			if(ImGui.Button($"{selectedPresetPattern.Width} {selectedPresetPattern.Height}", buttonSize)) {
+				presetResizePopup = true;
+				presetResizeTarget = selectedPresetPattern;
+			}
+		} else {
+			ImGui.Button("##nullsize", buttonSize);
+		}
+		ImGui.SameLine();
+		ImGui.SetCursorPosX(ImGui.GetCursorPosX() - ImGui.GetStyle().ItemInnerSpacing.X);
+		ImGui.Text("Size");
+		
+		ImGui.SetCursorPos(origin + new Vector2(listSize.X + 8, 0));
+		ImGui.BeginChild("preset-preview", new Vector2(ImGui.GetContentRegionAvail().X, listSize.Y), ImGuiChildFlags.Borders, ImGuiWindowFlags.HorizontalScrollbar);
+		
+		if(tileset != null && selectedPresetPattern != null) {
+			var world = Program.File.World;
+			Vector2 tileSize = new Vector2(world.TileWidth, world.TileHeight) * previewScale;
+			Vector2 start = ImGui.GetCursorPos();
+			int w = selectedPresetPattern.Width;
+			int h = selectedPresetPattern.Height;
+			for(int i = 0; i < w * h; i++) {
+				ImGui.PushID(i);
+
+				int x = i % w;
+				int y = i / w;
+
+				int tileID = selectedPresetPattern.GetTile(i);
+
+				ImGui.SetCursorPos(start + new Vector2(x * tileSize.X, y * tileSize.Y));
+				Vector2 t0 = ImGui.GetCursorScreenPos();
+				Vector2 t1 = t0 + tileSize;
+				
+				ImGui.GetWindowDrawList().AddRect(t0, t1, Utilities.GetPackedColor(200, 200, 200, 20));
+				
+				ImGui.InvisibleButton("##t", tileSize);
+
+				if(ImGui.IsItemClicked(ImGuiMouseButton.Right)) {
+					tileID = 0;
+				}
+
+				if(tileID > 0) {
+					if(ImGui.BeginDragDropSource()) {
+						ImGui.Text($"Tile: {tileID}");
+						var rect = tileset.GetTileRegion(tileID - 1);
+						Vector2 uvMin = new Vector2(rect.Left / (float)tileset.GetTextureWidth(), rect.Top / (float)tileset.GetTextureHeight());
+						Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(), rect.Bottom / (float)tileset.GetTextureHeight());
+						ImGui.Image((IntPtr)tileset.TexturePreview.Handle, new Vector2(world.TileWidth, world.TileHeight) * previewScale, uvMin, uvMax);
+						ImGui.SetDragDropPayload("PRESET_TILE_ID", (IntPtr)(&tileID), sizeof(int));
+						ImGui.EndDragDropSource();
+					}
+				}
+				
+				bool border = false;
+				if(ImGui.BeginDragDropTarget()) {
+					ImGuiPayloadPtr payloadPtr = ImGui.AcceptDragDropPayload("PRESET_TILE_ID", ImGuiDragDropFlags.AcceptNoDrawDefaultRect | ImGuiDragDropFlags.AcceptBeforeDelivery);
+					if(payloadPtr.NativePtr != null) {
+						if(payloadPtr.IsPreview()) {
+							border = true;
+						}
+						if(payloadPtr.IsDelivery()) {
+							tileID = ((int*)payloadPtr.Data)[0];
+						}
+					}
+					ImGui.EndDragDropTarget();
+				}
+				
+				if(tileID > 0) {
+					ImGui.SetItemTooltip($"Tile: {tileID}");
+					var rect = tileset.GetTileRegion(tileID - 1);
+					Vector2 uvMin = new Vector2(rect.Left / (float)tileset.GetTextureWidth(), rect.Top / (float)tileset.GetTextureHeight());
+					Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(), rect.Bottom / (float)tileset.GetTextureHeight());
+					ImGui.GetWindowDrawList().AddImage(new IntPtr(tileset.TexturePreview.Handle), t0, t1, uvMin, uvMax);
+				} else {
+					ImGui.SetItemTooltip("Drag tile here to set");
+				}
+
+				if(border) {
+					ImGui.GetWindowDrawList().AddRect(t0, t1, Utilities.GetPackedColor(255, 255, 255, 255));
+				}
+
+				if(tileID != selectedPresetPattern.GetTile(i)) {
+					Program.File.ApplyEdit(tileset, new PresetPattern.TileOperation(selectedPresetPattern, i, tileID));
+				}
+				
+				ImGui.PopID();
+			}
+
+			{	// border
+				ImGui.SetCursorPos(start);
+				Vector2 t0 = ImGui.GetCursorScreenPos();
+				Vector2 t1 = t0 + new Vector2(w * tileSize.X, h * tileSize.Y);
+				ImGui.GetWindowDrawList().AddRect(t0, t1, Utilities.GetPackedColor(255, 255, 255, 255));
+			}
+		}
+		
+		ImGui.EndChild(); // preset-preview
+		
+		ImGui.EndDisabled(); // selectedPresetPattern == null
 		ImGui.EndDisabled(); // tileset == null
+		
+		PresetAddPopup();
+		PresetCopyPopup();
+		PresetDeletePopup();
+		PresetResizePopup();
+		
+		if(moveOperation != null) {
+			Program.File.ApplyEdit(tileset, moveOperation);
+		}
+	}
+
+	private void PresetAddPopup() {
+		if(presetAddPopup) {
+			presetAddPopup = false;
+			presetNameEdit = "";
+			ImGui.OpenPopup("add-preset");
+		}
+		if(ImGui.BeginPopup("add-preset")) {
+			ImGui.Text("Create new preset");
+			ImGui.InputText("Name", ref presetNameEdit, Program.IMGUI_STRING_MAX);
+			ImGui.InputInt("Width", ref presetWidthEdit);
+			ImGui.InputInt("Height", ref presetHeightEdit);
+			if(presetWidthEdit < 1) presetWidthEdit = 1;
+			if(presetHeightEdit < 1) presetHeightEdit = 1;
+			if(ImGui.Button("Confirm")) {
+				PresetPattern preset = new PresetPattern(Program.SelectedTileset, presetNameEdit, presetWidthEdit, presetHeightEdit);
+				Program.File.ApplyEdit(Program.SelectedTileset, new PresetPattern.AddOperation(Program.SelectedTileset, preset));
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.SameLine();
+			if(ImGui.Button("Cancel")) {
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndPopup();
+		}
+	}
+
+	private void PresetCopyPopup() {
+		if(presetCopyPopup) {
+			presetCopyPopup = false;
+			presetNameEdit = "";
+			if(presetCopyTarget != null) {
+				ImGui.OpenPopup("copy-preset");
+			}
+		}
+		if(ImGui.BeginPopup("copy-preset")) {
+			ImGui.Text("Copy selected preset");
+			ImGui.SetNextItemWidth(250);
+			ImGui.InputText("New Name", ref presetNameEdit, Program.IMGUI_STRING_MAX);
+			if(ImGui.Button("Confirm")) {
+				PresetPattern preset = new PresetPattern(Program.SelectedTileset, presetNameEdit, presetCopyTarget.Width, presetCopyTarget.Height);
+				for(int i = 0; i < presetCopyTarget.Width * presetCopyTarget.Height; i++) {
+					preset.SetTile(i, presetCopyTarget.GetTile(i));
+				}
+				Program.File.ApplyEdit(Program.SelectedTileset, new PresetPattern.AddOperation(Program.SelectedTileset, preset));
+				selectedPresetPattern = preset;
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.SameLine();
+			if(ImGui.Button("Cancel")) {
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndPopup();
+		} else {
+			presetCopyTarget = null;
+		}
+	}
+
+	private void PresetDeletePopup() {
+		if(presetDeletePopup) {
+			presetDeletePopup = false;
+			if(presetDeleteTarget != null) {
+				ImGui.OpenPopup("delete-preset");
+			}
+		}
+		if(ImGui.BeginPopup("delete-preset")) {
+			ImGui.Text("Delete selected preset");
+			if(ImGui.Button("Confirm")) {
+				Program.File.ApplyEdit(Program.SelectedTileset, new PresetPattern.RemoveOperation(Program.SelectedTileset, presetDeleteTarget));
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.SameLine();
+			if(ImGui.Button("Cancel")) {
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndPopup();
+		} else {
+			presetDeleteTarget = null;
+		}
+	}
+
+	private void PresetResizePopup() {
+		if(presetResizePopup) {
+			presetResizePopup = false;
+			if(presetResizeTarget != null) {
+				presetWidthEdit = presetResizeTarget.Width;
+				presetHeightEdit = presetResizeTarget.Height;
+				ImGui.OpenPopup("resize-preset");
+			}
+		}
+		if(ImGui.BeginPopup("resize-preset")) {
+			ImGui.Text("Resize selected preset");
+			ImGui.InputInt("Width", ref presetWidthEdit);
+			ImGui.InputInt("Height", ref presetHeightEdit);
+			if(presetWidthEdit < 1) presetWidthEdit = 1;
+			if(presetHeightEdit < 1) presetHeightEdit = 1;
+			ImGui.BeginDisabled(presetWidthEdit == presetResizeTarget.Width && presetHeightEdit == presetResizeTarget.Height);
+			if(ImGui.Button("Confirm")) {
+				Program.File.ApplyEdit(Program.SelectedTileset, new PresetPattern.ResizeOperation(presetResizeTarget, presetWidthEdit, presetHeightEdit));
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndDisabled();
+			ImGui.SameLine();
+			if(ImGui.Button("Cancel")) {
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndPopup();
+		} else {
+			presetResizeTarget = null;
+		}
 	}
 
 	public void ImportTilesetModal() {

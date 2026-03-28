@@ -393,4 +393,118 @@ public class TilesetLink {
 		);
 		return linkElement;
 	}
+	
+	public class AddOperation : IFileEditOperation {
+		private Scene scene;
+		private TilesetLink link;
+		public AddOperation(Scene scene, TilesetLink link) {
+			this.scene = scene;
+			this.link = link;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.scene.Tilesets.Add(op.link);
+			op.scene.MarkTilemapsAsDirty();
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<AddOperation>();
+			op.scene.Tilesets.Remove(op.link);
+			op.scene.MarkTilemapsAsDirty();
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class RemoveOperation : IFileEditOperation {
+		private Scene scene;
+		private TilesetLink link;
+		private int index;
+		public RemoveOperation(Scene scene, int index) {
+			this.scene = scene;
+			this.link = scene.Tilesets[index];
+			this.index = index;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.scene.Tilesets.RemoveAt(op.index);
+			op.scene.MarkTilemapsAsDirty();
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<RemoveOperation>();
+			op.scene.Tilesets.Insert(op.index, op.link);
+			op.scene.MarkTilemapsAsDirty();
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class MoveOperation : IFileEditOperation {
+		private Scene scene;
+		private int index1;
+		private int index2;
+		public MoveOperation(Scene scene, int index1, int index2) {
+			this.scene = scene;
+			this.index1 = index1;
+			this.index2 = index2;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			var t = op.scene.Tilesets[op.index1];
+			op.scene.Tilesets[op.index1] = op.scene.Tilesets[op.index2];
+			op.scene.Tilesets[op.index2] = t;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<MoveOperation>();
+			var t = op.scene.Tilesets[op.index2];
+			op.scene.Tilesets[op.index2] = op.scene.Tilesets[op.index1];
+			op.scene.Tilesets[op.index1] = t;
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class SlotOperation : IFileEditOperation {
+		private Scene scene;
+		private TilesetLink link;
+		private int oldSlot;
+		private int newSlot;
+		public SlotOperation(Scene scene, TilesetLink link, int slot) {
+			this.scene = scene;
+			this.link = link;
+			this.oldSlot = link.Slot;
+			this.newSlot = slot;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<SlotOperation>();
+			op.link.Slot = op.newSlot;
+			op.scene.MarkTilemapsAsDirty();
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<SlotOperation>();
+			op.link.Slot = op.oldSlot;
+			op.scene.MarkTilemapsAsDirty();
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class TilesetOperation : IFileEditOperation {
+		private Scene scene;
+		private TilesetLink link;
+		private Tileset oldTileset;
+		private Tileset newTileset;
+		public TilesetOperation(Scene scene, TilesetLink link, Tileset tileset) {
+			this.scene = scene;
+			this.link = link;
+			this.oldTileset = link.Tileset;
+			this.newTileset = tileset;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			var op = entry.GetData<TilesetOperation>();
+			op.link.Tileset = op.newTileset;
+			op.scene.MarkTilemapsAsDirty();
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			var op = entry.GetData<TilesetOperation>();
+			op.link.Tileset = op.oldTileset;
+			op.scene.MarkTilemapsAsDirty();
+		}
+		public bool HasChanges() => true;
+	}
 }

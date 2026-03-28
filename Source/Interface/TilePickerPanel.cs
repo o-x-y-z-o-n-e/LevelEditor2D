@@ -132,7 +132,7 @@ public class TilePickerPanel : Panel {
 						if(match) continue;
 						atLeastOneOption = true;
 						if(ImGui.Selectable($"Slot: {s}")) {
-							Program.File.ApplyEdit(scene, new SlotOperation(scene, link, s));
+							Program.File.ApplyEdit(scene, new TilesetLink.SlotOperation(scene, link, s));
 						}
 					}
 					if(!atLeastOneOption) {
@@ -149,7 +149,7 @@ public class TilePickerPanel : Panel {
 				if(i == tilesetLinkTarget) {
 					Program.TilesetsPanel.SelectTilesetModal((selected, tileset) => {
 						if(selected) {
-							Program.File.ApplyEdit(scene, new TilesetOperation(scene, link, tileset));
+							Program.File.ApplyEdit(scene, new TilesetLink.TilesetOperation(scene, link, tileset));
 						}
 						tilesetLinkTarget = -1;
 					});
@@ -165,6 +165,10 @@ public class TilePickerPanel : Panel {
 				}
 				if(ImGui.BeginTabItem("Automaps")) {
 					AutomapListView(scene, tileset, link, windowFlags, region, scale);
+					ImGui.EndTabItem();
+				}
+				if(ImGui.BeginTabItem("Presets")) {
+					PresetListView(scene, tileset, link, windowFlags, region, scale);
 					ImGui.EndTabItem();
 				}
 				ImGui.EndTabBar();
@@ -194,20 +198,20 @@ public class TilePickerPanel : Panel {
 		ImGui.BeginDisabled(nextSlotAvailable > maxTilesetSlots);
 		if(ImGui.Button("Add", new Vector2(region.X, 0))) {
 			TilesetLink link = new TilesetLink(scene.File, nextSlotAvailable, null);
-			Program.File.ApplyEdit(scene, new AddOperation(scene, link));
+			Program.File.ApplyEdit(scene, new TilesetLink.AddOperation(scene, link));
 		}
 		ImGui.EndDisabled();
 
 		if(moveUpIndex >= 0) {
-			Program.File.ApplyEdit(scene, new MoveOperation(scene, moveUpIndex, moveUpIndex - 1));
+			Program.File.ApplyEdit(scene, new TilesetLink.MoveOperation(scene, moveUpIndex, moveUpIndex - 1));
 		}
 		
 		if(moveDownIndex >= 0) {
-			Program.File.ApplyEdit(scene, new MoveOperation(scene, moveDownIndex, moveDownIndex + 1));
+			Program.File.ApplyEdit(scene, new TilesetLink.MoveOperation(scene, moveDownIndex, moveDownIndex + 1));
 		}
 
 		if(removeIndex >= 0) {
-			Program.File.ApplyEdit(scene, new RemoveOperation(scene, removeIndex));
+			Program.File.ApplyEdit(scene, new TilesetLink.RemoveOperation(scene, removeIndex));
 		}
 		
 		ImGui.EndChild(); // tileset-list
@@ -448,7 +452,7 @@ public class TilePickerPanel : Panel {
 				ImGui.GetWindowDrawList().AddRectFilled(cur, cur + patternSize, Utilities.GetPackedColor(200, 200, 200, 50));
 			}
 
-			if(Program.CanvasPanel.TileBrush.Pattern == pattern) {
+			if(Program.CanvasPanel.TileBrush.Automap == pattern) {
 				ImGui.GetWindowDrawList().AddRectFilled(cur, cur + patternSize, Utilities.GetPackedColor(200, 200, 200, 50));
 				ImGui.GetWindowDrawList().AddRect(cur, cur + patternSize, Utilities.GetPackedColor(255, 255, 255, 255));
 			}
@@ -458,7 +462,7 @@ public class TilePickerPanel : Panel {
 				ImGui.DragInt("Brush Size", ref automapBrushSize, 0.03F, 1, 32);
 				if(ImGui.Button("Start", new Vector2(ImGui.GetWindowSize().X - style.WindowPadding.X * 2, ImGui.GetTextLineHeight() + style.FramePadding.Y * 2))) {
 					var brush = Program.CanvasPanel.TileBrush;
-					brush.SetAutomapPattern(pattern, automapBrushSize, automapBrushSize);
+					brush.SetAutomap(pattern, automapBrushSize, automapBrushSize);
 					Program.CanvasPanel.SetTool(brush);
 					ImGui.CloseCurrentPopup();
 				}
@@ -471,118 +475,97 @@ public class TilePickerPanel : Panel {
 		ImGui.EndChild(); // automap-list
 	}
 
-	public class AddOperation : IFileEditOperation {
-		private Scene scene;
-		private TilesetLink link;
-		public AddOperation(Scene scene, TilesetLink link) {
-			this.scene = scene;
-			this.link = link;
+	private void PresetListView(Scene scene, Tileset tileset, TilesetLink link, ImGuiWindowFlags windowFlags, Vector2 region, int scale) {
+		var style = ImGui.GetStyle();
+		
+		Texture texSource = tileset?.GetTexturePreview();
+		
+		Vector2 tileSize = new Vector2(scene.World.TileWidth, scene.World.TileHeight) * scale;
+
+		float maxHeight = 0;
+		Vector2 cur = new Vector2(0, 0);
+		Vector2 areaSize = new Vector2(region.X - style.WindowPadding.X * 2, 0);
+		for(int i = 0; i < tileset.PresetPatterns.Count; i++) {
+			PresetPattern preset = tileset.PresetPatterns[i];
+			Vector2 presetSize = tileSize * new Vector2(preset.Width, preset.Height);
+			if(cur.X + presetSize.X > areaSize.X) {
+				cur.X = 0.0F;
+				cur.Y += maxHeight + style.ItemSpacing.Y;
+				maxHeight = 0.0F;
+			}
+			maxHeight = float.Max(maxHeight, presetSize.Y);
+			cur.X += presetSize.X + style.ItemSpacing.X;
 		}
-		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.scene.Tilesets.Add(op.link);
-			op.scene.MarkTilemapsAsDirty();
+		cur.Y += maxHeight;
+		areaSize.Y = cur.Y;
+		
+		var childFlags = ImGuiWindowFlags.None;
+		if(!ImGui.IsKeyDown(ImGuiKey.LeftShift)) {
+			windowFlags |= ImGuiWindowFlags.NoScrollWithMouse;
 		}
-		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.scene.Tilesets.Remove(op.link);
-			op.scene.MarkTilemapsAsDirty();
+
+		ImGui.BeginChild(
+			"preset-list",
+			new Vector2(region.X, areaSize.Y + style.WindowPadding.Y * 2),
+			ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.Borders,
+			childFlags
+		);
+
+		Vector2 origin = ImGui.GetCursorPos();
+		cur = Vector2.Zero;
+		
+		for(int i = 0; i < tileset.PresetPatterns.Count; i++) {
+			PresetPattern preset = tileset.PresetPatterns[i];
+			ImGui.PushID(i);
+			
+			Vector2 presetSize = tileSize * new Vector2(preset.Width, preset.Height);
+			if(cur.X + presetSize.X > areaSize.X) {
+				cur.X = 0.0F;
+				cur.Y += maxHeight + style.ItemSpacing.Y;
+				maxHeight = 0.0F;
+			}
+			maxHeight = float.Max(maxHeight, presetSize.Y);
+			
+			ImGui.SetCursorPos(origin + cur);
+			
+			Vector2 scur = ImGui.GetCursorScreenPos();
+			
+			if(ImGui.InvisibleButton("button", presetSize)) {
+				var brush = Program.CanvasPanel.TileBrush;
+				brush.SetPreset(preset);
+				Program.CanvasPanel.SetTool(brush);
+			}
+			ImGui.SetItemTooltip(preset.Name);
+			
+			for(int y = 0; y < preset.Height; y++) {
+				for(int x = 0; x < preset.Width; x++) {
+					Vector2 t0 = scur + new Vector2(x * tileSize.X, y * tileSize.Y);
+					Vector2 t1 = t0 + tileSize;
+					int tileID = preset.GetTile(x, y);
+					if(tileID > 0) {
+						var rect = tileset.GetTileRegion(tileID - 1);
+						Vector2 uvMin = new Vector2(rect.Left / (float)tileset.GetTextureWidth(), rect.Top / (float)tileset.GetTextureHeight());
+						Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(), rect.Bottom / (float)tileset.GetTextureHeight());
+						ImGui.GetWindowDrawList().AddImage(new IntPtr(tileset.TexturePreview.Handle), t0, t1, uvMin, uvMax);
+					}
+				}
+			}
+
+			if(ImGui.IsItemHovered()) {
+				ImGui.GetWindowDrawList().AddRectFilled(scur, scur + presetSize, Utilities.GetPackedColor(200, 200, 200, 50));
+			}
+
+			if(Program.CanvasPanel.TileBrush.Preset == preset) {
+				ImGui.GetWindowDrawList().AddRectFilled(scur, scur + presetSize, Utilities.GetPackedColor(200, 200, 200, 50));
+				ImGui.GetWindowDrawList().AddRect(scur, scur + presetSize, Utilities.GetPackedColor(255, 255, 255, 255));
+			}
+			
+			cur.X += presetSize.X + style.ItemSpacing.X;
+
+			ImGui.PopID(); // i
 		}
-		public bool HasChanges() => true;
-	}
-	
-	public class RemoveOperation : IFileEditOperation {
-		private Scene scene;
-		private TilesetLink link;
-		private int index;
-		public RemoveOperation(Scene scene, int index) {
-			this.scene = scene;
-			this.link = scene.Tilesets[index];
-			this.index = index;
-		}
-		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.scene.Tilesets.RemoveAt(op.index);
-			op.scene.MarkTilemapsAsDirty();
-		}
-		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.scene.Tilesets.Insert(op.index, op.link);
-			op.scene.MarkTilemapsAsDirty();
-		}
-		public bool HasChanges() => true;
-	}
-	
-	public class MoveOperation : IFileEditOperation {
-		private Scene scene;
-		private int index1;
-		private int index2;
-		public MoveOperation(Scene scene, int index1, int index2) {
-			this.scene = scene;
-			this.index1 = index1;
-			this.index2 = index2;
-		}
-		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			var t = op.scene.Tilesets[op.index1];
-			op.scene.Tilesets[op.index1] = op.scene.Tilesets[op.index2];
-			op.scene.Tilesets[op.index2] = t;
-		}
-		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			var t = op.scene.Tilesets[op.index2];
-			op.scene.Tilesets[op.index2] = op.scene.Tilesets[op.index1];
-			op.scene.Tilesets[op.index1] = t;
-		}
-		public bool HasChanges() => true;
-	}
-	
-	public class SlotOperation : IFileEditOperation {
-		private Scene scene;
-		private TilesetLink link;
-		private int oldSlot;
-		private int newSlot;
-		public SlotOperation(Scene scene, TilesetLink link, int slot) {
-			this.scene = scene;
-			this.link = link;
-			this.oldSlot = link.Slot;
-			this.newSlot = slot;
-		}
-		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<SlotOperation>();
-			op.link.Slot = op.newSlot;
-			op.scene.MarkTilemapsAsDirty();
-		}
-		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<SlotOperation>();
-			op.link.Slot = op.oldSlot;
-			op.scene.MarkTilemapsAsDirty();
-		}
-		public bool HasChanges() => true;
-	}
-	
-	public class TilesetOperation : IFileEditOperation {
-		private Scene scene;
-		private TilesetLink link;
-		private Tileset oldTileset;
-		private Tileset newTileset;
-		public TilesetOperation(Scene scene, TilesetLink link, Tileset tileset) {
-			this.scene = scene;
-			this.link = link;
-			this.oldTileset = link.Tileset;
-			this.newTileset = tileset;
-		}
-		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<TilesetOperation>();
-			op.link.Tileset = op.newTileset;
-			op.scene.MarkTilemapsAsDirty();
-		}
-		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<TilesetOperation>();
-			op.link.Tileset = op.oldTileset;
-			op.scene.MarkTilemapsAsDirty();
-		}
-		public bool HasChanges() => true;
+		
+		ImGui.EndChild(); // preset-list
 	}
 	
 }

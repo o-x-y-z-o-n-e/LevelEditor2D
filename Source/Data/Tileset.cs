@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Drawing;
 using System.Numerics;
+using System.Text;
 using System.Xml.Linq;
 using Serilog;
 using Silk.NET.OpenGL;
@@ -125,7 +126,18 @@ public class Tileset {
 			automapPatterns.Add(automap);
 		}
 		foreach(var presetElement in tilesetElement.Elements("preset")) {
-			// TODO
+			string name = presetElement.Attribute("name").ParseAsString();
+			int width = presetElement.Attribute("width").ParseAsInt();
+			int height = presetElement.Attribute("height").ParseAsInt();
+			if(width < 1 || height < 1) continue;
+			PresetPattern preset = new PresetPattern(this, name, width, height);
+			string[] array = presetElement.Value.Split(',');
+			for(int i = 0; i < array.Length && i < width * height; i++) {
+				if(int.TryParse(array[i], out int tid)) {
+					preset.SetTile(i, int.Max(tid, 0));
+				}
+			}
+			presetPatterns.Add(preset);
 		}
 		foreach(var tileElement in tilesetElement.Elements("tile")) {
 			int id = tileElement.Attribute("num").ParseAsInt();
@@ -171,7 +183,17 @@ public class Tileset {
 			element.Add(automapElement);
 		}
 		foreach(var preset in presetPatterns) {
-			// TODO
+			XElement presetElement = new XElement("preset");
+			presetElement.Add(new XAttribute("name", preset.Name));
+			presetElement.Add(new XAttribute("width", preset.Width));
+			presetElement.Add(new XAttribute("height", preset.Height));
+			StringBuilder sb = new StringBuilder();
+			for(int i = 0; i < preset.Width * preset.Height; i++) {
+				sb.Append(preset.GetTile(i));
+				sb.Append(',');
+			}
+			presetElement.Add(sb.ToString());
+			element.Add(presetElement);
 		}
 		foreach(var data in tileData) {
 			XElement tileElement = new XElement("tile");
@@ -556,10 +578,149 @@ public class PresetPattern {
 		if(x < 0 || x >= width || y < 0 || y >= height) return;
 		tiles[x + y * width] = tileID;
 	}
+	
+	public void SetTile(int index, int tileID) {
+		if(index < 0 || index >= width * height) return;
+		tiles[index] = tileID;
+	}
 
 	public int GetTile(int x, int y) {
 		if(x < 0 || x >= width || y < 0 || y >= height) return 0;
 		return tiles[x + y * width];
+	}
+
+	public int GetTile(int index) {
+		if(index < 0 || index >= width * height) return 0;
+		return tiles[index];
+	}
+	
+	public class AddOperation : IFileEditOperation {
+		private Tileset tileset;
+		private PresetPattern preset;
+		public AddOperation(Tileset tileset, PresetPattern preset) {
+			this.tileset = tileset;
+			this.preset = preset;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			tileset.PresetPatterns.Add(preset);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			tileset.PresetPatterns.Remove(preset);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class MoveOperation : IFileEditOperation {
+		private Tileset tileset;
+		private int oldIndex;
+		private int newIndex;
+		public MoveOperation(Tileset tileset, int oldIndex, int newIndex) {
+			this.tileset = tileset;
+			this.oldIndex = oldIndex;
+			this.newIndex = newIndex;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			PresetPattern preset = tileset.PresetPatterns[oldIndex];
+			tileset.PresetPatterns.RemoveAt(oldIndex);
+			tileset.PresetPatterns.Insert(newIndex, preset);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			PresetPattern preset = tileset.PresetPatterns[newIndex];
+			tileset.PresetPatterns.RemoveAt(newIndex);
+			tileset.PresetPatterns.Insert(oldIndex, preset);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class RemoveOperation : IFileEditOperation {
+		private Tileset tileset;
+		private PresetPattern pattern;
+		private int index;
+		public RemoveOperation(Tileset tileset, PresetPattern pattern) {
+			this.tileset = tileset;
+			this.pattern = pattern;
+			this.index = tileset.PresetPatterns.IndexOf(pattern);
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			tileset.PresetPatterns.Remove(pattern);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			tileset.PresetPatterns.Insert(index, pattern);
+		}
+		public bool HasChanges() => true;
+	}
+	
+	public class NameOperation : IFileEditOperation {
+		private PresetPattern preset;
+		private string oldValue;
+		private string newValue;
+		public NameOperation(PresetPattern preset, string newValue) {
+			this.preset = preset;
+			this.oldValue = preset.name;
+			this.newValue = newValue;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			preset.name = newValue;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			preset.name = oldValue;
+		}
+		public bool HasChanges() => oldValue != newValue;
+	}
+
+	public class TileOperation : IFileEditOperation {
+		private PresetPattern preset;
+		private int index;
+		private int oldTileID;
+		private int newTileID;
+		public TileOperation(PresetPattern preset, int index, int newTileID) {
+			this.preset = preset;
+			this.index = index;
+			this.newTileID = newTileID;
+			this.oldTileID = preset.tiles[index];
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			preset.tiles[index] = newTileID;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			preset.tiles[index] = oldTileID;
+		}
+		public bool HasChanges() => oldTileID != newTileID;
+	}
+	
+	public class ResizeOperation : IFileEditOperation {
+		private PresetPattern preset;
+		private int oldWidth;
+		private int oldHeight;
+		private int[] oldTiles;
+		private int newWidth;
+		private int newHeight;
+		private int[] newTiles;
+		public ResizeOperation(PresetPattern preset, int newWidth, int newHeight) {
+			this.preset = preset;
+			this.oldWidth = preset.width;
+			this.oldHeight = preset.height;
+			this.oldTiles = preset.tiles;
+			this.newWidth = newWidth;
+			this.newHeight = newHeight;
+			this.newTiles = new int[newWidth * newHeight];
+			for(int x = 0; x < this.newWidth && x < this.oldWidth; x++) {
+				for(int y = 0; y < this.newHeight && y < this.oldHeight; y++) {
+					this.newTiles[x + y * this.newWidth] = this.oldTiles[x + y * this.oldWidth];
+				}
+			}
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			preset.width = newWidth;
+			preset.height = newHeight;
+			preset.tiles = newTiles;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			preset.width = oldWidth;
+			preset.height = oldHeight;
+			preset.tiles = oldTiles;
+		}
+		public bool HasChanges() => oldWidth != newWidth || oldHeight != newHeight;
 	}
 
 }

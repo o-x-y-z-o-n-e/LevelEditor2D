@@ -149,6 +149,7 @@ public class File {
 	}
 	
 	public void ApplyEdit(object? context, IFileEditOperation operation) {
+		if(operation == null) return;
 		var edit = BeginEdit(context, operation, operation.ApplyNextState, operation.ApplyPrevState);
 		EndEdit(ref edit);
 	}
