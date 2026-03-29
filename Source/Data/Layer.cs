@@ -240,6 +240,7 @@ public class Layer {
 	}
 	
 	public class AddOperation : IFileEditOperation {
+		public object? Context => group.scene;
 		private Layer group;
 		private Layer layer;
 		private int index;
@@ -263,6 +264,7 @@ public class Layer {
 	}
 	
 	public class MoveOperation : IFileEditOperation {
+		public object? Context => oldGroup.scene;
 		private Layer oldGroup;
 		private int oldIndex;
 		private Layer newGroup;
@@ -289,6 +291,7 @@ public class Layer {
 	}
 	
 	public class VisiblityOperation : IFileEditOperation {
+		public object? Context => layer.scene;
 		private Layer layer;
 		private bool oldValue;
 		private bool newValue;
@@ -309,6 +312,7 @@ public class Layer {
 	}
 	
 	public class RenameOperation : IFileEditOperation {
+		public object? Context => layer.scene;
 		private Layer layer;
 		private string oldName;
 		private string newName;
@@ -329,6 +333,7 @@ public class Layer {
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
+		public object? Context => group.scene;
 		private Layer group;
 		private Layer layer;
 		private int index;
@@ -352,6 +357,7 @@ public class Layer {
 	}
 
 	public class ColorOperation : IFileEditOperation {
+		public object? Context => layer.scene;
 		public ref Vector3 NewColor => ref newColor;
 		private Layer layer;
 		private Vector3 oldColor;

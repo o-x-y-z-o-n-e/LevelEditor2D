@@ -283,7 +283,7 @@ public class TemplatesPanel : Panel {
 				if(size.X < 0) size.X = 0;
 				if(size.Y < 0) size.Y = 0;
 				if(sizeEdit == null || sizeEdit.GetData<Entity.SizeOperation>().Entity != selectedTemplate) {
-					sizeEdit = Program.File.BeginEdit(this, new Entity.SizeOperation(selectedTemplate, size));
+					sizeEdit = Program.File.BeginEdit(new Entity.SizeOperation(selectedTemplate, size));
 				} else {
 					sizeEdit.GetData<Entity.SizeOperation>().SetSize(size);
 				}
@@ -436,6 +436,7 @@ public class TemplatesPanel : Panel {
 			ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - searchWidth - ImGui.CalcTextSize("Search").X - ImGui.GetStyle().FramePadding.X);
 			ImGui.SetNextItemWidth(searchWidth);
 			ImGui.InputText("Search", ref search, Program.IMGUI_STRING_MAX);
+			// TODO: searching
 
 			result = Items(null);
 			

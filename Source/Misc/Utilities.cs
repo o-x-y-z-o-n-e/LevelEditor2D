@@ -1,5 +1,7 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Xml.Linq;
 
 namespace L2D;
@@ -88,5 +90,32 @@ public static class Utilities {
 		color.Z = float.Clamp(color.Z * 255.0F, 0.0F, 255.0F);
 		return $"{color.X:F0},{color.Y:F0},{color.Z:F0}";
 	}
+
+	public static void OpenWebLink(string url) {
+		try {
+			Process.Start(url);
+		} catch {
+			// hack because of this: https://github.com/dotnet/corefx/issues/10361
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+				url = url.Replace("&", "^&");
+				Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+			} else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
+				Process.Start("xdg-open", url);
+			} else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+				Process.Start("open", url);
+			} else {
+				throw;
+			}
+		}
+	}
 	
+}
+
+public struct Vector2Int {
+	public int X;
+	public int Y;
+	public Vector2Int(int x, int y) {
+		X = x;
+		Y = y;
+	}
 }

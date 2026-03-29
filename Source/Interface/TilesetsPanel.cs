@@ -577,7 +577,7 @@ public class TilesetsPanel : Panel {
 							if(op == null || op.Automap != selectedAutomapPattern || op.TileID != hoveredTile) {
 								bool adding = (bitmask & (1 << ib)) == 0;
 								op = new AutomapPattern.BitmaskOperation(selectedAutomapPattern, hoveredTile, adding);
-								automapBitmaskEdit = Program.File.BeginEdit(selectedAutomapPattern, op);
+								automapBitmaskEdit = Program.File.BeginEdit(op);
 							}
 
 							if(op.Adding) {
@@ -736,7 +736,7 @@ public class TilesetsPanel : Panel {
 						tiledata = tileset.AddTileData(tileEditIndex);
 					}
 					int c = tiledata.Shapes.Count;
-					var edit = Program.File.BeginEdit(this, new TileData.ShapeCountOperation(tiledata, tileset, c + 1));
+					var edit = Program.File.BeginEdit(new TileData.ShapeCountOperation(tiledata, c + 1));
 					var op = edit.GetData<TileData.ShapeCountOperation>();
 					op.NewList[c] = new TileShape(c0, c1 - c0);
 					Program.File.EndEdit(ref edit);
@@ -772,7 +772,7 @@ public class TilesetsPanel : Panel {
 				if(data == null) {
 					data = tileset.AddTileData(tileEditIndex);
 				}
-				Program.File.ApplyEdit(this, new TileData.ShapeCountOperation(data, tileset, count));
+				Program.File.ApplyEdit(this, new TileData.ShapeCountOperation(data, count));
 			}
 		}
 		
@@ -795,7 +795,7 @@ public class TilesetsPanel : Panel {
 				
 				if(ImGui.DragFloat2("Shape Pos", ref pos, 1.0F)) {
 					if(shapeEdit == null) {
-						shapeEdit = Program.File.BeginEdit(this, new TileData.ShapeEditOperation(data, i));
+						shapeEdit = Program.File.BeginEdit(new TileData.ShapeEditOperation(data, i));
 					}
 				}
 				if(ImGui.IsItemDeactivatedAfterEdit()) {
@@ -810,7 +810,7 @@ public class TilesetsPanel : Panel {
 
 				if(ImGui.DragFloat2("Shape Size", ref size, 1.0F)) {
 					if(shapeEdit == null) {
-						shapeEdit = Program.File.BeginEdit(this, new TileData.ShapeEditOperation(data, i));
+						shapeEdit = Program.File.BeginEdit(new TileData.ShapeEditOperation(data, i));
 					}
 				}
 				if(ImGui.IsItemDeactivatedAfterEdit()) {
@@ -1095,7 +1095,6 @@ public class TilesetsPanel : Panel {
 						selectedPresetIndex = i;
 					}
 				}
-				Vector2 nextCur = ImGui.GetCursorPos();
 				ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
 				if(ImGui.BeginPopup("context")) {
 					if(ImGui.MenuItem("Move Up")) {
@@ -1115,6 +1114,7 @@ public class TilesetsPanel : Panel {
 					ImGui.SetDragDropPayload("MOVE_PRESET_DATA", (IntPtr)(&i), sizeof(int));
 					ImGui.EndDragDropSource();
 				}
+				Vector2 nextCur = ImGui.GetCursorPos();
 				ImGui.SetCursorPos(cur - new Vector2(0, 4));
 				Vector2 scur = ImGui.GetCursorScreenPos();
 				ImGui.Dummy(new Vector2(ImGui.GetContentRegionAvail().X, 6));

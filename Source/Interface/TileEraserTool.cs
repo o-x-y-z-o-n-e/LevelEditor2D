@@ -52,7 +52,7 @@ public class TileEraserTool : CanvasTool {
 			Program.File.EndEdit(ref edit, discard: true);
 		}
 		var operation = new TileEditOperation(tilemap);
-		edit = Program.File.BeginEdit(Scene, operation);
+		edit = Program.File.BeginEdit(operation);
 	}
 
 	private void UpdateErase(int w, int h, Point offset) {

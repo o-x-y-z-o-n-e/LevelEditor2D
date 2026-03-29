@@ -114,7 +114,10 @@ public class EntityCollection {
 	}
 
 	public Entity Copy(int index) {
-		Entity srcEntity = entities[index];
+		return Copy(entities[index]);
+	}
+
+	public Entity Copy(Entity srcEntity) {
 		Entity dstEntity = new Entity(this, srcEntity.Template?.Name);
 		dstEntity.SetName(srcEntity.OwnName);
 		dstEntity.SetType(srcEntity.OwnType);
@@ -284,6 +287,7 @@ public class Entity {
 	}
 	
 	public class AddOperation : IFileEditOperation {
+		public object? Context => collection;
 		private EntityCollection collection;
 		private Entity entity;
 		public AddOperation(EntityCollection collection, Entity entity) {
@@ -305,26 +309,32 @@ public class Entity {
 	}
 
 	public class MoveOperation : IFileEditOperation {
+		public object? Context => collection;
 		private EntityCollection collection;
-		private int index1;
-		private int index2;
-		public MoveOperation(EntityCollection collection, int index1, int index2) {
+		private int oldIndex;
+		private int newIndex;
+		public MoveOperation(EntityCollection collection, int oldIndex, int newIndex) {
 			this.collection = collection;
-			this.index1 = index1;
-			this.index2 = index2;
+			this.oldIndex = oldIndex;
+			this.newIndex = newIndex;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			collection.Move(index1, index2);
+			Entity entity = collection.Get(oldIndex);
+			collection.Remove(oldIndex);
+			collection.Insert(entity, newIndex);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			collection.Move(index2, index1);
+			Entity entity = collection.Get(newIndex);
+			collection.Remove(newIndex);
+			collection.Insert(entity, oldIndex);
 		}
-		public bool HasChanges() => index1 != index2;
+		public bool HasChanges() => oldIndex != newIndex;
 		public string GetNextStateMessage() => $"Reorder entities";
 		public string GetPrevStateMessage() => $"Undo reorder entities";
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
+		public object? Context => collection;
 		private EntityCollection collection;
 		private Entity entity;
 		private int index;
@@ -348,6 +358,7 @@ public class Entity {
 	}
 	
 	public class NameOperation : IFileEditOperation {
+		public object? Context => entity.collection;
 		public Entity Entity => entity;
 		private Entity entity;
 		private string oldName;
@@ -373,6 +384,7 @@ public class Entity {
 	}
 	
 	public class TypeOperation : IFileEditOperation {
+		public object? Context => entity.collection;
 		public Entity Entity => entity;
 		private Entity entity;
 		private string? oldType;
@@ -398,6 +410,7 @@ public class Entity {
 	}
 	
 	public class PositionOperation : IFileEditOperation {
+		public object? Context => entity.collection;
 		public Entity Entity => entity;
 		private Entity entity;
 		private Vector2? oldPosition;
@@ -423,6 +436,7 @@ public class Entity {
 	}
 	
 	public class SizeOperation : IFileEditOperation {
+		public object? Context => entity.collection;
 		public Entity Entity => entity;
 		private Entity entity;
 		private Vector2? oldSize;
@@ -448,6 +462,7 @@ public class Entity {
 	}
 	
 	public class TransformOperation : IFileEditOperation {
+		public object? Context => entity.collection?.Layer?.Scene?.World ?? (object?)entity.collection;
 		public Entity Entity => entity;
 		private Entity entity;
 		private Vector2? oldPosition;

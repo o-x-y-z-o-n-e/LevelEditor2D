@@ -112,16 +112,16 @@ public static class PropertyView {
 						// TODO: update value
 					} else {
 						if(newPropertyType == PropertyType.String) {
-							Program.File.ApplyEdit(collection, new Property.ConvertOperation(property, newPropertyString));
+							Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyString));
 						}
 						if(newPropertyType == PropertyType.Integer) {
-							Program.File.ApplyEdit(collection, new Property.ConvertOperation(property, newPropertyInteger));
+							Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyInteger));
 						}
 						if(newPropertyType == PropertyType.Float) {
-							Program.File.ApplyEdit(collection, new Property.ConvertOperation(property, newPropertyFloat));
+							Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyFloat));
 						}
 						if(newPropertyType == PropertyType.Boolean) {
-							Program.File.ApplyEdit(collection, new Property.ConvertOperation(property, newPropertyBoolean));
+							Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyBoolean));
 						}
 					}
 				} else {
@@ -339,7 +339,7 @@ public static class PropertyView {
 						newString = property.Boolean.ToString();
 					}
 
-					Program.File.ApplyEdit(collection, new Property.ConvertOperation(property, newString));
+					Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newString));
 					close = true;
 				}
 
@@ -357,7 +357,7 @@ public static class PropertyView {
 						newInteger = property.Boolean ? 1 : 0;
 					}
 
-					Program.File.ApplyEdit(collection, new Property.ConvertOperation(property, newInteger));
+					Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newInteger));
 					close = true;
 				}
 
@@ -375,7 +375,7 @@ public static class PropertyView {
 						newFloat = property.Boolean ? 1 : 0;
 					}
 
-					Program.File.ApplyEdit(collection, new Property.ConvertOperation(property, newFloat));
+					Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newFloat));
 					close = true;
 				}
 
@@ -393,7 +393,7 @@ public static class PropertyView {
 						newBoolean = property.Float != 0.0F;
 					}
 
-					Program.File.ApplyEdit(collection, new Property.ConvertOperation(property, newBoolean));
+					Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newBoolean));
 					close = true;
 				}
 

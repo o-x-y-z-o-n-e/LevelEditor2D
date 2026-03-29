@@ -1,6 +1,5 @@
 ﻿using System.Drawing;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using IconFonts;
 using ImGuiNET;
 
@@ -12,24 +11,34 @@ public class LayersPanel : Panel {
 
 	private bool isolateLayerView;
 
-	private string layerRenameBuffer;
+	private string layerNameEdit;
 	private int layerTypeOption;
 
 	private bool addPopup;
-	private Layer addLayerToGroup;
+	private Layer addToGroupTarget;
 	private bool deletePopup;
-	private Layer deleteLayer;
+	private Layer deleteTarget;
 	private bool copyPopup;
-	private Layer copyLayer;
+	private Layer copyTarget;
+	private bool renamePopup;
+	private Layer renameTarget;
 
 	private FileEditEntry colorEdit;
 	
 	public LayersPanel() {
 		Title = $"{Codicons.Layers} Layers";
 		isolateLayerView = false;
-		layerRenameBuffer = "";
+		layerNameEdit = "";
 		layerTypeOption = 0;
 		colorEdit = null;
+		addPopup = false;
+		addToGroupTarget = null;
+		deletePopup = false;
+		deleteTarget = null;
+		copyPopup = false;
+		copyTarget = null;
+		renamePopup = false;
+		renameTarget = null;
 	}
 
 	protected override void Update() {
@@ -67,7 +76,7 @@ public class LayersPanel : Panel {
 						}
 						if(ImGui.MenuItem("Add Child")) {
 							addPopup = true;
-							addLayerToGroup = layer;
+							addToGroupTarget = layer;
 						}
 					}
 					if(layer.Type == LayerType.Tiles) {
@@ -81,17 +90,17 @@ public class LayersPanel : Panel {
 					}
 					if(ImGui.MenuItem("Copy")) {
 						copyPopup = true;
-						copyLayer = layer;
+						copyTarget = layer;
 					}
 					if(ImGui.MenuItem("Delete")) {
 						deletePopup = true;
-						deleteLayer = layer;
+						deleteTarget = layer;
 					}
 					ImGui.EndPopup();
 				}
 			});
 		}
-		ImGui.EndChild();
+		ImGui.EndChild(); // layer-tree
 		
 		int selectedLayerIndex = -1;
 		if(Program.SelectedLayer != null) {
@@ -102,7 +111,7 @@ public class LayersPanel : Panel {
 
 		if(ImGui.Button(Codicons.DiffAdded)) {
 			addPopup = true;
-			addLayerToGroup = Program.SelectedScene.Root;
+			addToGroupTarget = Program.SelectedScene.Root;
 		}
 		ImGui.SetItemTooltip("Create");
 
@@ -111,14 +120,14 @@ public class LayersPanel : Panel {
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.Copy)) {
 			copyPopup = true;
-			copyLayer = Program.SelectedLayer;
+			copyTarget = Program.SelectedLayer;
 		}
 		ImGui.SetItemTooltip("Copy");
 
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.Trash)) {
 			deletePopup = true;
-			deleteLayer = Program.SelectedLayer;
+			deleteTarget = Program.SelectedLayer;
 		}
 		ImGui.SetItemTooltip("Delete");
 
@@ -163,18 +172,19 @@ public class LayersPanel : Panel {
 		ImGui.EndDisabled(); // Program.SelectedLayer == null
 		ImGui.EndDisabled(); // Program.SelectedScene == null
 		
-		AddPopup();
-		CopyPopup();
-		DeletePopup();
-		
-		if(moveOperation != null) {
-			Program.File.ApplyEdit(Program.SelectedScene, moveOperation);
-		}
-		
 		if(Program.SelectedLayer != null) {
 			Inspect(Program.SelectedLayer);
 		} else {
 			ImGui.Text("No layer selected...");
+		}
+		
+		AddPopup();
+		CopyPopup();
+		DeletePopup();
+		RenamePopup();
+		
+		if(moveOperation != null) {
+			Program.File.ApplyEdit(Program.SelectedScene, moveOperation);
 		}
 	}
 
@@ -383,22 +393,27 @@ public class LayersPanel : Panel {
 		
 		if(indent) ImGui.Unindent();
 	}
+	
+	public void OpenAddPopup(Layer group = null) {
+		addPopup = true;
+		addToGroupTarget = group ?? Program.SelectedScene.Root;
+	}
 
 	private void AddPopup() {
 		Scene scene = Program.SelectedScene;
 		if(addPopup) {
 			addPopup = false;
-			layerRenameBuffer = "";
-			if(addLayerToGroup != null) {
+			layerNameEdit = "";
+			if(addToGroupTarget != null) {
 				ImGui.OpenPopup("add-layer");
 			}
 		}
 		if(ImGui.BeginPopup("add-layer")) {
 			ImGui.Text("Create new layer");
-			ImGui.InputText("Name", ref layerRenameBuffer, Program.IMGUI_STRING_MAX);
-			bool invalidName = layerRenameBuffer == "";
+			ImGui.InputText("Name", ref layerNameEdit, Program.IMGUI_STRING_MAX);
+			bool invalidName = layerNameEdit == "";
 			foreach(var l in scene.GetAllLayers()) {
-				if(l.Name == layerRenameBuffer) {
+				if(l.Name == layerNameEdit) {
 					invalidName = true;
 					break;
 				}
@@ -429,8 +444,8 @@ public class LayersPanel : Panel {
 					2 => LayerType.Group
 				};
 				Layer layer = new Layer(scene, type);
-				layer.Name = layerRenameBuffer;
-				Program.File.ApplyEdit(this, new Layer.AddOperation(addLayerToGroup, layer, addLayerToGroup.ChildrenCount));
+				layer.Name = layerNameEdit;
+				Program.File.ApplyEdit(this, new Layer.AddOperation(addToGroupTarget, layer, addToGroupTarget.ChildrenCount));
 				Program.SetSelectedLayer(layer);
 				ImGui.CloseCurrentPopup();
 			}
@@ -441,35 +456,40 @@ public class LayersPanel : Panel {
 			}
 			ImGui.EndPopup();
 		} else {
-			addLayerToGroup = null;
+			addToGroupTarget = null;
 		}
+	}
+
+	public void OpenCopyPopup(Layer layer) {
+		copyPopup = true;
+		copyTarget = layer;
 	}
 
 	private void CopyPopup() {
 		if(copyPopup) {
 			copyPopup = false;
-			layerRenameBuffer = "";
-			if(copyLayer != null) {
+			layerNameEdit = "";
+			if(copyTarget != null) {
 				ImGui.OpenPopup("copy-layer");
 			}
 		}
 		if(ImGui.BeginPopup("copy-layer")) {
 			ImGui.Text("Copy selected layer");
 			ImGui.SetNextItemWidth(250);
-			ImGui.InputText("New Name", ref layerRenameBuffer, Program.IMGUI_STRING_MAX);
-			bool invalidName = layerRenameBuffer == "";
-			foreach(var l in copyLayer.Scene.GetAllLayers()) {
-				if(l.Name == layerRenameBuffer) {
+			ImGui.InputText("New Name", ref layerNameEdit, Program.IMGUI_STRING_MAX);
+			bool invalidName = layerNameEdit == "";
+			foreach(var l in copyTarget.Scene.GetAllLayers()) {
+				if(l.Name == layerNameEdit) {
 					invalidName = true;
 					break;
 				}
 			}
 			ImGui.BeginDisabled(invalidName);
 			if(ImGui.Button("Confirm")) {
-				Layer newLayer = new Layer(copyLayer.Scene, copyLayer.Type);
-				newLayer.Name = layerRenameBuffer;
-				Layer.Copy(copyLayer, newLayer);
-				Program.File.ApplyEdit(this, new Layer.AddOperation(copyLayer.Group, newLayer, copyLayer.Group.GetChildIndex(copyLayer) + 1));
+				Layer newLayer = new Layer(copyTarget.Scene, copyTarget.Type);
+				newLayer.Name = layerNameEdit;
+				Layer.Copy(copyTarget, newLayer);
+				Program.File.ApplyEdit(this, new Layer.AddOperation(copyTarget.Group, newLayer, copyTarget.Group.GetChildIndex(copyTarget) + 1));
 				Program.SetSelectedLayer(newLayer);
 				ImGui.CloseCurrentPopup();
 			}
@@ -480,21 +500,26 @@ public class LayersPanel : Panel {
 			}
 			ImGui.EndPopup();
 		} else {
-			copyLayer = null;
+			copyTarget = null;
 		}
+	}
+
+	public void OpenDeletePopup(Layer layer) {
+		deletePopup = true;
+		deleteTarget = layer;
 	}
 
 	private void DeletePopup() {
 		if(deletePopup) {
 			deletePopup = false;
-			if(deleteLayer != null) {
+			if(deleteTarget != null) {
 				ImGui.OpenPopup("delete-layer");
 			}
 		}
 		if(ImGui.BeginPopup("delete-layer")) {
 			ImGui.Text("Delete selected layer");
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(this, new Layer.RemoveOperation(deleteLayer.Group, deleteLayer));
+				Program.File.ApplyEdit(this, new Layer.RemoveOperation(deleteTarget.Group, deleteTarget));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.SameLine();
@@ -503,7 +528,46 @@ public class LayersPanel : Panel {
 			}
 			ImGui.EndPopup();
 		} else {
-			deleteLayer = null;
+			deleteTarget = null;
+		}
+	}
+	
+	public void OpenRenamePopup(Layer layer) {
+		renamePopup = true;
+		renameTarget = layer;
+	}
+
+	private void RenamePopup() {
+		if(renamePopup) {
+			renamePopup = false;
+			if(renameTarget != null) {
+				layerNameEdit = renameTarget.Name;
+				ImGui.OpenPopup("rename-layer");
+			}
+		}
+		if(ImGui.BeginPopup("rename-layer")) {
+			ImGui.Text("Rename selected layer");
+			if(ImGui.InputText("Name", ref layerNameEdit, Program.IMGUI_STRING_MAX)) { }
+			bool invalidName = layerNameEdit == "";
+			foreach(var l in renameTarget.Scene.GetAllLayers()) {
+				if(l.Name == layerNameEdit) {
+					invalidName = true;
+					break;
+				}
+			}
+			ImGui.BeginDisabled(invalidName);
+			if(ImGui.Button("Confirm")) {
+				Program.File.ApplyEdit(this, new Layer.RenameOperation(renameTarget, layerNameEdit));
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndDisabled();
+			ImGui.SameLine();
+			if(ImGui.Button("Cancel")) {
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndPopup();
+		} else {
+			renameTarget = null;
 		}
 	}
 
@@ -530,7 +594,7 @@ public class LayersPanel : Panel {
 		Vector3 col = layer.Color;
 		if(ImGui.ColorEdit3("Color", ref col)) {
 			if(colorEdit == null) {
-				colorEdit = Program.File.BeginEdit(this, new Layer.ColorOperation(layer));
+				colorEdit = Program.File.BeginEdit(new Layer.ColorOperation(layer));
 			}
 
 			colorEdit.GetData<Layer.ColorOperation>().NewColor = col;

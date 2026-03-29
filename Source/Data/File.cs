@@ -150,18 +150,28 @@ public class File {
 	
 	public void ApplyEdit(object? context, IFileEditOperation operation) {
 		if(operation == null) return;
-		var edit = BeginEdit(context, operation, operation.ApplyNextState, operation.ApplyPrevState);
+		var edit = BeginEdit(context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
+		EndEdit(ref edit);
+	}
+	
+	public void ApplyEdit(IFileEditOperation operation) {
+		if(operation == null) return;
+		var edit = BeginEdit(operation.Context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
 		EndEdit(ref edit);
 	}
 
-	public void ApplyEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo) {
+	public void ApplyEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo, Func<string> redoMessage = null, Func<string> undoMessage = null) {
 		if(redo == null || undo == null) throw new Exception("File edit needs an action & a reverse");
-		var edit = BeginEdit(context, data, redo, undo);
+		var edit = BeginEdit(context, data, redo, undo, redoMessage, undoMessage);
 		EndEdit(ref edit);
 	}
 	
 	public FileEditEntry BeginEdit(object? context, IFileEditOperation operation) {
 		return new FileEditEntry(context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
+	}
+	
+	public FileEditEntry BeginEdit(IFileEditOperation operation) {
+		return new FileEditEntry(operation.Context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
 	}
 
 	public FileEditEntry BeginEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo, Func<string> redoMessage = null, Func<string> undoMessage = null) {
@@ -204,6 +214,14 @@ public class File {
 		entry.Action.Invoke(entry);
 		MarkDirty();
 	}
+
+	public bool CanUndo() {
+		return editPointer > 0;
+	}
+
+	public bool CanRedo() {
+		return editPointer < editStack.Count;
+	}
 	
 	public void SetEditContext(object? context) {
 		editContext = context;
@@ -242,6 +260,7 @@ public class File {
 }
 
 public interface IFileEditOperation {
+	object? Context { get; }
 	void ApplyNextState(FileEditEntry entry);
 	void ApplyPrevState(FileEditEntry entry);
 	bool HasChanges();

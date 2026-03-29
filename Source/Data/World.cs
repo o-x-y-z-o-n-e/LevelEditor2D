@@ -25,8 +25,8 @@ public class World {
 
 	public int MaxTilesetSlots => maxTilesetSlots;
 
-	public IEnumerable<Tileset> Tilesets => tilesets;
-	public IEnumerable<Scene> Scenes => scenes;
+	public List<Tileset> Tilesets => tilesets;
+	public List<Scene> Scenes => scenes;
 	
 	public EntityCollection Templates => templates;
 

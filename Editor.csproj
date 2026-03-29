@@ -11,14 +11,12 @@
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-      <DefineConstants>TRACE
-GL</DefineConstants>
+      <DefineConstants>TRACE</DefineConstants>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DefineConstants>TRACE
-GL</DefineConstants>
+      <DefineConstants>TRACE</DefineConstants>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
@@ -104,10 +102,12 @@ GL</DefineConstants>
       <EmbeddedResource Include="Resources\JetBrainsMonoNL-Thin.ttf" />
       <None Remove="Fonts\JetBrainsMonoNL-ThinItalic.ttf" />
       <EmbeddedResource Include="Resources\JetBrainsMonoNL-ThinItalic.ttf" />
-      <None Remove="Resources\Icon.ico" />
-      <EmbeddedResource Include="Resources\Icon.ico" />
-      <None Remove="Resources\Icon.png" />
-      <EmbeddedResource Include="Resources\Icon.png" />
+      <EmbeddedResource Include="Resources\Icon.ico">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
+      <EmbeddedResource Include="Resources\Icon.png">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </EmbeddedResource>
     </ItemGroup>
 
 </Project>

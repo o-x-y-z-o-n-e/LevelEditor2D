@@ -181,6 +181,7 @@ public class Property {
 	}
 	
 	public class MoveOperation : IFileEditOperation {
+		public object? Context => collection;
 		private PropertyCollection collection;
 		private int index1;
 		private int index2;
@@ -201,6 +202,7 @@ public class Property {
 	}
 
 	public class AddOperation : IFileEditOperation {
+		public object? Context => collection;
 		private PropertyCollection collection;
 		private Property property;
 		public AddOperation(PropertyCollection collection, Property property) {
@@ -219,6 +221,7 @@ public class Property {
 	}
 
 	public class RemoveOperation : IFileEditOperation {
+		public object? Context => collection;
 		private PropertyCollection collection;
 		private Property property;
 		private int index;
@@ -239,7 +242,8 @@ public class Property {
 	}
 
 	public class ConvertOperation : IFileEditOperation {
-		
+		public object? Context => collection;
+		private PropertyCollection collection;
 		private Property property;
 		private PropertyType oldType;
 		private PropertyType newType;
@@ -283,7 +287,8 @@ public class Property {
 		public string GetNextStateMessage() => $"Convert property";
 		public string GetPrevStateMessage() => $"Undo convert property";
 		
-		public ConvertOperation(Property property, string newString) {
+		public ConvertOperation(PropertyCollection collection, Property property, string newString) {
+			this.collection = collection;
 			this.property = property;
 			this.oldType = property.Type;
 			this.oldString = property.String;
@@ -297,7 +302,8 @@ public class Property {
 			this.newBoolean = property.Boolean;
 		}
 		
-		public ConvertOperation(Property property, int newInteger) {
+		public ConvertOperation(PropertyCollection collection, Property property, int newInteger) {
+			this.collection = collection;
 			this.property = property;
 			this.oldType = property.Type;
 			this.oldString = property.String;
@@ -311,7 +317,8 @@ public class Property {
 			this.newBoolean = property.Boolean;
 		}
 		
-		public ConvertOperation(Property property, float newFloat) {
+		public ConvertOperation(PropertyCollection collection, Property property, float newFloat) {
+			this.collection = collection;
 			this.property = property;
 			this.oldType = property.Type;
 			this.oldString = property.String;
@@ -325,7 +332,8 @@ public class Property {
 			this.newBoolean = property.Boolean;
 		}
 		
-		public ConvertOperation(Property property, bool newBoolean) {
+		public ConvertOperation(PropertyCollection collection, Property property, bool newBoolean) {
+			this.collection = collection;
 			this.property = property;
 			this.oldType = property.Type;
 			this.oldString = property.String;

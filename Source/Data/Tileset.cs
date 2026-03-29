@@ -11,6 +11,8 @@ namespace L2D;
 
 public class Tileset {
 
+	public World World => file.World;
+
 	// TODO: fix size when not same as world tile size
 	
 	public string ID {
@@ -141,7 +143,7 @@ public class Tileset {
 		}
 		foreach(var tileElement in tilesetElement.Elements("tile")) {
 			int id = tileElement.Attribute("num").ParseAsInt();
-			var data = new TileData(id);
+			var data = new TileData(this, id);
 			foreach(var shapeElement in tileElement.Elements("shape")) {
 				Vector2 p = new(0);
 				Vector2 s = new(0);
@@ -295,7 +297,7 @@ public class Tileset {
 	public TileData AddTileData(int id) {
 		if(tileData.ContainsKey(id)) return tileData[id];
 		if(id < 1 || id > GetTileCount()) return null;
-		var data = new TileData(id);
+		var data = new TileData(this, id);
 		tileData.Add(id, data);
 		return data;
 	}
@@ -392,6 +394,7 @@ public class Tileset {
 	}
 	
 	public class AddOperation : IFileEditOperation {
+		public object? Context => world;
 		private World world;
 		private Tileset tileset;
 		private int index;
@@ -414,6 +417,7 @@ public class Tileset {
 	}
 
 	public class NameOperation : IFileEditOperation {
+		public object? Context => tileset.file.World;
 		private Tileset tileset;
 		private string oldValue;
 		private string newValue;
@@ -434,6 +438,7 @@ public class Tileset {
 	}
 	
 	public class GroupOperation : IFileEditOperation {
+		public object? Context => tileset.file.World;
 		private Tileset tileset;
 		private string oldValue;
 		private string newValue;
@@ -461,18 +466,21 @@ public class TileData {
 		get => shapes;
 		set => shapes = value;
 	}
+	private Tileset tileset;
 	private int tile;
 	private List<TileShape> shapes;
-	public TileData(int tile) {
+	public TileData(Tileset tileset, int tile) {
+		this.tileset = tileset;
 		this.tile = tile;
 		this.shapes = new List<TileShape>();
 	}
 	public class ShapeCountOperation : IFileEditOperation {
+		public object? Context => data.tileset;
 		public List<TileShape> NewList => newList;
 		private TileData data;
 		private List<TileShape> oldList;
 		private List<TileShape> newList;
-		public ShapeCountOperation(TileData data, Tileset tileset, int newCount) {
+		public ShapeCountOperation(TileData data, int newCount) {
 			this.data = data;
 			this.oldList = data.Shapes;
 			this.newList = new();
@@ -482,7 +490,7 @@ public class TileData {
 				i++;
 			}
 			while(i < newCount) {
-				this.newList.Add(new TileShape(new(0, 0), new(tileset.SizeX, tileset.SizeY)));
+				this.newList.Add(new TileShape(new(0, 0), new(data.tileset.SizeX, data.tileset.SizeY)));
 				i++;
 			}
 		}
@@ -497,6 +505,7 @@ public class TileData {
 		public string GetPrevStateMessage() => $"Undo shape count for tile [{data.tile}]";
 	}
 	public class ShapeEditOperation : IFileEditOperation {
+		public object? Context => data.tileset;
 		public TileShape NewShape => newShape;
 		private TileData data;
 		private int index;
@@ -595,6 +604,7 @@ public class PresetPattern {
 	}
 	
 	public class AddOperation : IFileEditOperation {
+		public object? Context => tileset;
 		private Tileset tileset;
 		private PresetPattern preset;
 		public AddOperation(Tileset tileset, PresetPattern preset) {
@@ -613,6 +623,7 @@ public class PresetPattern {
 	}
 	
 	public class MoveOperation : IFileEditOperation {
+		public object? Context => tileset;
 		private Tileset tileset;
 		private int oldIndex;
 		private int newIndex;
@@ -631,12 +642,13 @@ public class PresetPattern {
 			tileset.PresetPatterns.RemoveAt(newIndex);
 			tileset.PresetPatterns.Insert(oldIndex, preset);
 		}
-		public bool HasChanges() => true;
+		public bool HasChanges() => oldIndex != newIndex;
 		public string GetNextStateMessage() => $"Reorder presets in tileset [{tileset.ID}]";
 		public string GetPrevStateMessage() => $"Undo reorder presets in tileset [{tileset.ID}]";
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
+		public object? Context => tileset;
 		private Tileset tileset;
 		private PresetPattern preset;
 		private int index;
@@ -657,6 +669,7 @@ public class PresetPattern {
 	}
 	
 	public class NameOperation : IFileEditOperation {
+		public object? Context => preset.tileset;
 		private PresetPattern preset;
 		private string oldValue;
 		private string newValue;
@@ -677,6 +690,7 @@ public class PresetPattern {
 	}
 
 	public class TileOperation : IFileEditOperation {
+		public object? Context => preset.tileset;
 		private PresetPattern preset;
 		private int index;
 		private int oldTileID;
@@ -699,6 +713,7 @@ public class PresetPattern {
 	}
 	
 	public class ResizeOperation : IFileEditOperation {
+		public object? Context => preset.tileset;
 		private PresetPattern preset;
 		private int oldWidth;
 		private int oldHeight;
@@ -884,6 +899,7 @@ public class AutomapPattern {
 	}
 	
 	public class AddOperation : IFileEditOperation {
+		public object? Context => tileset;
 		private Tileset tileset;
 		private AutomapPattern automap;
 		public AddOperation(Tileset tileset, AutomapPattern automap) {
@@ -902,6 +918,7 @@ public class AutomapPattern {
 	}
 	
 	public class MoveOperation : IFileEditOperation {
+		public object? Context => tileset;
 		private Tileset tileset;
 		private int index1;
 		private int index2;
@@ -926,6 +943,7 @@ public class AutomapPattern {
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
+		public object? Context => tileset;
 		private Tileset tileset;
 		private AutomapPattern automap;
 		private int index;
@@ -946,19 +964,20 @@ public class AutomapPattern {
 	}
 	
 	public class NameOperation : IFileEditOperation {
-		private AutomapPattern pattern;
+		public object? Context => automap.tileset;
+		private AutomapPattern automap;
 		private string oldValue;
 		private string newValue;
-		public NameOperation(AutomapPattern pattern, string newValue) {
-			this.pattern = pattern;
-			this.oldValue = pattern.name;
+		public NameOperation(AutomapPattern automap, string newValue) {
+			this.automap = automap;
+			this.oldValue = automap.name;
 			this.newValue = newValue;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			pattern.name = newValue;
+			automap.name = newValue;
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			pattern.name = oldValue;
+			automap.name = oldValue;
 		}
 		public bool HasChanges() => oldValue != newValue;
 		public string GetNextStateMessage() => $"Rename automap from [{oldValue}] to [{newValue}]";
@@ -966,6 +985,7 @@ public class AutomapPattern {
 	}
 	
 	public class MaskTypeOperation : IFileEditOperation {
+		public object? Context => automap;
 		private AutomapPattern automap;
 		private AutomapMaskType oldValue;
 		private AutomapMaskType newValue;
@@ -986,6 +1006,7 @@ public class AutomapPattern {
 	}
 	
 	public class BitmaskOperation : IFileEditOperation {
+		public object? Context => automap;
 		public AutomapPattern Automap => automap;
 		public int TileID => tileID;
 		public bool Adding => adding;

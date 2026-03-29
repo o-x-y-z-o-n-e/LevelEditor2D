@@ -14,6 +14,8 @@ public class TilePickerPanel : Panel {
 
 	public TilePickerPanel() {
 		Title = $"{Codicons.Combine} Tile Picker";
+		multiSelect = false;
+		multiSelectOrigin = Vector2.Zero;
 		tilesetLinkTarget = -1;
 		automapBrushSize = 1;
 	}
@@ -55,9 +57,7 @@ public class TilePickerPanel : Panel {
 		if(ImGui.Button("Collapse All")) collapseAll = true;
 		ImGui.SameLine();
 		if(ImGui.Button("Expand All")) expandAll = true;
-		
 		ImGui.SameLine();
-
 		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize("Top").X - 12);
 		if(ImGui.Button("Top")) {
 			ImGui.SetNextWindowScroll(new(0,0));

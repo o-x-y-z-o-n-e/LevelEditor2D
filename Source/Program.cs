@@ -156,7 +156,7 @@ public static class Program {
 			gl = window.CreateOpenGL();
 			input = window.CreateInput();
 			
-			window.SetDefaultIcon();
+			// window.SetDefaultIcon();
 
 			ChangeWin32DarkMode(true);
 			// SetWin32Color(0x00261f1f); // doesn't work because microslop sucks :0

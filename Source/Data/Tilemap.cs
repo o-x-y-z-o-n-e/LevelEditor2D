@@ -479,7 +479,8 @@ public struct TileRef {
 }
 
 public class TileEditOperation : IFileEditOperation {
-		
+	public object? Context => tilemap.Scene;
+
 	public Tilemap Tilemap => tilemap;
 
 	private Tilemap tilemap;

@@ -232,6 +232,7 @@ public class Scene {
 	}
 	
 	public class AddOperation : IFileEditOperation {
+		public object? Context => world;
 		private World world;
 		private Scene scene;
 		public AddOperation(World world, Scene scene) {
@@ -253,26 +254,32 @@ public class Scene {
 	}
 	
 	public class MoveOperation : IFileEditOperation {
+		public object? Context => world;
 		private World world;
-		private int index1;
-		private int index2;
-		public MoveOperation(World world, int index1, int index2) {
+		private int oldIndex;
+		private int newIndex;
+		public MoveOperation(World world, int oldIndex, int newIndex) {
 			this.world = world;
-			this.index1 = index1;
-			this.index2 = index2;
+			this.oldIndex = oldIndex;
+			this.newIndex = newIndex;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			world.SwapScenes(index1, index2);
+			Scene scene = world.Scenes[oldIndex];
+			world.Scenes.RemoveAt(oldIndex);
+			world.Scenes.Insert(newIndex, scene);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			world.SwapScenes(index2, index1);
+			Scene scene = world.Scenes[newIndex];
+			world.Scenes.RemoveAt(newIndex);
+			world.Scenes.Insert(oldIndex, scene);
 		}
-		public bool HasChanges() => index1 != index2;
+		public bool HasChanges() => oldIndex != newIndex;
 		public string GetNextStateMessage() => $"Move scene order";
 		public string GetPrevStateMessage() => $"Undo move scene order";
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
+		public object? Context => world;
 		private World world;
 		private Scene scene;
 		private int index;
@@ -296,6 +303,7 @@ public class Scene {
 	}
 	
 	public class RenameOperation : IFileEditOperation {
+		public object? Context => scene.World;
 		private Scene scene;
 		private string oldName;
 		private string newName;
@@ -316,6 +324,7 @@ public class Scene {
 	}
 	
 	public class RepositionOperation : IFileEditOperation {
+		public object? Context => scene.World;
 		private Scene scene;
 		private Point oldPosition;
 		private Point newPosition;
@@ -338,6 +347,7 @@ public class Scene {
 	}
 
 	public class ResizeOperation : IFileEditOperation {
+		public object? Context => scene.World;
 		private Scene scene;
 		private Point oldSize;
 		private Point newSize;
@@ -439,6 +449,7 @@ public class TilesetLink {
 	}
 	
 	public class AddOperation : IFileEditOperation {
+		public object? Context => scene;
 		private Scene scene;
 		private TilesetLink link;
 		public AddOperation(Scene scene, TilesetLink link) {
@@ -459,6 +470,7 @@ public class TilesetLink {
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
+		public object? Context => scene;
 		private Scene scene;
 		private TilesetLink link;
 		private int index;
@@ -481,6 +493,7 @@ public class TilesetLink {
 	}
 	
 	public class MoveOperation : IFileEditOperation {
+		public object? Context => scene;
 		private Scene scene;
 		private int index1;
 		private int index2;
@@ -505,6 +518,7 @@ public class TilesetLink {
 	}
 	
 	public class SlotOperation : IFileEditOperation {
+		public object? Context => scene;
 		private Scene scene;
 		private TilesetLink link;
 		private int oldSlot;
@@ -529,6 +543,7 @@ public class TilesetLink {
 	}
 	
 	public class TilesetOperation : IFileEditOperation {
+		public object? Context => scene;
 		private Scene scene;
 		private TilesetLink link;
 		private Tileset oldTileset;
