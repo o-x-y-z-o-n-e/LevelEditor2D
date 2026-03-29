@@ -43,8 +43,9 @@ public class TileBrushTool : CanvasTool {
 	}
 
 	public void SetAutomap(AutomapPattern automap, int w = 1, int h = 1) {
-		this.automap = automap;
 		SetSize(int.Max(w, 1), int.Max(h, 1), true);
+		this.automap = automap;
+		this.preset = null;
 		int tilesetSlot = 0;
 		foreach(var link in tilemap.Scene.Tilesets) {
 			if(link.Tileset == automap.Tileset) {
@@ -61,8 +62,9 @@ public class TileBrushTool : CanvasTool {
 	}
 
 	public void SetPreset(PresetPattern preset) {
-		this.preset = preset;
 		SetSize(preset.Width, preset.Height);
+		this.preset = preset;
+		this.automap = null;
 		int tilesetSlot = 0;
 		foreach(var link in tilemap.Scene.Tilesets) {
 			if(link.Tileset == preset.Tileset) {
@@ -83,6 +85,8 @@ public class TileBrushTool : CanvasTool {
 		width = w;
 		height = h;
 		resizing = !set;
+		automap = null;
+		preset = null;
 		
 		if(resizing) return;
 		
@@ -95,8 +99,6 @@ public class TileBrushTool : CanvasTool {
 
 	public void SetTile(int x, int y, int tileID, int tilesetSlot) {
 		if(resizing || x < 0 || y < 0 || x >= tilemap.Width || y >= tilemap.Height) return;
-		automap = null;
-		preset = null;
 		tilemap.Set(x, y, tileID, tilesetSlot);
 	}
 

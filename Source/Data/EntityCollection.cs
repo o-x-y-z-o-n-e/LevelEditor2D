@@ -291,17 +291,17 @@ public class Entity {
 			this.entity = entity;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.collection.Insert(op.entity, op.collection.Count);
+			collection.Insert(entity, collection.Count);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.collection.Remove(op.entity);
-			if(Program.SelectedEntity == op.entity) {
+			collection.Remove(entity);
+			if(Program.SelectedEntity == entity) {
 				Program.SetSelectedEntity(null);
 			}
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Add entity";
+		public string GetPrevStateMessage() => $"Undo add entity";
 	}
 
 	public class MoveOperation : IFileEditOperation {
@@ -314,14 +314,14 @@ public class Entity {
 			this.index2 = index2;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.collection.Move(op.index1, op.index2);
+			collection.Move(index1, index2);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.collection.Move(op.index2, op.index1);
+			collection.Move(index2, index1);
 		}
 		public bool HasChanges() => index1 != index2;
+		public string GetNextStateMessage() => $"Reorder entities";
+		public string GetPrevStateMessage() => $"Undo reorder entities";
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
@@ -334,17 +334,17 @@ public class Entity {
 			this.index = collection.IndexOf(entity);
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.collection.Remove(op.entity);
-			if(Program.SelectedEntity == op.entity) {
+			collection.Remove(entity);
+			if(Program.SelectedEntity == entity) {
 				Program.SetSelectedEntity(null);
 			}
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.collection.Insert(op.entity, op.index);
+			collection.Insert(entity, index);
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Remove entity";
+		public string GetPrevStateMessage() => $"Undo remove entity";
 	}
 	
 	public class NameOperation : IFileEditOperation {
@@ -368,6 +368,8 @@ public class Entity {
 			entity.SetName(oldName);
 		}
 		public bool HasChanges() => oldName != newName;
+		public string GetNextStateMessage() => $"Rename entity";
+		public string GetPrevStateMessage() => $"Undo rename entity";
 	}
 	
 	public class TypeOperation : IFileEditOperation {
@@ -391,6 +393,8 @@ public class Entity {
 			entity.SetType(oldType);
 		}
 		public bool HasChanges() => oldType != newType;
+		public string GetNextStateMessage() => $"Change entity type";
+		public string GetPrevStateMessage() => $"Undo change entity type";
 	}
 	
 	public class PositionOperation : IFileEditOperation {
@@ -414,6 +418,8 @@ public class Entity {
 			entity.SetPosition(oldPosition);
 		}
 		public bool HasChanges() => oldPosition != newPosition;
+		public string GetNextStateMessage() => $"Position entity";
+		public string GetPrevStateMessage() => $"Undo position entity";
 	}
 	
 	public class SizeOperation : IFileEditOperation {
@@ -437,6 +443,41 @@ public class Entity {
 			entity.SetSize(oldSize);
 		}
 		public bool HasChanges() => oldSize != newSize;
+		public string GetNextStateMessage() => $"Resize entity";
+		public string GetPrevStateMessage() => $"Undo resize entity";
+	}
+	
+	public class TransformOperation : IFileEditOperation {
+		public Entity Entity => entity;
+		private Entity entity;
+		private Vector2? oldPosition;
+		private Vector2? oldSize;
+		private Vector2? newPosition;
+		private Vector2? newSize;
+		public TransformOperation(Entity entity) {
+			this.entity = entity;
+			this.oldPosition = entity.OwnPosition;
+			this.oldSize = entity.OwnSize;
+			this.newPosition = this.oldPosition;
+			this.newSize = this.oldSize;
+		}
+		public void SetPosition(Vector2 position) {
+			newPosition = position;
+		}
+		public void SetSize(Vector2 size) {
+			newSize = size;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			entity.SetPosition(newPosition);
+			entity.SetSize(newSize);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			entity.SetPosition(oldPosition);
+			entity.SetSize(oldSize);
+		}
+		public bool HasChanges() => oldPosition != newPosition || oldSize != newSize;
+		public string GetNextStateMessage() => $"Transform entity";
+		public string GetPrevStateMessage() => $"Undo transform entity";
 	}
 
 }

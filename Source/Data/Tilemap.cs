@@ -533,6 +533,10 @@ public class TileEditOperation : IFileEditOperation {
 			tilemap.Set(changes[i].X, changes[i].Y, changes[i].Prev);
 		}
 	}
+	
+	public string GetNextStateMessage() => $"Edit tilemap in scene [{tilemap.Scene.ID}]";
+	
+	public string GetPrevStateMessage() => $"Undo edit tilemap in scene [{tilemap.Scene.ID}]";
 
 	public struct TileStateChange {
 		public int X;

@@ -289,7 +289,7 @@ public static class Program {
 					if(file.WillUndoChangeContext()) {
 						Program.ConfirmModal.Open(
 							"Undo changes",
-							"DIFFERENT CONTEXT MESSAGE",
+							file.GetUndoMessage(),
 							file.Undo
 						);
 					} else {
@@ -301,7 +301,7 @@ public static class Program {
 					if(file.WillRedoChangeContext()) {
 						Program.ConfirmModal.Open(
 							"Redo changes",
-							"DIFFERENT CONTEXT MESSAGE",
+							file.GetRedoMessage(),
 							file.Redo
 						);
 					} else {

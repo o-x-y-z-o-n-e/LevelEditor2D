@@ -239,17 +239,17 @@ public class Scene {
 			this.scene = scene;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.world.InsertScene(op.scene, op.world.SceneCount);
+			world.InsertScene(scene, world.SceneCount);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.world.RemoveScene(op.scene);
-			if(op.scene == Program.SelectedScene) {
+			world.RemoveScene(scene);
+			if(scene == Program.SelectedScene) {
 				Program.SetSelectedScene(null);
 			}
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Add scene: {scene.ID}";
+		public string GetPrevStateMessage() => $"Undo add scene: {scene.ID}";
 	}
 	
 	public class MoveOperation : IFileEditOperation {
@@ -262,14 +262,14 @@ public class Scene {
 			this.index2 = index2;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.world.SwapScenes(op.index1, op.index2);
+			world.SwapScenes(index1, index2);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.world.SwapScenes(op.index2, op.index1);
+			world.SwapScenes(index2, index1);
 		}
 		public bool HasChanges() => index1 != index2;
+		public string GetNextStateMessage() => $"Move scene order";
+		public string GetPrevStateMessage() => $"Undo move scene order";
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
@@ -282,17 +282,17 @@ public class Scene {
 			this.index = world.GetSceneIndex(scene);
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.world.RemoveScene(op.scene);
-			if(op.scene == Program.SelectedScene) {
+			world.RemoveScene(scene);
+			if(scene == Program.SelectedScene) {
 				Program.SetSelectedScene(null);
 			}
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.world.InsertScene(op.scene, op.index);
+			world.InsertScene(scene, index);
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Remove scene: {scene.ID}";
+		public string GetPrevStateMessage() => $"Undo remove scene: {scene.ID}";
 	}
 	
 	public class RenameOperation : IFileEditOperation {
@@ -305,14 +305,14 @@ public class Scene {
 			this.newName = newName;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RenameOperation>();
-			op.scene.ID = op.newName;
+			scene.ID = newName;
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RenameOperation>();
-			op.scene.ID = op.oldName;
+			scene.ID = oldName;
 		}
 		public bool HasChanges() => oldName != newName;
+		public string GetNextStateMessage() => $"Rename scene from '{oldName}' to '{newName}'";
+		public string GetPrevStateMessage() => $"Undo rename scene from '{oldName}' to '{newName}'";
 	}
 	
 	public class RepositionOperation : IFileEditOperation {
@@ -325,16 +325,16 @@ public class Scene {
 			this.newPosition = newPosition;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RepositionOperation>();
-			op.scene.WorldX = op.newPosition.X;
-			op.scene.WorldY = op.newPosition.Y;
+			scene.WorldX = newPosition.X;
+			scene.WorldY = newPosition.Y;
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RepositionOperation>();
-			op.scene.WorldX = op.oldPosition.X;
-			op.scene.WorldY = op.oldPosition.Y;
+			scene.WorldX = oldPosition.X;
+			scene.WorldY = oldPosition.Y;
 		}
 		public bool HasChanges() => oldPosition != newPosition;
+		public string GetNextStateMessage() => $"Position scene: {scene.ID}";
+		public string GetPrevStateMessage() => $"Undo position scene: {scene.ID}";
 	}
 
 	public class ResizeOperation : IFileEditOperation {
@@ -377,6 +377,8 @@ public class Scene {
 			}
 		}
 		public bool HasChanges() => oldSize != newSize;
+		public string GetNextStateMessage() => $"Resize scene: {scene.ID}";
+		public string GetPrevStateMessage() => $"Undo resize scene: {scene.ID}";
 	}
 	
 }
@@ -444,16 +446,16 @@ public class TilesetLink {
 			this.link = link;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.scene.Tilesets.Add(op.link);
-			op.scene.MarkTilemapsAsDirty();
+			scene.Tilesets.Add(link);
+			scene.MarkTilemapsAsDirty();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.scene.Tilesets.Remove(op.link);
-			op.scene.MarkTilemapsAsDirty();
+			scene.Tilesets.Remove(link);
+			scene.MarkTilemapsAsDirty();
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Add tileset link to scene [{scene.ID}]";
+		public string GetPrevStateMessage() => $"Undo add tileset link to scene [{scene.ID}]";
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
@@ -466,16 +468,16 @@ public class TilesetLink {
 			this.index = index;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.scene.Tilesets.RemoveAt(op.index);
-			op.scene.MarkTilemapsAsDirty();
+			scene.Tilesets.RemoveAt(index);
+			scene.MarkTilemapsAsDirty();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.scene.Tilesets.Insert(op.index, op.link);
-			op.scene.MarkTilemapsAsDirty();
+			scene.Tilesets.Insert(index, link);
+			scene.MarkTilemapsAsDirty();
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Remove tileset link from scene [{scene.ID}]";
+		public string GetPrevStateMessage() => $"Undo remove tileset link from scene [{scene.ID}]";
 	}
 	
 	public class MoveOperation : IFileEditOperation {
@@ -488,18 +490,18 @@ public class TilesetLink {
 			this.index2 = index2;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			var t = op.scene.Tilesets[op.index1];
-			op.scene.Tilesets[op.index1] = op.scene.Tilesets[op.index2];
-			op.scene.Tilesets[op.index2] = t;
+			var t = scene.Tilesets[index1];
+			scene.Tilesets[index1] = scene.Tilesets[index2];
+			scene.Tilesets[index2] = t;
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			var t = op.scene.Tilesets[op.index2];
-			op.scene.Tilesets[op.index2] = op.scene.Tilesets[op.index1];
-			op.scene.Tilesets[op.index1] = t;
+			var t = scene.Tilesets[index2];
+			scene.Tilesets[index2] = scene.Tilesets[index1];
+			scene.Tilesets[index1] = t;
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Reorder tileset links in scene [{scene.ID}]";
+		public string GetPrevStateMessage() => $"Undo reorder tileset links in scene [{scene.ID}]";
 	}
 	
 	public class SlotOperation : IFileEditOperation {
@@ -514,16 +516,16 @@ public class TilesetLink {
 			this.newSlot = slot;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<SlotOperation>();
-			op.link.Slot = op.newSlot;
-			op.scene.MarkTilemapsAsDirty();
+			link.Slot = newSlot;
+			scene.MarkTilemapsAsDirty();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<SlotOperation>();
-			op.link.Slot = op.oldSlot;
-			op.scene.MarkTilemapsAsDirty();
+			link.Slot = oldSlot;
+			scene.MarkTilemapsAsDirty();
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Change tileset link slot in scene [{scene.ID}]";
+		public string GetPrevStateMessage() => $"Undo tileset link slot in scene [{scene.ID}]";
 	}
 	
 	public class TilesetOperation : IFileEditOperation {
@@ -538,15 +540,15 @@ public class TilesetLink {
 			this.newTileset = tileset;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<TilesetOperation>();
-			op.link.Tileset = op.newTileset;
-			op.scene.MarkTilemapsAsDirty();
+			link.Tileset = newTileset;
+			scene.MarkTilemapsAsDirty();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<TilesetOperation>();
-			op.link.Tileset = op.oldTileset;
-			op.scene.MarkTilemapsAsDirty();
+			link.Tileset = oldTileset;
+			scene.MarkTilemapsAsDirty();
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Change tileset link in scene [{scene.ID}]";
+		public string GetPrevStateMessage() => $"Undo tileset link in scene [{scene.ID}]";
 	}
 }

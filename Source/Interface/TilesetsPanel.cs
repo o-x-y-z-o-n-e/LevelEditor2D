@@ -574,7 +574,7 @@ public class TilesetsPanel : Panel {
 							}
 
 							var op = automapBitmaskEdit?.GetData<AutomapPattern.BitmaskOperation>();
-							if(op == null || op.Pattern != selectedAutomapPattern || op.TileID != hoveredTile) {
+							if(op == null || op.Automap != selectedAutomapPattern || op.TileID != hoveredTile) {
 								bool adding = (bitmask & (1 << ib)) == 0;
 								op = new AutomapPattern.BitmaskOperation(selectedAutomapPattern, hoveredTile, adding);
 								automapBitmaskEdit = Program.File.BeginEdit(selectedAutomapPattern, op);

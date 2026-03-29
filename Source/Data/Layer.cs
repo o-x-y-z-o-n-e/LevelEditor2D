@@ -258,24 +258,8 @@ public class Layer {
 			}
 		}
 		public bool HasChanges() => true;
-	}
-
-	public class SwapOperation : IFileEditOperation {
-		private Layer group;
-		private int index1;
-		private int index2;
-		public SwapOperation(Layer group, int index1, int index2) {
-			this.group = group;
-			this.index1 = index1;
-			this.index2 = index2;
-		}
-		public void ApplyNextState(FileEditEntry entry) {
-			group.SwapChildren(index1, index2);
-		}
-		public void ApplyPrevState(FileEditEntry entry) {
-			group.SwapChildren(index2, index1);
-		}
-		public bool HasChanges() => index1 != index2;
+		public string GetNextStateMessage() => $"Add layer [{layer.name}] to scene [{group.scene.ID}]";
+		public string GetPrevStateMessage() => $"Undo add layer [{layer.name}] to scene [{group.scene.ID}]";
 	}
 	
 	public class MoveOperation : IFileEditOperation {
@@ -300,6 +284,8 @@ public class Layer {
 			oldGroup.AddChild(layer, oldIndex);
 		}
 		public bool HasChanges() => oldGroup != newGroup || oldIndex != newIndex;
+		public string GetNextStateMessage() => $"Reorder layers in scene [{oldGroup.scene.ID}]";
+		public string GetPrevStateMessage() => $"Undo reorder layers in scene [{oldGroup.scene.ID}]";
 	}
 	
 	public class VisiblityOperation : IFileEditOperation {
@@ -312,14 +298,14 @@ public class Layer {
 			this.newValue = newValue;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<VisiblityOperation>();
-			op.layer.Visible = op.newValue;
+			layer.Visible = newValue;
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<VisiblityOperation>();
-			op.layer.Visible = op.oldValue;
+			layer.Visible = oldValue;
 		}
 		public bool HasChanges() => oldValue != newValue;
+		public string GetNextStateMessage() => $"Change visiblity for layer [{layer.Name}]";
+		public string GetPrevStateMessage() => $"Undo change visiblity for layer [{layer.Name}]";
 	}
 	
 	public class RenameOperation : IFileEditOperation {
@@ -332,14 +318,14 @@ public class Layer {
 			this.newName = newName;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RenameOperation>();
-			op.layer.Name = op.newName;
+			layer.Name = newName;
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RenameOperation>();
-			op.layer.Name = op.oldName;
+			layer.Name = oldName;
 		}
 		public bool HasChanges() => oldName != newName;
+		public string GetNextStateMessage() => $"Rename layer from [{oldName}] to [{newName}]";
+		public string GetPrevStateMessage() => $"Undo rename layer from [{oldName}] to [{newName}]";
 	}
 	
 	public class RemoveOperation : IFileEditOperation {
@@ -361,33 +347,29 @@ public class Layer {
 			group.AddChild(layer, index);
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Remove layer [{layer.name}] from scene [{group.scene.ID}]";
+		public string GetPrevStateMessage() => $"Undo remove layer [{layer.name}] from scene [{group.scene.ID}]";
 	}
 
 	public class ColorOperation : IFileEditOperation {
-
 		public ref Vector3 NewColor => ref newColor;
-
 		private Layer layer;
 		private Vector3 oldColor;
 		private Vector3 newColor;
-		
 		public ColorOperation(Layer layer) {
 			this.layer = layer;
 			this.oldColor = layer.Color;
 			this.newColor = layer.Color;
 		}
-		
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<ColorOperation>();
-			op.layer.Color = op.newColor;
+			layer.Color = newColor;
 		}
-		
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<ColorOperation>();
-			op.layer.Color = op.oldColor;
+			layer.Color = oldColor;
 		}
-		
 		public bool HasChanges() => oldColor != newColor;
+		public string GetNextStateMessage() => $"Color layer [{layer.name}]";
+		public string GetPrevStateMessage() => $"Undo color layer [{layer.name}]";
 	}
 	
 }

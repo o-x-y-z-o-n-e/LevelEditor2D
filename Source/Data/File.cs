@@ -161,11 +161,11 @@ public class File {
 	}
 	
 	public FileEditEntry BeginEdit(object? context, IFileEditOperation operation) {
-		return new FileEditEntry(context, operation.ApplyNextState, operation.ApplyPrevState, operation);
+		return new FileEditEntry(context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
 	}
 
-	public FileEditEntry BeginEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo) {
-		return new FileEditEntry(context, redo, undo, data);
+	public FileEditEntry BeginEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo, Func<string> redoMessage = null, Func<string> undoMessage = null) {
+		return new FileEditEntry(context, data, redo, undo, redoMessage, undoMessage);
 	}
 
 	public void EndEdit(ref FileEditEntry edit, bool discard = false) {
@@ -213,6 +213,16 @@ public class File {
 		return editContext;
 	}
 
+	public string GetUndoMessage() {
+		if(editPointer == 0) return "";
+		return editStack[editPointer - 1].UndoMessage?.Invoke() ?? "";
+	}
+
+	public string GetRedoMessage() {
+		if(editPointer == editStack.Count) return "";
+		return editStack[editPointer].RedoMessage?.Invoke() ?? "";
+	}
+
 	public bool WillUndoChangeContext() {
 		if(editPointer == 0) return false;
 		return editContext != editStack[editPointer - 1].Context;
@@ -235,28 +245,29 @@ public interface IFileEditOperation {
 	void ApplyNextState(FileEditEntry entry);
 	void ApplyPrevState(FileEditEntry entry);
 	bool HasChanges();
+	string GetNextStateMessage();
+	string GetPrevStateMessage();
 }
 
 public class FileEditEntry {
 	public object? Context => context;
 	public Action<FileEditEntry> Action => action;
 	public Action<FileEditEntry> Reverse => reverse;
+	public Func<string> RedoMessage => redoMessage;
+	public Func<string> UndoMessage => undoMessage;
 	private object? context;
+	private object? data;
 	private Action<FileEditEntry> action;
 	private Action<FileEditEntry> reverse;
-	private object? data;
-	public FileEditEntry(object? context, Action<FileEditEntry> action, Action<FileEditEntry> reverse, object? data) {
+	private Func<string> redoMessage;
+	private Func<string> undoMessage;
+	public FileEditEntry(object? context, object? data, Action<FileEditEntry> action, Action<FileEditEntry> reverse, Func<string> redoMessage, Func<string> undoMessage) {
 		this.context = context;
+		this.data = data;
 		this.action = action;
 		this.reverse = reverse;
-		this.data = data;
+		this.redoMessage = redoMessage;
+		this.undoMessage = undoMessage;
 	}
-	// internal void SetActions(Action<FileEditEntry> action, Action<FileEditEntry> reverse) {
-	// 	this.action = action;
-	// 	this.reverse = reverse;
-	// }
-	// internal void SetData(object? data) {
-	// 	this.data = data;
-	// }
 	public T? GetData<T>() => (T?)data;
 }

@@ -190,14 +190,14 @@ public class Property {
 			this.index2 = index2;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.collection.Move(op.index1, op.index2);
+			collection.Move(index1, index2);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<MoveOperation>();
-			op.collection.Move(op.index2, op.index1);
+			collection.Move(index2, index1);
 		}
 		public bool HasChanges() => index1 != index2;
+		public string GetNextStateMessage() => $"Reorder properties";
+		public string GetPrevStateMessage() => $"Undo reorder properties";
 	}
 
 	public class AddOperation : IFileEditOperation {
@@ -208,14 +208,14 @@ public class Property {
 			this.property = property;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.collection.Insert(op.property, op.collection.Count);
+			collection.Insert(property, collection.Count);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<AddOperation>();
-			op.collection.Remove(op.collection.Count - 1);
+			collection.Remove(collection.Count - 1);
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Add property";
+		public string GetPrevStateMessage() => $"Undo add property";
 	}
 
 	public class RemoveOperation : IFileEditOperation {
@@ -228,14 +228,14 @@ public class Property {
 			this.index = collection.IndexOf(property);
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.collection.Remove(op.index);
+			collection.Remove(index);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<RemoveOperation>();
-			op.collection.Insert(op.property, op.index);
+			collection.Insert(property, index);
 		}
 		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Remove property";
+		public string GetPrevStateMessage() => $"Undo remove property";
 	}
 
 	public class ConvertOperation : IFileEditOperation {
@@ -253,34 +253,35 @@ public class Property {
 		private bool newBoolean;
 
 		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<ConvertOperation>();
-			op.property.Type = op.newType;
-			switch(op.newType) {
+			property.Type = newType;
+			switch(newType) {
 				case PropertyType.String:
-					op.property.String = op.newString;
+					property.String = newString;
 					break;
 				case PropertyType.Integer:
-					op.property.Integer = op.newInteger;
+					property.Integer = newInteger;
 					break;
 				case PropertyType.Float:
-					op.property.Float = op.newFloat;
+					property.Float = newFloat;
 					break;
 				case PropertyType.Boolean:
-					op.property.Boolean = op.newBoolean;
+					property.Boolean = newBoolean;
 					break;
 			}
 		}
 		
 		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<ConvertOperation>();
-			op.property.Type = op.oldType;
-			op.property.String = op.oldString;
-			op.property.Integer = op.oldInteger;
-			op.property.Float = op.oldFloat;
-			op.property.Boolean = op.oldBoolean;
+			property.Type = oldType;
+			property.String = oldString;
+			property.Integer = oldInteger;
+			property.Float = oldFloat;
+			property.Boolean = oldBoolean;
 		}
 		
 		public bool HasChanges() => oldType != newType;
+		
+		public string GetNextStateMessage() => $"Convert property";
+		public string GetPrevStateMessage() => $"Undo convert property";
 		
 		public ConvertOperation(Property property, string newString) {
 			this.property = property;

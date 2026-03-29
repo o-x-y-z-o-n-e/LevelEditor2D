@@ -74,7 +74,7 @@ public class EntityEditTool : CanvasTool {
 					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
 					
 					if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-						edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+						edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 						dragMode = EntityEditMode.Move;
 						dragOrigin = mPos;
 					}
@@ -93,7 +93,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+								edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeLeft;
 								dragOrigin = mPos;
 							}
@@ -108,7 +108,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+								edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeRight;
 								dragOrigin = mPos;
 							}
@@ -123,7 +123,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+								edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeTop;
 								dragOrigin = mPos;
 							}
@@ -138,7 +138,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+								edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeBottom;
 								dragOrigin = mPos;
 							}
@@ -153,7 +153,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+								edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeLeftTop;
 								dragOrigin = mPos;
 							}
@@ -168,7 +168,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+								edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeRightTop;
 								dragOrigin = mPos;
 							}
@@ -183,7 +183,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+								edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeLeftBottom;
 								dragOrigin = mPos;
 							}
@@ -198,7 +198,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(Program.CanvasPanel, new EditOperation(entity));
+								edit = Program.File.BeginEdit(Program.CanvasPanel, new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeRightBottom;
 								dragOrigin = mPos;
 							}
@@ -212,7 +212,7 @@ public class EntityEditTool : CanvasTool {
 		}
 		
 		if(edit != null) {
-			var op = edit.GetData<EditOperation>();
+			var op = edit.GetData<Entity.TransformOperation>();
 			var dragEntity = op.Entity;
 			Vector2 drag = (mPos - dragOrigin) / zoom;
 			if(!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
@@ -367,39 +367,6 @@ public class EntityEditTool : CanvasTool {
 		}
 		
 		ImGui.PopID();
-	}
-
-	public class EditOperation : IFileEditOperation {
-		public Entity Entity => entity;
-		private Entity entity;
-		private Vector2? oldPosition;
-		private Vector2? oldSize;
-		private Vector2? newPosition;
-		private Vector2? newSize;
-		public EditOperation(Entity entity) {
-			this.entity = entity;
-			this.oldPosition = entity.OwnPosition;
-			this.oldSize = entity.OwnSize;
-			this.newPosition = this.oldPosition;
-			this.newSize = this.oldSize;
-		}
-		public void SetPosition(Vector2 position) {
-			newPosition = position;
-		}
-		public void SetSize(Vector2 size) {
-			newSize = size;
-		}
-		public void ApplyNextState(FileEditEntry entry) {
-			var op = entry.GetData<EditOperation>();
-			op.entity.SetPosition(op.newPosition);
-			op.entity.SetSize(op.newSize);
-		}
-		public void ApplyPrevState(FileEditEntry entry) {
-			var op = entry.GetData<EditOperation>();
-			op.entity.SetPosition(op.oldPosition);
-			op.entity.SetSize(op.oldSize);
-		}
-		public bool HasChanges() => oldPosition != newPosition || oldSize != newSize;
 	}
 
 }
