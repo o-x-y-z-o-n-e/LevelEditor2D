@@ -92,6 +92,7 @@ public class MenuBar {
 			if(ImGui.MenuItem("Settings")) {
 				// TODO
 			}
+			ImGui.SetItemTooltip("TODO");
 			ImGui.EndDisabled();
 			ImGui.EndMenu();
 		}
@@ -163,9 +164,11 @@ public class MenuBar {
 			if(ImGui.MenuItem("Copy", "Ctrl+C")) {
 				// TODO
 			}
+			ImGui.SetItemTooltip("TODO");
 			if(ImGui.MenuItem("Paste", "Ctrl+V")) {
 				// TODO
 			}
+			ImGui.SetItemTooltip("TODO");
 			ImGui.EndDisabled();
 			ImGui.EndMenu(); // Edit
 		}
@@ -180,9 +183,11 @@ public class MenuBar {
 			if(ImGui.MenuItem("About")) {
 				// TODO
 			}
+			ImGui.SetItemTooltip("TODO");
 			if(ImGui.MenuItem("Check for Updates")) {
 				// TODO
 			}
+			ImGui.SetItemTooltip("TODO");
 			ImGui.EndDisabled();
 			ImGui.EndMenu(); // Help
 		}

@@ -1,0 +1,5 @@
+<world version="0.1.0" name="pico-8-city" tile_width="8" tile_height="8">
+  <templates />
+  <tilesets />
+  <scenes />
+</world>

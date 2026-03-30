@@ -66,6 +66,36 @@ public class Texture {
 		}
 	}
 	
+	public static Texture LoadFromPixels(byte[] pixels, int width, int height) {
+		try {
+			Texture texture = new Texture(width, height);
+
+			Program.GL.BindTexture(TextureTarget.Texture2D, texture.handle);
+
+			Program.GL.TexImage2D(
+				TextureTarget.Texture2D,
+				0,
+				InternalFormat.Rgba,
+				(uint)width,
+				(uint)height,
+				0,
+				PixelFormat.Rgba,
+				PixelType.UnsignedByte,
+				new ReadOnlySpan<byte>(pixels)
+			);
+
+			Program.GL.TexParameterI(GLEnum.Texture2D, GLEnum.TextureMinFilter, (int)GLEnum.Nearest);
+			Program.GL.TexParameterI(GLEnum.Texture2D, GLEnum.TextureMagFilter, (int)GLEnum.Nearest);
+
+			Program.GL.BindTexture(TextureTarget.Texture2D, 0);
+
+			return texture;
+		} catch(Exception e) {
+			Log.Error(e, "Failed to load texture from memory");
+			return null;
+		}
+	}
+	
 	public void Bind() {
 		Program.GL.BindTexture(GLEnum.Texture2D, handle);
 	}

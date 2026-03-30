@@ -1,0 +1,5 @@
+<world version="0.1.0" name="tiny-town" tile_width="16" tile_height="16">
+  <templates />
+  <tilesets />
+  <scenes />
+</world>

@@ -101,10 +101,8 @@ public class CanvasPanel : Panel {
 		drawList.AddRectFilled(canvas_p0, canvas_p1, Color.FromArgb(255, 50, 50, 50).GetPackedValue());
 		drawList.AddRect(canvas_p0, canvas_p1, Color.FromArgb(255, 180, 180, 180).GetPackedValue());
 		
-		// ImGui.InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags.MouseButtonRight);
 		ImGui.Dummy(canvas_sz);
 		isHovered = ImGui.IsItemHovered();  // Hovered
-		//isPressed = ImGui.IsItemActive();   // Held
 
 		float zoom = GetZoom();
 		
@@ -128,28 +126,49 @@ public class CanvasPanel : Panel {
 		bool movingCamera = false;
 		
 		if(isHovered) {
-			// ImGui.SetMouseCursor((ImGuiMouseCursor)10);
-			// if(ImGui.IsMouseDragging(ImGuiMouseButton.Middle, -1.0F)) {
 			if(ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
 				movingCamera = true;
 				ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
 				camera.X += io.MouseDelta.X / zoom;
 				camera.Y += io.MouseDelta.Y / zoom;
 			}
-			zooming += io.MouseWheel;
 			if(io.MouseWheel != 0.0F) {
-				zooming = float.Clamp(float.Round(zooming), ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
-			}
-		}
+				Matrix4x4.Invert(transform, out var inv1);
+				Vector2 mp = ImGui.GetMousePos();
+				Vector2 csp = canvas_p0 + canvas_sz / 2.0F;
+				Vector2 d1 = (mp - csp) * zoom;
+				
+				
+				Vector2 mp1 = Vector2.Transform(ImGui.GetMousePos(), inv1);
+				
+				zooming = float.Clamp(float.Round(zooming + io.MouseWheel), ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
 
-		// Vector2 drag_delta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Right);
-		// if(drag_delta.X == 0.0f && drag_delta.Y == 0.0f) {
-		// 	ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
-		// }
-		// if(ImGui.BeginPopup("context")) {
-		// 	if(ImGui.MenuItem("yo mama", null, false, true)) { }
-		// 	ImGui.EndPopup();
-		// }
+				Matrix4x4 nt = Matrix4x4.Identity;
+				float nz = GetZoom();
+				nt *= Matrix4x4.CreateTranslation(canvas_sz.X / 2 / (tileSize * nz).X, canvas_sz.Y / 2 / (tileSize * nz).Y, 0);
+				nt *= Matrix4x4.CreateScale((tileSize * nz).X, (tileSize * nz).Y, 1);
+				nt *= Matrix4x4.CreateTranslation(camera.X * nz, camera.Y * nz, 0);
+				nt *= Matrix4x4.CreateTranslation(canvas_p0.X, canvas_p0.Y, 0);
+				
+				Matrix4x4.Invert(nt, out var inv2);
+				Vector2 mp2 = Vector2.Transform(ImGui.GetMousePos(), inv2);
+				
+				// camera -= mp2 - mp1;
+				
+				Vector2 d2 = (mp - csp) * GetZoom();
+				// ImGui.GetWindowDrawList().AddCircle(csp1);
+				// camera += (csp1 - mp) / (GetZoom() - zoom);
+				if(io.MouseWheel > 0.0F) {
+					// camera -= (d2 - d1) / (GetZoom() - zoom);
+				} else {
+					// camera -= (csp1 - mp) / (zoom);
+				}
+				
+				// camera -= (csp1 - mp) / (zoom - GetZoom());
+				// camera += (csp - mp) / (zoom - GetZoom());
+			}
+			
+		}
 		
 		drawList.PushClipRect(canvas_p0 + new Vector2(1), canvas_p1 - new Vector2(1), true);
 
@@ -319,7 +338,6 @@ public class CanvasPanel : Panel {
 		drawList.AddText(idTextPos, idTextColor, scene.ID);
 		drawList.AddRectFilled(idTextPos, idTextPos + idTextSize, Color.FromArgb(40, 180, 180, 180).GetPackedValue());
 		
-		//ImGui.PushID(scene.ID);
 		ImGui.SetCursorScreenPos(idTextPos);
 		if(ImGui.InvisibleButton("select-scene", idTextSize)) {
 			Program.SetSelectedScene(scene);
@@ -327,7 +345,6 @@ public class CanvasPanel : Panel {
 		if(ImGui.IsItemHovered()) {
 			ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
 		}
-		//ImGui.PopID();
 		
 		// Layers
 		foreach(var layer in scene.GetAllLayers()) {

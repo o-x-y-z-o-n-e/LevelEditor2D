@@ -24,6 +24,13 @@ public static class Program {
 	public const int VERSION_MAJOR = 0;
 	public const int VERSION_MINOR = 1;
 	public const int VERSION_PATCH = 0;
+
+	public const string TITLE = "Level Editor 2D";
+
+	public static readonly string[] AUTHORS = new [] {
+		"Jeremy Kiel",
+		"Giles McGrath"
+	};
 	
 	public static readonly string VERSION_STRING = $"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}";
 	
@@ -99,7 +106,7 @@ public static class Program {
 	private static Layer selectedLayer;
 	private static Entity selectedEntity;
 	private static Tileset selectedTileset;
-
+	
 	private static IWindow window;
 	private static ImGuiController controller;
 	private static GL gl;
@@ -107,12 +114,10 @@ public static class Program {
 	private static bool requestClose;
 	private static float deltaTime;
 	private static bool firstLoop;
-	
+	private static Texture icon;
 	private static Queue<Panel> focusPanelQueue;
-
-	private static List<ProjectEditorState> recentProjects;
-
 	private static Queue<Action> threadMessages;
+	private static List<ProjectEditorState> recentProjects;
 	
 	public static int Main(string[] args) {
 		DateTime now = DateTime.Now;
@@ -439,6 +444,7 @@ public static class Program {
 		}
 		
 		SetSelectedScene(null);
+		SetSelectedTileset(null);
 		
 		file?.Dispose();
 		
@@ -456,6 +462,7 @@ public static class Program {
 		}
 		
 		SetSelectedScene(null);
+		SetSelectedTileset(null);
 		
 		file?.Dispose();
 		
@@ -499,6 +506,7 @@ public static class Program {
 		if(file == null) return;
 		UpdateProjectState(file);
 		SetSelectedScene(null);
+		SetSelectedTileset(null);
 		file.Read();
 		ApplyProjectState(file);
 	}
@@ -557,14 +565,20 @@ public static class Program {
 		if(!ImGui.IsPopupOpen("Launch")) {
 			ImGui.OpenPopup("Launch", ImGuiPopupFlags.AnyPopupLevel);
 		}
-		ImGui.SetNextWindowSize(new Vector2(500, 500));
+		ImGui.SetNextWindowSize(new Vector2(500, 600));
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F));
 		if(ImGui.BeginPopupModal("Launch", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoTitleBar)) {
-			ImGui.Text("Level Editor 2D"); // TODO: logo
-			ImGui.Spacing();
-			ImGui.Spacing();
-			ImGui.Spacing();
-			ImGui.Spacing();
+			float iconSize = 200;
+			ImGui.PushStyleVar(ImGuiStyleVar.SeparatorTextAlign, new Vector2(0.5F, 0.5F));
+			ImGui.SeparatorText(TITLE);
+			ImGui.PopStyleVar();
+			ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X / 2 - iconSize / 2);
+			ImGui.Image((IntPtr)icon.Handle, new Vector2(iconSize, iconSize));
+			foreach(string str in AUTHORS) {
+				ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X / 2 - ImGui.CalcTextSize(str).X / 2);
+				ImGui.Text(str);
+			}
+			for(int i = 0; i < 6; i++) ImGui.Spacing();
 			ImGui.SeparatorText("Recent Projects");
 			ImGui.BeginChild("recent-projects", ImGui.GetContentRegionAvail() - new Vector2(0, ImGui.GetTextLineHeight() + style.FramePadding.Y * 2 + 6), ImGuiChildFlags.Borders | ImGuiChildFlags.FrameStyle);
 
@@ -794,8 +808,10 @@ public static class Program {
 	private static void SetWindowIcon() {
 		Stream stream = GetEmbeddedResourceStream(Assembly.GetExecutingAssembly(), "Resources.Icon.png");
 		ImageResult image = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
-		RawImage icon = new RawImage(image.Width, image.Height, image.Data);
-		window.SetWindowIcon(ref icon);
+		Texture texture = Texture.LoadFromPixels(image.Data, image.Width, image.Height);
+		RawImage rawImage = new RawImage(image.Width, image.Height, image.Data);
+		window.SetWindowIcon(ref rawImage);
+		icon = texture;
 	}
 	
 	private static void ChangeWin32DarkMode(bool dark) {
