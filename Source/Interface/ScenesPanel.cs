@@ -171,6 +171,7 @@ public class ScenesPanel : Panel {
 				} else {
 					Program.SelectedScene = scene;
 				}
+				Program.Focus(this);
 			}
 			if(active) ImGui.PopStyleColor();
 			
@@ -324,6 +325,7 @@ public class ScenesPanel : Panel {
 				var newScene = world.CreateScene(sceneNameEdit, sceneSizeEdit.X, sceneSizeEdit.Y, scenePosEdit.X, scenePosEdit.Y);
 				Program.File.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 				Program.SetSelectedScene(newScene);
+				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -381,6 +383,7 @@ public class ScenesPanel : Panel {
 				Scene newScene = world.CopyScene(src, sceneNameEdit, scenePosEdit.X, scenePosEdit.Y);
 				Program.File.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 				Program.SetSelectedScene(newScene);
+				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -415,6 +418,7 @@ public class ScenesPanel : Panel {
 				Program.File.ApplyEdit(this, new Scene.RemoveOperation(world, deleteTarget));
 				if(deleteTarget == Program.SelectedScene) {
 					Program.SetSelectedScene(null);
+					Program.Focus(this);
 				}
 				ImGui.CloseCurrentPopup();
 			}

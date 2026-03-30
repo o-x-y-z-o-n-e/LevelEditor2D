@@ -90,6 +90,7 @@ public class EntityCollection {
 	}
 
 	public Entity Get(int index) {
+		if(index < 0 || index >= entities.Count) return null;
 		return entities[index];
 	}
 	

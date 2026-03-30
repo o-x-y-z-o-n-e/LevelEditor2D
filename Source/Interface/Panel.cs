@@ -10,22 +10,12 @@ public class Panel {
 
 	private bool isOpen;
 	protected ImGuiWindowFlags flags;
-	private bool focusNextFrame;
 
 	public Panel() {
 		flags |= ImGuiWindowFlags.NoCollapse;
-		focusNextFrame = false;
-	}
-
-	public void Focus() {
-		focusNextFrame = true;
 	}
 	
 	public void Execute() {
-		if(focusNextFrame) {
-			focusNextFrame = false;
-			ImGui.SetNextWindowFocus();
-		}
 		isOpen = ImGui.Begin(Title, flags);
 		if(isOpen) {
 			Update();

@@ -8,12 +8,14 @@ using ImGuiNET;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using Silk.NET.Core;
 using Silk.NET.Input;
 using Silk.NET.Input.Extensions;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
+using StbImageSharp;
 
 namespace L2D;
 
@@ -105,7 +107,8 @@ public static class Program {
 	private static bool requestClose;
 	private static float deltaTime;
 	private static bool firstLoop;
-	private static Panel focusNextFrame;
+	
+	private static Queue<Panel> focusPanelQueue;
 
 	private static List<ProjectEditorState> recentProjects;
 
@@ -155,13 +158,14 @@ public static class Program {
 		try {
 			gl = window.CreateOpenGL();
 			input = window.CreateInput();
-			
-			// window.SetDefaultIcon();
 
+			
+			SetWindowIcon();
 			ChangeWin32DarkMode(true);
 			// SetWin32Color(0x00261f1f); // doesn't work because microslop sucks :0
 
 			controller = new ImGuiController(gl, window, input);
+			focusPanelQueue = new();
 
 			menuBar = new MenuBar();
 			canvasPanel = new CanvasPanel();
@@ -211,10 +215,10 @@ public static class Program {
 			Program.deltaTime = (float)deltaTime;
 
 			ImGui.DockSpaceOverViewport();
-
-			if(focusNextFrame != null) {
-				focusNextFrame.Focus();
-				focusNextFrame = null;
+			
+			if(focusPanelQueue.Count > 0) {
+				Panel panel = focusPanelQueue.Dequeue();
+				ImGui.SetWindowFocus(panel.Title);
 			}
 
 			menuBar.Execute();
@@ -379,7 +383,7 @@ public static class Program {
 	}
 
 	public static void Focus(Panel panel) {
-		focusNextFrame = panel;
+		focusPanelQueue.Enqueue(panel);
 	}
 
 	public static void SetSelectedScene(Scene scene) {
@@ -411,9 +415,9 @@ public static class Program {
 
 		if(selectedLayer != null) {
 			if(selectedLayer.Type == LayerType.Entities) {
-				focusNextFrame = entitiesPanel;
+				Focus(entitiesPanel);
 			} else if(selectedLayer.Type == LayerType.Tiles) {
-				focusNextFrame = tilePickerPanel;
+				Focus(tilePickerPanel);
 			}
 		}
 	}
@@ -421,7 +425,7 @@ public static class Program {
 	public static void SetSelectedEntity(Entity entity) {
 		selectedEntity = entity;
 		if(selectedEntity != null) {
-			focusNextFrame = entitiesPanel;
+			Focus(entitiesPanel);
 		}
 	}
 	
@@ -779,6 +783,19 @@ public static class Program {
 		lock(threadMessages) {
 			threadMessages.Enqueue(action);
 		}
+	}
+	
+	public static Stream GetEmbeddedResourceStream(Assembly assembly, string location) {
+		location = assembly.GetName().Name + "." + location;
+		Stream stream = assembly.GetManifestResourceStream(location);
+		return stream;
+	}
+
+	private static void SetWindowIcon() {
+		Stream stream = GetEmbeddedResourceStream(Assembly.GetExecutingAssembly(), "Resources.Icon.png");
+		ImageResult image = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
+		RawImage icon = new RawImage(image.Width, image.Height, image.Data);
+		window.SetWindowIcon(ref icon);
 	}
 	
 	private static void ChangeWin32DarkMode(bool dark) {

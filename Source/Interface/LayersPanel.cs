@@ -231,6 +231,7 @@ public class LayersPanel : Panel {
 					} else {
 						Program.SelectedLayer = layer;
 					}
+					Program.Focus(this);
 				}
 			}
 			if(isolateLayerView && selected) ImGui.PopStyleColor();
@@ -447,6 +448,7 @@ public class LayersPanel : Panel {
 				layer.Name = layerNameEdit;
 				Program.File.ApplyEdit(this, new Layer.AddOperation(addToGroupTarget, layer, addToGroupTarget.ChildrenCount));
 				Program.SetSelectedLayer(layer);
+				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -491,6 +493,7 @@ public class LayersPanel : Panel {
 				Layer.Copy(copyTarget, newLayer);
 				Program.File.ApplyEdit(this, new Layer.AddOperation(copyTarget.Group, newLayer, copyTarget.Group.GetChildIndex(copyTarget) + 1));
 				Program.SetSelectedLayer(newLayer);
+				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -520,6 +523,10 @@ public class LayersPanel : Panel {
 			ImGui.Text("Delete selected layer");
 			if(ImGui.Button("Confirm")) {
 				Program.File.ApplyEdit(this, new Layer.RemoveOperation(deleteTarget.Group, deleteTarget));
+				if(Program.SelectedLayer == deleteTarget) {
+					Program.SetSelectedLayer(null);
+					Program.Focus(this);
+				}
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.SameLine();

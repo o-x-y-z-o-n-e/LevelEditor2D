@@ -49,6 +49,7 @@ public class EntitiesPanel : Panel {
 		Vector2 listSize = ImGui.GetContentRegionAvail();
 		listSize.Y -= 200;
 		ImGui.BeginChild("entity-list", listSize, ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY);
+		SpawnTemplateZone(layer);
 		Entities(layer, ref moveOperation, entity => {
 			ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
 			if(ImGui.BeginPopup("context")) {
@@ -138,11 +139,7 @@ public class EntitiesPanel : Panel {
 			addEntity = false;
 		}
 
-		if(templatePopup) {
-			templatePopup = false;
-			ImGui.OpenPopup("Select Template");
-		}
-		Program.TemplatesPanel.SelectModal(selected => {
+		Program.TemplatesPanel.SelectModal(templatePopup, selected => {
 			if(selected != null) {
 				Entity newEntity = new Entity(layer.Entities, selected.Name);
 				newEntity.SetPosition(
@@ -241,13 +238,13 @@ public class EntitiesPanel : Panel {
 			ImGui.PushStyleColor(ImGuiCol.Text, Utilities.GetPackedColor(255, 255, 255, 80));
 			float x = ImGui.CalcTextSize(entity.Name).X + ImGui.GetStyle().FramePadding.X + 10;
 			
-			ImGui.SameLine();
+			ImGui.SetCursorPosY(cur.Y);
 			x = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.GetStyle().FramePadding.X;
 			
 			x -= ImGui.CalcTextSize(")").X;
 			ImGui.SetCursorPosX(x);
 			ImGui.Text(")");
-			ImGui.SameLine();
+			ImGui.SetCursorPosY(cur.Y);
 
 			Entity template = entity.Template;
 			string type = template != null && entity.Type == "" ? template.Type : entity.Type;
@@ -255,14 +252,16 @@ public class EntitiesPanel : Panel {
 				x -= ImGui.CalcTextSize(type).X;
 				ImGui.SetCursorPosX(x);
 				ImGui.Text(type);
-				ImGui.SameLine();
+				ImGui.SetCursorPosY(cur.Y);
 			}
 
 			x -= ImGui.CalcTextSize("(").X;
 			ImGui.SetCursorPosX(x);
 			ImGui.Text("(");
-			ImGui.PopStyleColor();
+			ImGui.PopStyleColor(); // ImGuiCol.Text
 			if(canvasHighlighted) ImGui.PopStyleColor();
+			
+			ImGui.SetCursorPos(nextCur);
 			
 			ImGui.PopID();
 			index++;
@@ -295,6 +294,44 @@ public class EntitiesPanel : Panel {
 			}
 		}
 	}
+
+	private unsafe void SpawnTemplateZone(Layer layer) {
+		Vector2 cur = ImGui.GetCursorPos();
+		Vector2 scur = ImGui.GetCursorScreenPos();
+		Vector2 size = ImGui.GetContentRegionAvail();
+		ImGui.Dummy(size);
+		if(ImGui.BeginDragDropTarget()) {
+			ImGuiPayloadPtr payloadPtr = ImGui.AcceptDragDropPayload("MOVE_TEMPLATE_DATA", ImGuiDragDropFlags.AcceptNoDrawDefaultRect | ImGuiDragDropFlags.AcceptBeforeDelivery);
+			if(payloadPtr.NativePtr != null) {
+				if(payloadPtr.IsPreview()) {
+					int border = 2;
+					ImGui.GetWindowDrawList().AddRect(
+						scur - new Vector2(border),
+						scur + size + new Vector2(border * 2),
+						Utilities.GetPackedColor(50, 80, 220, 255),
+						0,
+						ImDrawFlags.None,
+						border
+					);
+				}
+				if(payloadPtr.IsDelivery()) {
+					int templateIndex = ((int*)payloadPtr.Data)[0];
+					Entity template = layer.Scene.World.Templates.Get(templateIndex);
+					if(template != null) {
+						Entity newEntity = new Entity(layer.Entities, template.Name);
+						newEntity.SetPosition(
+							-Program.CanvasPanel.Camera
+							-new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight)
+						);
+						Program.File.ApplyEdit(this, new Entity.AddOperation(layer.Entities, newEntity));
+						Program.SetSelectedEntity(newEntity);
+					}
+				}
+			}
+			ImGui.EndDragDropTarget();
+		}
+		ImGui.SetCursorPos(cur);
+	} 
 
 	private void Inspect(Entity entity) {
 		var style = ImGui.GetStyle();
