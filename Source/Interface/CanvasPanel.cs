@@ -22,7 +22,6 @@ public class CanvasPanel : Panel {
 	private Vector2 camera;
 	private float zooming;
 	private bool isHovered;
-	private bool isPressed;
 	
 	public TileSelectTool TileSelect => tileSelect;
 	public TileBrushTool TileBrush => tileBrush;
@@ -102,7 +101,8 @@ public class CanvasPanel : Panel {
 		drawList.AddRect(canvas_p0, canvas_p1, Color.FromArgb(255, 180, 180, 180).GetPackedValue());
 		
 		ImGui.Dummy(canvas_sz);
-		isHovered = ImGui.IsItemHovered();  // Hovered
+		Vector2	mousePos = ImGui.GetMousePos();
+		isHovered = ImGui.IsItemHovered();
 
 		float zoom = GetZoom();
 		
@@ -121,10 +121,7 @@ public class CanvasPanel : Panel {
 		transform *= Matrix4x4.CreateTranslation(camera.X * zoom, camera.Y * zoom, 0);
 		transform *= Matrix4x4.CreateTranslation(canvas_p0.X, canvas_p0.Y, 0);
 		
-		// TODO: mouse center zoom option
-
 		bool movingCamera = false;
-		
 		if(isHovered) {
 			if(ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
 				movingCamera = true;
@@ -135,39 +132,18 @@ public class CanvasPanel : Panel {
 			if(io.MouseWheel != 0.0F) {
 				Matrix4x4.Invert(transform, out var inv1);
 				Vector2 mp = ImGui.GetMousePos();
-				Vector2 csp = canvas_p0 + canvas_sz / 2.0F;
-				Vector2 d1 = (mp - csp) * zoom;
-				
-				
-				Vector2 mp1 = Vector2.Transform(ImGui.GetMousePos(), inv1);
-				
+				Vector2 mp1 = Vector2.Transform(mp, inv1);
 				zooming = float.Clamp(float.Round(zooming + io.MouseWheel), ZOOM_RANGE_MIN, ZOOM_RANGE_MAX);
-
 				Matrix4x4 nt = Matrix4x4.Identity;
 				float nz = GetZoom();
 				nt *= Matrix4x4.CreateTranslation(canvas_sz.X / 2 / (tileSize * nz).X, canvas_sz.Y / 2 / (tileSize * nz).Y, 0);
 				nt *= Matrix4x4.CreateScale((tileSize * nz).X, (tileSize * nz).Y, 1);
 				nt *= Matrix4x4.CreateTranslation(camera.X * nz, camera.Y * nz, 0);
 				nt *= Matrix4x4.CreateTranslation(canvas_p0.X, canvas_p0.Y, 0);
-				
 				Matrix4x4.Invert(nt, out var inv2);
-				Vector2 mp2 = Vector2.Transform(ImGui.GetMousePos(), inv2);
-				
-				// camera -= mp2 - mp1;
-				
-				Vector2 d2 = (mp - csp) * GetZoom();
-				// ImGui.GetWindowDrawList().AddCircle(csp1);
-				// camera += (csp1 - mp) / (GetZoom() - zoom);
-				if(io.MouseWheel > 0.0F) {
-					// camera -= (d2 - d1) / (GetZoom() - zoom);
-				} else {
-					// camera -= (csp1 - mp) / (zoom);
-				}
-				
-				// camera -= (csp1 - mp) / (zoom - GetZoom());
-				// camera += (csp - mp) / (zoom - GetZoom());
+				Vector2 mp2 = Vector2.Transform(mp, inv2);
+				camera += (mp2 - mp1) * tileSize;
 			}
-			
 		}
 		
 		drawList.PushClipRect(canvas_p0 + new Vector2(1), canvas_p1 - new Vector2(1), true);

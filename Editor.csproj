@@ -26,11 +26,11 @@
       <PackageReference Include="Serilog" Version="4.3.1-dev-02406" />
       <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
       <PackageReference Include="Serilog.Sinks.File" Version="8.0.0-dev-02318" />
-      <PackageReference Include="Silk.NET.Core" Version="2.22.0" />
-      <PackageReference Include="Silk.NET.Input" Version="2.22.0" />
-      <PackageReference Include="Silk.NET.Input.Extensions" Version="2.22.0" />
-      <PackageReference Include="Silk.NET.OpenGL" Version="2.22.0" />
-      <PackageReference Include="Silk.NET.Windowing" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.Core" Version="2.23.0" />
+      <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
+      <PackageReference Include="Silk.NET.Input.Extensions" Version="2.23.0" />
+      <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
+      <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
       <PackageReference Include="StbImageSharp" Version="2.30.15" />
       <PackageReference Include="StbImageWriteSharp" Version="1.16.7" />
     </ItemGroup>

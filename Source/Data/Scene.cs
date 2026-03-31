@@ -495,24 +495,24 @@ public class TilesetLink {
 	public class MoveOperation : IFileEditOperation {
 		public object? Context => scene;
 		private Scene scene;
-		private int index1;
-		private int index2;
-		public MoveOperation(Scene scene, int index1, int index2) {
+		private int oldIndex;
+		private int newIndex;
+		public MoveOperation(Scene scene, int oldIndex, int newIndex) {
 			this.scene = scene;
-			this.index1 = index1;
-			this.index2 = index2;
+			this.oldIndex = oldIndex;
+			this.newIndex = newIndex;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var t = scene.Tilesets[index1];
-			scene.Tilesets[index1] = scene.Tilesets[index2];
-			scene.Tilesets[index2] = t;
+			var t = scene.Tilesets[oldIndex];
+			scene.Tilesets.RemoveAt(oldIndex);
+			scene.Tilesets.Insert(newIndex, t);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var t = scene.Tilesets[index2];
-			scene.Tilesets[index2] = scene.Tilesets[index1];
-			scene.Tilesets[index1] = t;
+			var t = scene.Tilesets[newIndex];
+			scene.Tilesets.RemoveAt(newIndex);
+			scene.Tilesets.Insert(oldIndex, t);
 		}
-		public bool HasChanges() => true;
+		public bool HasChanges() => oldIndex != newIndex;
 		public string GetNextStateMessage() => $"Reorder tileset links in scene [{scene.ID}]";
 		public string GetPrevStateMessage() => $"Undo reorder tileset links in scene [{scene.ID}]";
 	}

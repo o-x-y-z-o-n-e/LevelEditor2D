@@ -160,16 +160,6 @@ public class MenuBar {
 				ImGui.SetItemTooltip(Program.File.GetRedoMessage());
 			}
 			ImGui.EndDisabled(); // !Program.File.CanRedo()
-			ImGui.BeginDisabled();
-			if(ImGui.MenuItem("Copy", "Ctrl+C")) {
-				// TODO
-			}
-			ImGui.SetItemTooltip("TODO");
-			if(ImGui.MenuItem("Paste", "Ctrl+V")) {
-				// TODO
-			}
-			ImGui.SetItemTooltip("TODO");
-			ImGui.EndDisabled();
 			ImGui.EndMenu(); // Edit
 		}
 	}

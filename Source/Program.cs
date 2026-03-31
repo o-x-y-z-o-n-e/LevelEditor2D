@@ -136,7 +136,8 @@ public static class Program {
 			WindowOptions options = WindowOptions.Default with {
 				WindowState = WindowState.Maximized,
 				Title = "L2D",
-				API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(4, 1))
+				API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(4, 1)),
+				IsVisible = false
 			};
 			window = Window.Create(options);
 			window.VSync = false;
@@ -163,11 +164,12 @@ public static class Program {
 		try {
 			gl = window.CreateOpenGL();
 			input = window.CreateInput();
-
 			
 			SetWindowIcon();
 			ChangeWin32DarkMode(true);
 			// SetWin32Color(0x00261f1f); // doesn't work because microslop sucks :0
+			
+			window.WindowState = WindowState.Maximized;
 
 			controller = new ImGuiController(gl, window, input);
 			focusPanelQueue = new();
@@ -192,6 +194,13 @@ public static class Program {
 
 			firstLoop = true;
 
+			gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+			gl.Viewport(window.FramebufferSize);
+			gl.ClearColor(Color.FromArgb(255, 0, 0, 0));
+			gl.Clear((uint) ClearBufferMask.ColorBufferBit);
+			
+			controller.Render();
+			
 			foreach(string arg in System.Environment.GetCommandLineArgs()) {
 				if(file == null && arg.EndsWith(".l2d")) {
 					OpenFile(arg);
@@ -213,6 +222,7 @@ public static class Program {
 	private static void Render(double deltaTime) {
 		try {
 			controller.Update((float)deltaTime);
+			gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
 			gl.Viewport(window.FramebufferSize);
 			gl.ClearColor(Color.FromArgb(255, 0, 0, 0));
 			gl.Clear((uint) ClearBufferMask.ColorBufferBit);
@@ -220,6 +230,12 @@ public static class Program {
 			Program.deltaTime = (float)deltaTime;
 
 			ImGui.DockSpaceOverViewport();
+			
+			if(firstLoop) {
+				window.IsVisible = true;
+				firstLoop = false;
+				SetSelectedLayer(SelectedLayer); // so that tickerpicker/entities panels are correctly focused on start
+			}
 			
 			if(focusPanelQueue.Count > 0) {
 				Panel panel = focusPanelQueue.Dequeue();
@@ -235,11 +251,7 @@ public static class Program {
 			layersPanel.Execute();
 			entitiesPanel.Execute();
 			tilePickerPanel.Execute();
-
-			if(firstLoop) {
-				firstLoop = false;
-				SetSelectedLayer(SelectedLayer); // so that tickerpicker/entities panels are correctly focused on start
-			}
+			
 
 			if(file != null && ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
 				if(ImGui.IsKeyPressed(ImGuiKey.S)) {

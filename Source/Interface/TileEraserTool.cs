@@ -99,13 +99,13 @@ public class TileEraserTool : CanvasTool {
 		bool remove = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Left);
 		bool resize = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Right) && !remove;
 		
-		if(ImGui.IsKeyPressed(ImGuiKey.Escape)) {
+		if(isHovered && ImGui.IsKeyPressed(ImGuiKey.Escape)) {
 			if(edit != null) EndErase();
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
 			return;
 		}
 		
-		if(ImGui.IsKeyReleased(ImGuiKey.LeftShift)) {
+		if(isHovered && ImGui.IsKeyReleased(ImGuiKey.LeftShift)) {
 			if(edit != null) EndErase();
 			if(Program.CanvasPanel.TileBrush.IsEmpty()) {
 				Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);

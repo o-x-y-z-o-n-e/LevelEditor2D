@@ -248,7 +248,8 @@ public class ScenesPanel : Panel {
 		ImGui.SeparatorText("Scene Options");
 		
 		string id = scene.ID;
-		if(ImGui.InputText("ID", ref id, 512)) { }
+		ImGui.SetNextItemShortcut(ImGuiKey.P, ImGuiInputFlags.RouteGlobal);
+		if(ImGui.InputText("ID", ref id, Program.IMGUI_STRING_MAX)) { }
 		if(ImGui.IsItemDeactivatedAfterEdit()) {
 			bool valid = true;
 			foreach(var s in world.Scenes) {

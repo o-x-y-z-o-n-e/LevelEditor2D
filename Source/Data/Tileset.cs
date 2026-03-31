@@ -920,24 +920,24 @@ public class AutomapPattern {
 	public class MoveOperation : IFileEditOperation {
 		public object? Context => tileset;
 		private Tileset tileset;
-		private int index1;
-		private int index2;
-		public MoveOperation(Tileset tileset, int index1, int index2) {
+		private int oldIndex;
+		private int newIndex;
+		public MoveOperation(Tileset tileset, int oldIndex, int newIndex) {
 			this.tileset = tileset;
-			this.index1 = index1;
-			this.index2 = index2;
+			this.oldIndex = oldIndex;
+			this.newIndex = newIndex;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			var t = tileset.AutomapPatterns[index1];
-			tileset.AutomapPatterns[index1] = tileset.AutomapPatterns[index2];
-			tileset.AutomapPatterns[index2] = t;
+			AutomapPattern preset = tileset.AutomapPatterns[oldIndex];
+			tileset.AutomapPatterns.RemoveAt(oldIndex);
+			tileset.AutomapPatterns.Insert(newIndex, preset);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			var t = tileset.AutomapPatterns[index2];
-			tileset.AutomapPatterns[index2] = tileset.AutomapPatterns[index1];
-			tileset.AutomapPatterns[index1] = t;
+			AutomapPattern preset = tileset.AutomapPatterns[newIndex];
+			tileset.AutomapPatterns.RemoveAt(newIndex);
+			tileset.AutomapPatterns.Insert(oldIndex, preset);
 		}
-		public bool HasChanges() => true;
+		public bool HasChanges() => oldIndex != newIndex;
 		public string GetNextStateMessage() => $"Reorder automaps in tileset [{tileset.ID}]";
 		public string GetPrevStateMessage() => $"Undo reorder automaps in tileset [{tileset.ID}]";
 	}

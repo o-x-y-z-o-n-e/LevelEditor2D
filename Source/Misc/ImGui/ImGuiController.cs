@@ -159,7 +159,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             onConfigureIO?.Invoke();
 
             io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-            // io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
+            io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
             io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
             io.BackendFlags |= ImGuiBackendFlags.HasMouseCursors;
 
@@ -344,6 +344,11 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             var wheel = mouseState.GetScrollWheels()[0];
             io.MouseWheel = AllowInput ? wheel.Y : 0;
             io.MouseWheelH = AllowInput ? wheel.X : 0;
+            
+            io.AddKeyEvent(ImGuiKey.ModCtrl, AllowInput && (_keyboard.IsKeyPressed(Key.ControlLeft) || _keyboard.IsKeyPressed(Key.ControlRight)));
+            io.AddKeyEvent(ImGuiKey.ModShift, AllowInput && (_keyboard.IsKeyPressed(Key.ShiftLeft) || _keyboard.IsKeyPressed(Key.ShiftRight)));
+            io.AddKeyEvent(ImGuiKey.ModAlt, AllowInput && (_keyboard.IsKeyPressed(Key.AltLeft) || _keyboard.IsKeyPressed(Key.AltRight)));
+            io.AddKeyEvent(ImGuiKey.ModSuper, AllowInput && (_keyboard.IsKeyPressed(Key.SuperLeft) || _keyboard.IsKeyPressed(Key.SuperRight)));
 
             if(AllowInput) {
                 foreach (var c in _pressedChars) {
@@ -352,11 +357,6 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             }
 
             _pressedChars.Clear();
-
-            io.KeyCtrl  = AllowInput && (_keyboard.IsKeyPressed(Key.ControlLeft) || _keyboard.IsKeyPressed(Key.ControlRight));
-            io.KeyAlt   = AllowInput && (_keyboard.IsKeyPressed(Key.AltLeft) || _keyboard.IsKeyPressed(Key.AltRight));
-            io.KeyShift = AllowInput && (_keyboard.IsKeyPressed(Key.ShiftLeft) || _keyboard.IsKeyPressed(Key.ShiftRight));
-            io.KeySuper = AllowInput && (_keyboard.IsKeyPressed(Key.SuperLeft) || _keyboard.IsKeyPressed(Key.SuperRight));
         }
 
         internal void PressChar(char keyChar)

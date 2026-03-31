@@ -40,12 +40,12 @@ public class TileSelectTool : CanvasTool {
 		if(sceneRegion.Contains(mx, my) && !movingCamera && isHovered) {
 			ImGui.SetMouseCursor((ImGuiMouseCursor)10);
 		}
-		
-		if(ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
+
+		if(isHovered && ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileEraser);
 			return;
 		}
-		
+
 		bool resize = isHovered && ImGui.IsMouseDown(ImGuiMouseButton.Left) && !blockSelectUntilRelease;
 		if(!ImGui.IsMouseDown(ImGuiMouseButton.Left)) blockSelectUntilRelease = false;
 		

@@ -166,14 +166,14 @@ public class TileBrushTool : CanvasTool {
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
 			return;
 		}
-
-		if(ImGui.IsKeyPressed(ImGuiKey.Escape)) {
+		
+		if(isHovered && ImGui.IsKeyPressed(ImGuiKey.Escape)) {
 			if(edit != null) EndImprint();
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileSelect);
 			return;
 		}
 		
-		if(ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
+		if(isHovered && ImGui.IsKeyPressed(ImGuiKey.LeftShift)) {
 			if(edit != null) EndImprint();
 			Program.CanvasPanel.SetTool(Program.CanvasPanel.TileEraser);
 			return;
