@@ -361,8 +361,6 @@ public class ScenesPanel : Panel {
 			ImGui.InputText("New ID", ref sceneNameEdit, Program.IMGUI_STRING_MAX);
 			ImGui.DragInt2("Position", ref scenePosEdit.X, 1);
 			
-			Scene src = Program.SelectedScene;
-			
 			bool valid = sceneNameEdit != "";
 			foreach(var s in world.Scenes) {
 				if(s.ID == sceneNameEdit) {
@@ -370,18 +368,18 @@ public class ScenesPanel : Panel {
 					break;
 				}
 				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				if(r.IntersectsWith(new(scenePosEdit.X, scenePosEdit.Y, src.TileCountX, src.TileCountY))) {
+				if(r.IntersectsWith(new(scenePosEdit.X, scenePosEdit.Y, copyTarget.TileCountX, copyTarget.TileCountY))) {
 					valid = false;
 					break;
 				}
 			}
 			
-			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, src.TileCountX, src.TileCountY));
+			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, copyTarget.TileCountX, copyTarget.TileCountY));
 			scenePreviewShown = true;
 			
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Confirm")) {
-				Scene newScene = world.CopyScene(src, sceneNameEdit, scenePosEdit.X, scenePosEdit.Y);
+				Scene newScene = world.CopyScene(copyTarget, sceneNameEdit, scenePosEdit.X, scenePosEdit.Y);
 				Program.File.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 				Program.SetSelectedScene(newScene);
 				Program.Focus(this);
