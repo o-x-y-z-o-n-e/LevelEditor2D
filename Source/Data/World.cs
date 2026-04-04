@@ -49,7 +49,7 @@ public class World {
 		tilesets = new();
 		scenes = new();
 		templates = new(this);
-		maxTilesetSlots = 16;
+		maxTilesetSlots = Tilemap.MAX_TILESETS;
 	}
 
 	public Tileset GetTileset(int index) {

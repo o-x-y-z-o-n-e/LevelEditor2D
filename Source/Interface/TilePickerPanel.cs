@@ -277,6 +277,9 @@ public class TilePickerPanel : Panel {
 			addOperation = new TilesetLink.AddOperation(scene, new TilesetLink(scene.File, nextSlotAvailable, null));
 		}
 		ImGui.EndDisabled();
+		if(nextSlotAvailable > scene.World.MaxTilesetSlots) {
+			ImGui.SetItemTooltip($"Max tilesets used: {scene.World.MaxTilesetSlots}");
+		}
 	}
 
 	private void TileGridView(Scene scene, TilesetLink link, ImGuiWindowFlags windowFlags, Vector2 region, int scale) {

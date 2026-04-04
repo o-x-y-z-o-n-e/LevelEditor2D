@@ -9,7 +9,7 @@ namespace L2D;
 
 public class Tilemap {
 
-	private const uint MAX_TILESETS = 16; // TODO: upgrade to 32
+	public const int MAX_TILESETS = 32;
 	
 	public Scene Scene => scene;
 	
@@ -412,30 +412,11 @@ in vec2 TileRef;
 
 out vec4 FragColor;
 
-uniform sampler2DArray Tilesets[16];
-// uniform sampler2DArray Tileset1;
-// uniform sampler2DArray Tileset2;
-// uniform sampler2DArray Tileset3;
-// uniform sampler2DArray Tileset4;
-// uniform sampler2DArray Tileset5;
-// uniform sampler2DArray Tileset6;
-// uniform sampler2DArray Tileset7;
-// uniform sampler2DArray Tileset8;
+uniform sampler2DArray Tilesets[32];
 
 void main() {
 	int tileset = int(TileRef.y);
     FragColor = texture(Tilesets[tileset], vec3(TexCoords.xy, TileRef.x));
-    // FragColor = texture(Tileset1, vec3(TexCoords.xy, TileRef.x));
-
-	// if(tileset == 0) {
-	// 	FragColor = texture(Tileset1, vec3(TexCoords.xy, TileRef.x));
-	// } else if(tileset == 1) {
-	// 	FragColor = texture(Tileset2, vec3(TexCoords.xy, TileRef.x));
-	// } else if(tileset == 2) {
-	// 	FragColor = texture(Tileset3, vec3(TexCoords.xy, TileRef.x));
-	// } else if(tileset == 3) {
-	// 	FragColor = texture(Tileset4, vec3(TexCoords.xy, TileRef.x));
-	// }
 }
 ";
 #endregion ==== GLSL SHADER SOURCE ====
