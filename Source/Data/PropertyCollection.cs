@@ -2,7 +2,7 @@
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D;
+namespace E2D;
 
 public class PropertyCollection {
 

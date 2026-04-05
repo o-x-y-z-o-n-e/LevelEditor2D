@@ -3,7 +3,7 @@ using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D;
+namespace E2D;
 
 public class ScenesPanel : Panel {
 	
@@ -41,11 +41,11 @@ public class ScenesPanel : Panel {
 	}
 
 	protected override void Update() {
-		if(Program.File == null) {
+		if(Program.Project == null) {
 			return;
 		}
 		
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		
 		Scene.MoveOperation moveOperation = null;
 
@@ -147,7 +147,7 @@ public class ScenesPanel : Panel {
 		ResizePopup();
 
 		if(moveOperation != null) {
-			Program.File.ApplyEdit(this, moveOperation);
+			Program.Project.ApplyEdit(this, moveOperation);
 		}
 
 		if(!scenePreviewShown) {
@@ -259,7 +259,7 @@ public class ScenesPanel : Panel {
 				}
 			}
 			if(valid) {
-				Program.File.ApplyEdit(this, new Scene.RenameOperation(scene, id));
+				Program.Project.ApplyEdit(this, new Scene.RenameOperation(scene, id));
 			}
 		}
 			
@@ -287,7 +287,7 @@ public class ScenesPanel : Panel {
 	}
 
 	private void AddPopup() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		if(addPopup) {
 			addPopup = false;
 			sceneNameEdit = "";
@@ -324,7 +324,7 @@ public class ScenesPanel : Panel {
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Confirm")) {
 				var newScene = world.CreateScene(sceneNameEdit, sceneSizeEdit.X, sceneSizeEdit.Y, scenePosEdit.X, scenePosEdit.Y);
-				Program.File.ApplyEdit(this, new Scene.AddOperation(world, newScene));
+				Program.Project.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 				Program.SetSelectedScene(newScene);
 				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
@@ -346,7 +346,7 @@ public class ScenesPanel : Panel {
 	}
 
 	private void CopyPopup() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		if(copyPopup) {
 			copyPopup = false;
 			sceneNameEdit = "";
@@ -380,7 +380,7 @@ public class ScenesPanel : Panel {
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Confirm")) {
 				Scene newScene = world.CopyScene(copyTarget, sceneNameEdit, scenePosEdit.X, scenePosEdit.Y);
-				Program.File.ApplyEdit(this, new Scene.AddOperation(world, newScene));
+				Program.Project.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 				Program.SetSelectedScene(newScene);
 				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
@@ -404,7 +404,7 @@ public class ScenesPanel : Panel {
 	}
 
 	private void DeletePopup() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		if(deletePopup) {
 			deletePopup = false;
 			if(deleteTarget != null) {
@@ -414,7 +414,7 @@ public class ScenesPanel : Panel {
 		if(ImGui.BeginPopup("delete-scene")) {
 			ImGui.Text("Delete scene?");
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(this, new Scene.RemoveOperation(world, deleteTarget));
+				Program.Project.ApplyEdit(this, new Scene.RemoveOperation(world, deleteTarget));
 				if(deleteTarget == Program.SelectedScene) {
 					Program.SetSelectedScene(null);
 					Program.Focus(this);
@@ -456,7 +456,7 @@ public class ScenesPanel : Panel {
 			}
 			ImGui.BeginDisabled(invalidName);
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(this, new Scene.RenameOperation(renameTarget, sceneNameEdit));
+				Program.Project.ApplyEdit(this, new Scene.RenameOperation(renameTarget, sceneNameEdit));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -471,7 +471,7 @@ public class ScenesPanel : Panel {
 	}
 
 	private void RepositionPopup() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		if(positionPopup) {
 			positionPopup = false;
 			if(positionTarget != null) {
@@ -498,7 +498,7 @@ public class ScenesPanel : Panel {
 				
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(this, new Scene.RepositionOperation(positionTarget, new(scenePosEdit.X, scenePosEdit.Y)));
+				Program.Project.ApplyEdit(this, new Scene.RepositionOperation(positionTarget, new(scenePosEdit.X, scenePosEdit.Y)));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -515,7 +515,7 @@ public class ScenesPanel : Panel {
 	}
 
 	private void ResizePopup() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		if(resizePopup) {
 			resizePopup = false;
 			if(resizeTarget != null) {
@@ -545,7 +545,7 @@ public class ScenesPanel : Panel {
 				
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(this, new Scene.ResizeOperation(resizeTarget, new(sceneSizeEdit.X, sceneSizeEdit.Y)));
+				Program.Project.ApplyEdit(this, new Scene.ResizeOperation(resizeTarget, new(sceneSizeEdit.X, sceneSizeEdit.Y)));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();

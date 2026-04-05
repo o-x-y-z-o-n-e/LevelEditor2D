@@ -3,7 +3,7 @@ using Serilog;
 using Silk.NET.OpenGL;
 using StbImageSharp;
 
-namespace L2D;
+namespace E2D;
 
 public class Texture {
 

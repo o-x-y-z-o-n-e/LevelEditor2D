@@ -4,7 +4,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
 
-namespace L2D;
+namespace E2D;
 
 public static class Utilities {
 

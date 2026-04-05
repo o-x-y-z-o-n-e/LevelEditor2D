@@ -3,7 +3,7 @@ using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D;
+namespace E2D;
 
 public class LayersPanel : Panel {
 
@@ -42,7 +42,7 @@ public class LayersPanel : Panel {
 	}
 
 	protected override void Update() {
-		if(Program.File == null) {
+		if(Program.Project == null) {
 			return;
 		}
 
@@ -50,7 +50,7 @@ public class LayersPanel : Panel {
 			isolateLayerView = false;
 		}
 		
-		World world = Program.File.World;
+		World world = Program.Project.World;
 
 		Layer.MoveOperation moveOperation = null;
 
@@ -62,7 +62,7 @@ public class LayersPanel : Panel {
 				ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
 				if(ImGui.BeginPopup("context")) {
 					if(ImGui.MenuItem(layer.Visible ? "Hide" : "Show")) {
-						Program.File.ApplyEdit(this, new Layer.VisiblityOperation(layer, !layer.Visible));
+						Program.Project.ApplyEdit(this, new Layer.VisiblityOperation(layer, !layer.Visible));
 					}
 					if(layer.Type == LayerType.Group) {
 						if(layer.Collapsed) {
@@ -184,7 +184,7 @@ public class LayersPanel : Panel {
 		RenamePopup();
 		
 		if(moveOperation != null) {
-			Program.File.ApplyEdit(Program.SelectedScene, moveOperation);
+			Program.Project.ApplyEdit(Program.SelectedScene, moveOperation);
 		}
 	}
 
@@ -324,7 +324,7 @@ public class LayersPanel : Panel {
 				ImGui.GetStyle().FramePadding.X * 2.5F
 			);
 			if(ImGui.SmallButton(layer.Visible ? Codicons.Eye : Codicons.EyeClosed)) {
-				Program.File.ApplyEdit(this, new Layer.VisiblityOperation(layer, !layer.Visible));
+				Program.Project.ApplyEdit(this, new Layer.VisiblityOperation(layer, !layer.Visible));
 			}
 			ImGui.EndDisabled();
 
@@ -446,7 +446,7 @@ public class LayersPanel : Panel {
 				};
 				Layer layer = new Layer(scene, type);
 				layer.Name = layerNameEdit;
-				Program.File.ApplyEdit(this, new Layer.AddOperation(addToGroupTarget, layer, addToGroupTarget.ChildrenCount));
+				Program.Project.ApplyEdit(this, new Layer.AddOperation(addToGroupTarget, layer, addToGroupTarget.ChildrenCount));
 				Program.SetSelectedLayer(layer);
 				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
@@ -491,7 +491,7 @@ public class LayersPanel : Panel {
 				Layer newLayer = new Layer(copyTarget.Scene, copyTarget.Type);
 				newLayer.Name = layerNameEdit;
 				Layer.Copy(copyTarget, newLayer);
-				Program.File.ApplyEdit(this, new Layer.AddOperation(copyTarget.Group, newLayer, copyTarget.Group.GetChildIndex(copyTarget) + 1));
+				Program.Project.ApplyEdit(this, new Layer.AddOperation(copyTarget.Group, newLayer, copyTarget.Group.GetChildIndex(copyTarget) + 1));
 				Program.SetSelectedLayer(newLayer);
 				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
@@ -522,7 +522,7 @@ public class LayersPanel : Panel {
 		if(ImGui.BeginPopup("delete-layer")) {
 			ImGui.Text("Delete selected layer");
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(this, new Layer.RemoveOperation(deleteTarget.Group, deleteTarget));
+				Program.Project.ApplyEdit(this, new Layer.RemoveOperation(deleteTarget.Group, deleteTarget));
 				if(Program.SelectedLayer == deleteTarget) {
 					Program.SetSelectedLayer(null);
 					Program.Focus(this);
@@ -564,7 +564,7 @@ public class LayersPanel : Panel {
 			}
 			ImGui.BeginDisabled(invalidName);
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(this, new Layer.RenameOperation(renameTarget, layerNameEdit));
+				Program.Project.ApplyEdit(this, new Layer.RenameOperation(renameTarget, layerNameEdit));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -594,14 +594,14 @@ public class LayersPanel : Panel {
 				}
 			}
 			if(!invalidName) {
-				Program.File.ApplyEdit(this, new Layer.RenameOperation(layer, name));
+				Program.Project.ApplyEdit(this, new Layer.RenameOperation(layer, name));
 			}
 		}
 
 		Vector3 col = layer.Color;
 		if(ImGui.ColorEdit3("Color", ref col)) {
 			if(colorEdit == null) {
-				colorEdit = Program.File.BeginEdit(new Layer.ColorOperation(layer));
+				colorEdit = Program.Project.BeginEdit(new Layer.ColorOperation(layer));
 			}
 
 			colorEdit.GetData<Layer.ColorOperation>().NewColor = col;
@@ -609,7 +609,7 @@ public class LayersPanel : Panel {
 		}
 
 		if(ImGui.IsItemDeactivatedAfterEdit()) {
-			Program.File.EndEdit(ref colorEdit);
+			Program.Project.EndEdit(ref colorEdit);
 		}
 
 		PropertyView.Run(layer.Properties);

@@ -3,7 +3,7 @@ using System.Numerics;
 using System.Text.RegularExpressions;
 using ImGuiNET;
 
-namespace L2D; 
+namespace E2D; 
 
 public class TileFillModal {
 	
@@ -261,7 +261,7 @@ public class TileFillModal {
 			}
 		}
 		
-		var edit = Program.File.BeginEdit(layer.Scene, operation,
+		var edit = Program.Project.BeginEdit(layer.Scene, operation,
 			redo: entry => {
 				var data = entry.GetData<TileFillOperation>();
 				var area = data.Area;
@@ -290,7 +290,7 @@ public class TileFillModal {
 			}
 		);
 		
-		Program.File.EndEdit(ref edit);
+		Program.Project.EndEdit(ref edit);
 	}
 
 	public class TileFillOperation {

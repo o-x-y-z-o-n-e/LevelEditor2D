@@ -1,18 +1,25 @@
 ﻿using System.Drawing;
+using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 using Serilog;
 using StbImageWriteSharp;
 
-namespace L2D;
+namespace E2D;
 
 public class Scene {
+	
+	public const string FILE_EXTENSION = "s2d";
 
-	public File File => file;
-	public World World => file.World;
+	public Project Project => project;
+	public World World => project.World;
+	
+	public bool IsEmbedded => embedded;
+	public string FilePath => filePath;
 
 	public string ID {
 		get => id;
-		set => id = value;
+		set => SetID(value);
 	}
 
 	public int WorldX {
@@ -41,20 +48,26 @@ public class Scene {
 
 	public Layer LastActiveLayer;
 
-	private File file;
+	private Project project;
 	private string id;
+	private bool embedded;
+	private string filePath;
+	private FileSystemWatcher fileWatcher;
 	private int worldX;
 	private int worldY;
 	private int tileCountX;
 	private int tileCountY;
 	private List<TilesetLink> tilesets;
-	private Layer root;
 	private PropertyCollection properties;
+	private Layer root;
 	private bool disposed;
 
-	internal Scene(File file) {
-		this.file = file;
-		id = "new_scene";
+	public Scene(Project project, string id, bool embedded) {
+		this.project = project;
+		this.id = id;
+		this.embedded = embedded;
+		filePath = "";
+		fileWatcher = null;
 		worldX = 0;
 		worldY = 0;
 		tileCountX = 64;
@@ -65,22 +78,47 @@ public class Scene {
 		root.Name = "Root";
 	}
 
-	internal void Parse(XElement sceneElement) {
-		id = sceneElement.Attribute("id").Value;
+	public static Scene Parse(Project project, XElement sceneElement) {
+		string id = sceneElement.Attribute("id").ParseAsString();
+		bool embedded = sceneElement.Attribute("embedded").ParseAsBool();
+		if(id == "") {
+			Log.Error("Missing scene id");
+			return null;
+		}
+		if(project.World.HasScene(id)) {
+			Log.Error($"Duplicate scene id [{id}]");
+			return null;
+		}
+		if(embedded) {
+			Scene scene = new Scene(project, id, true);
+			scene.ParseData(sceneElement);
+			return scene;
+		} else {
+			string path = project.GetScenePath(id);
+			if(!File.Exists(path)) {
+				Log.Error($"File [{path}] does not exist");
+				return null;
+			}
+			Scene scene = new Scene(project, id, false);
+			scene.UpdateFilePath();
+			scene.ReadExternalFile();
+			return scene;
+		}
+	}
+
+	private void ParseData(XElement sceneElement) {
 		worldX = sceneElement.Attribute("world.x").ParseAsInt();
 		worldY = sceneElement.Attribute("world.y").ParseAsInt();
 		tileCountX = sceneElement.Attribute("tiles.x").ParseAsInt();
 		tileCountY = sceneElement.Attribute("tiles.y").ParseAsInt();
-
 		var linksElement = sceneElement.Element("links");
 		if(linksElement != null) {
 			foreach(var linkElement in linksElement.Elements("link")) {
-				TilesetLink tileset = new TilesetLink(file);
+				TilesetLink tileset = new TilesetLink(project);
 				tilesets.Add(tileset);
 				tileset.Parse(linkElement);
 			}
 		}
-
 		var layersElement = sceneElement.Element("layers");
 		if(layersElement != null) {
 			foreach(var layerElement in layersElement.Elements("layer")) {
@@ -89,35 +127,143 @@ public class Scene {
 				root.AddChild(layer);
 			}
 		}
-
 		properties.ParseFromElement(sceneElement);
 	}
 
-	internal XElement Serialize() {
+	public static XElement Serialize(Scene scene) {
 		var element = new XElement("scene");
-		element.Add(
-			new XAttribute("id", id),
+		element.Add(new XAttribute("id", scene.id));
+
+		if(scene.embedded) {
+			element.Add(new XAttribute("embedded", scene.embedded));
+			scene.SerializeData(element);
+		} else {
+			scene.WriteExternalFile();
+		}
+        
+		return element;
+	}
+
+	private void SerializeData(XElement sceneElement) {
+		sceneElement.Add(
 			new XAttribute("world.x", worldX),
 			new XAttribute("world.y", worldY),
 			new XAttribute("tiles.x", tileCountX),
 			new XAttribute("tiles.y", tileCountY)
 		);
-		
-		properties.SerializeToElement(element);
-
+		properties.SerializeToElement(sceneElement);
 		var linksParent = new XElement("links");
 		foreach(var link in tilesets) {
 			linksParent.Add(link.Serialize());
 		}
-		element.Add(linksParent);
-
+		sceneElement.Add(linksParent);
 		var rootElement = new XElement("layers");
 		foreach(var layer in root.Children) {
 			rootElement.Add(layer.Serialize());
 		}
-		element.Add(rootElement);
-        
-		return element;
+		sceneElement.Add(rootElement);
+	}
+	
+	private void ReadExternalFile() {
+		if(!File.Exists(filePath)) {
+			Log.Error($"File [{filePath}] does not exist");
+			return;
+		}
+		try {
+			string contents = File.ReadAllText(filePath);
+			XDocument doc = XDocument.Parse(contents);
+			ParseData(doc.Root);
+		} catch(Exception e) {
+			Log.Error("Failed to load external scene file", e);
+		}
+	}
+
+	private void WriteExternalFile() {
+		XmlWriter writer = null;
+		fileWatcher.EnableRaisingEvents = false;
+		Log.Information("Writing scene file... [{@filePath}]", filePath);
+		try {
+			StringBuilder builder = new StringBuilder();
+			XDocument document = new XDocument();
+			document.Add(new XElement("scene"));
+			SerializeData(document.Root);
+			XmlWriterSettings settings = new XmlWriterSettings();
+			settings.OmitXmlDeclaration = true;
+			settings.CloseOutput = false;
+			settings.Indent = true;
+			writer = XmlTextWriter.Create(builder, settings);
+			document.Save(writer);
+			writer.Close();
+			File.WriteAllText(filePath, builder.ToString());
+		} catch(Exception e) {
+			Log.Error(e, "Failed to write scene file: {@filePath}", filePath);
+			writer?.Close();
+		} finally {
+			fileWatcher.EnableRaisingEvents = true;
+		}
+	}
+
+	public void SetID(string id) {
+		foreach(var scene in project.World.Scenes) {
+			if(scene.ID == id) {
+				Log.Error("Failed to change scene ID. Duplicate in project: {id}", id);
+				return;
+			}
+		}
+
+		if(!embedded && filePath != "") {
+			project.DeleteFileOnSave(filePath);
+		}
+		
+		this.id = id;
+		
+		if(!embedded) {
+			UpdateFilePath();
+		}
+	}
+
+	public void UpdateFilePath() {
+		if(embedded) return;
+		filePath = project.GetScenePath(id);
+		if(fileWatcher == null) {
+			fileWatcher = new FileSystemWatcher(Path.GetDirectoryName(filePath));
+			fileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+			fileWatcher.Changed += OnFileChanged;
+		} else {
+			fileWatcher.Path = Path.GetDirectoryName(filePath).Replace('\\', '/');
+		}
+		fileWatcher.Filter = Path.GetFileName(filePath);
+		fileWatcher.EnableRaisingEvents = id != "";
+	}
+
+	public void ReleaseResources() {
+		if(fileWatcher != null) {
+			fileWatcher.Dispose();
+			fileWatcher = null;
+		}
+		foreach(var layer in GetAllLayers()) {
+			if(layer.Type == LayerType.Tiles) {
+				layer.Tilemap?.ReleaseResources();
+			}
+		}
+	}
+
+	private void OnFileChanged(object sender, FileSystemEventArgs e) {
+		if(e.ChangeType != WatcherChangeTypes.Changed) {
+			return;
+		}
+		string p = e.FullPath.Replace('\\', '/');
+		Program.SendMessage(() => {
+			if(p == filePath) {
+				Log.Information("Detected change in file: {@filePath}", filePath);
+				project.MarkDirty();
+				Program.ConfirmModal.Open(
+					$"Scene [{filePath}] File Changed",
+					$"Detected changes to scene [{filePath}] file from outside this editor.\nDo you want to reload the file from disk?",
+					ReadExternalFile
+				);
+			}
+		});
 	}
 
 	public IEnumerable<Layer> GetAllLayers() => GetAllLayers(root);
@@ -193,8 +339,8 @@ public class Scene {
 	}
 
 	public void ExportToFile(string filename) {
-		int pixelsWidth = tileCountX * file.World.TileWidth;
-		int pixelsHeight = tileCountY * file.World.TileHeight;
+		int pixelsWidth = tileCountX * project.World.TileWidth;
+		int pixelsHeight = tileCountY * project.World.TileHeight;
 		byte[] buffer = new byte[pixelsWidth * pixelsHeight * 4];
 		// Manual color blending becuase I'm tool lazy to deal with opengl
 		foreach(var layer in GetAllLayers()) {
@@ -405,24 +551,24 @@ public class TilesetLink {
 		set => tileset = value;
 	}
 
-	private File file;
+	private Project project;
 	private int slot;
 	private Tileset tileset;
 	
-	internal TilesetLink(File file) {
-		this.file = file;
+	internal TilesetLink(Project project) {
+		this.project = project;
 		slot = 1;
 		tileset = null;
 	}
 	
-	internal TilesetLink(File file, int slot) {
-		this.file = file;
+	internal TilesetLink(Project project, int slot) {
+		this.project = project;
 		this.slot = slot;
 		tileset = null;
 	}
 	
-	internal TilesetLink(File file, int slot, Tileset tileset) {
-		this.file = file;
+	internal TilesetLink(Project project, int slot, Tileset tileset) {
+		this.project = project;
 		this.slot = slot;
 		this.tileset = tileset;
 	}
@@ -431,7 +577,7 @@ public class TilesetLink {
 		slot = linkElement.Attribute("slot").ParseAsInt();
 		string id = linkElement.Attribute("tileset").ParseAsString();
 		if(id != "") {
-			foreach(var tileset in file.World.Tilesets) {
+			foreach(var tileset in project.World.Tilesets) {
 				if(tileset.ID == id) {
 					this.tileset = tileset;
 				}

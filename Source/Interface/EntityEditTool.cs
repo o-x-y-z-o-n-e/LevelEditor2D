@@ -3,7 +3,7 @@ using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D; 
+namespace E2D; 
 
 public class EntityEditTool : CanvasTool {
 
@@ -74,7 +74,7 @@ public class EntityEditTool : CanvasTool {
 					ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll);
 					
 					if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-						edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+						edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 						dragMode = EntityEditMode.Move;
 						dragOrigin = mPos;
 					}
@@ -93,7 +93,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+								edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeLeft;
 								dragOrigin = mPos;
 							}
@@ -108,7 +108,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+								edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeRight;
 								dragOrigin = mPos;
 							}
@@ -123,7 +123,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+								edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeTop;
 								dragOrigin = mPos;
 							}
@@ -138,7 +138,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+								edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeBottom;
 								dragOrigin = mPos;
 							}
@@ -153,7 +153,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+								edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeLeftTop;
 								dragOrigin = mPos;
 							}
@@ -168,7 +168,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+								edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeRightTop;
 								dragOrigin = mPos;
 							}
@@ -183,7 +183,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+								edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeLeftBottom;
 								dragOrigin = mPos;
 							}
@@ -198,7 +198,7 @@ public class EntityEditTool : CanvasTool {
 						if(mPos.X >= min.X && mPos.X <= max.X && mPos.Y >= min.Y && mPos.Y <= max.Y) {
 							ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
 							if(ImGui.IsMouseClicked(ImGuiMouseButton.Left) && edit == null) {
-								edit = Program.File.BeginEdit(new Entity.TransformOperation(entity));
+								edit = Program.Project.BeginEdit(new Entity.TransformOperation(entity));
 								dragMode = EntityEditMode.ResizeRightBottom;
 								dragOrigin = mPos;
 							}
@@ -216,7 +216,7 @@ public class EntityEditTool : CanvasTool {
 			var dragEntity = op.Entity;
 			Vector2 drag = (mPos - dragOrigin) / zoom;
 			if(!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
-				Program.File.EndEdit(ref edit, !op.HasChanges());
+				Program.Project.EndEdit(ref edit, !op.HasChanges());
 			} else {
 				bool end = false;
 				if(dragMode == EntityEditMode.Move) {
@@ -361,7 +361,7 @@ public class EntityEditTool : CanvasTool {
 					op.SetSize(dragEntity.Size);
 				}
 				if(end) {
-					Program.File.EndEdit(ref edit, !op.HasChanges());
+					Program.Project.EndEdit(ref edit, !op.HasChanges());
 				}
 			}
 		}

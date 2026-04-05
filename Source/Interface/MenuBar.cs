@@ -2,7 +2,7 @@
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D; 
+namespace E2D;
 
 public class MenuBar {
 
@@ -27,7 +27,7 @@ public class MenuBar {
 	private void FileMenu() {
 		if(ImGui.BeginMenu("File")) {
 			if(ImGui.MenuItem("New")) {
-				if(Program.File != null && Program.File.UnsavedChanges) {
+				if(Program.Project != null && Program.Project.UnsavedChanges) {
 					Program.ConfirmModal.Open(
 						"Confirm New File",
 						"You have unsaved changes.\nAre you sure you want to create a new file?",
@@ -38,7 +38,7 @@ public class MenuBar {
 				}
 			}
 			if(ImGui.MenuItem("Open", "Ctrl+O")) {
-				if(Program.File != null && Program.File.UnsavedChanges) {
+				if(Program.Project != null && Program.Project.UnsavedChanges) {
 					Program.ConfirmModal.Open(
 						"Confirm Open",
 						"You have unsaved changes.\nAre you sure you want to open another file?",
@@ -49,7 +49,7 @@ public class MenuBar {
 				}
 			}
 
-			bool disabled = Program.File == null;
+			bool disabled = Program.Project == null;
 				
 			if(disabled) ImGui.BeginDisabled();
 			if(ImGui.MenuItem("Save", "Ctrl+S")) {
@@ -59,7 +59,7 @@ public class MenuBar {
 				Program.SaveFileDialog();
 			}
 			if(ImGui.MenuItem("Reload", "Ctrl+R")) {
-				if(Program.File != null && Program.File.UnsavedChanges) {
+				if(Program.Project != null && Program.Project.UnsavedChanges) {
 					Program.ConfirmModal.Open(
 						"Confirm Reload",
 						"You have unsaved changes.\nAre you sure you want to reload file from disk?",
@@ -72,7 +72,7 @@ public class MenuBar {
 			if(disabled) ImGui.EndDisabled();
 				
 			if(ImGui.MenuItem("Quit", "Ctrl+Q")) {
-				if(Program.File != null && Program.File.UnsavedChanges) {
+				if(Program.Project != null && Program.Project.UnsavedChanges) {
 					Program.ConfirmModal.Open(
 						"Confirm Quit",
 						"You have unsaved changes.\nAre you sure you want to quit?",
@@ -88,19 +88,16 @@ public class MenuBar {
 
 	private void WorldMenu() {
 		if(ImGui.BeginMenu("World")) {
-			ImGui.BeginDisabled();
 			if(ImGui.MenuItem("Settings")) {
-				// TODO
+				Program.WorldSettingsModal.Open();
 			}
-			ImGui.SetItemTooltip("TODO");
-			ImGui.EndDisabled();
 			ImGui.EndMenu();
 		}
 	}
 
 	private void SceneMenu() {
 		if(ImGui.BeginMenu("Scene")) {
-			ImGui.BeginDisabled(Program.File == null);
+			ImGui.BeginDisabled(Program.Project == null);
 			if(ImGui.MenuItem("Create")) {
 				Program.ScenesPanel.OpenAddPopup();
 			}
@@ -144,20 +141,20 @@ public class MenuBar {
 
 	private void EditMenu() {
 		if(ImGui.BeginMenu("Edit")) {
-			ImGui.BeginDisabled(!Program.File.CanUndo());
+			ImGui.BeginDisabled(!Program.Project.CanUndo());
 			if(ImGui.MenuItem("Undo", "Ctrl+Z")) {
-				Program.File.Undo();
+				Program.Project.Undo();
 			}
-			if(Program.File.CanUndo()) {
-				ImGui.SetItemTooltip(Program.File.GetUndoMessage());
+			if(Program.Project.CanUndo()) {
+				ImGui.SetItemTooltip(Program.Project.GetUndoMessage());
 			}
 			ImGui.EndDisabled(); // !Program.File.CanUndo()
-			ImGui.BeginDisabled(!Program.File.CanRedo());
+			ImGui.BeginDisabled(!Program.Project.CanRedo());
 			if(ImGui.MenuItem("Redo", "Ctrl+Y")) {
-				Program.File.Redo();
+				Program.Project.Redo();
 			}
-			if(Program.File.CanRedo()) {
-				ImGui.SetItemTooltip(Program.File.GetRedoMessage());
+			if(Program.Project.CanRedo()) {
+				ImGui.SetItemTooltip(Program.Project.GetRedoMessage());
 			}
 			ImGui.EndDisabled(); // !Program.File.CanRedo()
 			ImGui.EndMenu(); // Edit

@@ -3,7 +3,7 @@ using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D;
+namespace E2D;
 
 public class EntitiesPanel : Panel {
 
@@ -17,7 +17,7 @@ public class EntitiesPanel : Panel {
 	}
 
 	protected override void Update() {
-		if(Program.File == null) {
+		if(Program.Project == null) {
 			return;
 		}
 		
@@ -134,7 +134,7 @@ public class EntitiesPanel : Panel {
 				-Program.CanvasPanel.Camera
 				-new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight)
 			);
-			Program.File.ApplyEdit(this, new Entity.AddOperation(layer.Entities, entity));
+			Program.Project.ApplyEdit(this, new Entity.AddOperation(layer.Entities, entity));
 			Program.SetSelectedEntity(entity);
 			addEntity = false;
 		}
@@ -146,7 +146,7 @@ public class EntitiesPanel : Panel {
 					-Program.CanvasPanel.Camera
 					-new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight)
 				);
-				Program.File.ApplyEdit(this, new Entity.AddOperation(layer.Entities, newEntity));
+				Program.Project.ApplyEdit(this, new Entity.AddOperation(layer.Entities, newEntity));
 				Program.SetSelectedEntity(newEntity);
 			}
 		});
@@ -154,14 +154,14 @@ public class EntitiesPanel : Panel {
 		if(copyTarget != null) {
 			Entity newEntity = layer.Entities.Copy(copyTarget);
 			newEntity.SetPosition(newEntity.Position + new Vector2(newEntity.Size.X + 16, 0));
-			Program.File.ApplyEdit(this, new Entity.AddOperation(layer.Entities, newEntity));
+			Program.Project.ApplyEdit(this, new Entity.AddOperation(layer.Entities, newEntity));
 			Program.SetSelectedEntity(newEntity);
 			copyTarget = null;
 		}
 		
 		if(deleteTarget != null) {
 			int deleteIndex = layer.Entities.IndexOf(deleteTarget);
-			Program.File.ApplyEdit(this, new Entity.RemoveOperation(layer.Entities, deleteTarget));
+			Program.Project.ApplyEdit(this, new Entity.RemoveOperation(layer.Entities, deleteTarget));
 			if(layer.Entities.Count == 0) {
 				Program.SetSelectedEntity(null);
 			} else if(deleteIndex >= layer.Entities.Count) {
@@ -173,7 +173,7 @@ public class EntitiesPanel : Panel {
 		}
 		
 		if(moveOperation != null) {
-			Program.File.ApplyEdit(this, moveOperation);
+			Program.Project.ApplyEdit(this, moveOperation);
 		}
 	}
 
@@ -323,7 +323,7 @@ public class EntitiesPanel : Panel {
 							-Program.CanvasPanel.Camera
 							-new Vector2(layer.Scene.WorldX * layer.Scene.World.TileWidth, layer.Scene.WorldY * layer.Scene.World.TileHeight)
 						);
-						Program.File.ApplyEdit(this, new Entity.AddOperation(layer.Entities, newEntity));
+						Program.Project.ApplyEdit(this, new Entity.AddOperation(layer.Entities, newEntity));
 						Program.SetSelectedEntity(newEntity);
 					}
 				}
@@ -371,7 +371,7 @@ public class EntitiesPanel : Panel {
 			string name = entity.Name;
 			if(ImGui.InputText("Name", ref name, 512, ImGuiInputTextFlags.AutoSelectAll)) { }
 			if(ImGui.IsItemDeactivatedAfterEdit()) {
-				Program.File.ApplyEdit(layer, new Entity.NameOperation(entity, name));
+				Program.Project.ApplyEdit(layer, new Entity.NameOperation(entity, name));
 			}
 			if(fallbackOnTemplate) {
 				ImGui.PopStyleVar(); // ImGuiStyleVar.Alpha
@@ -379,7 +379,7 @@ public class EntitiesPanel : Panel {
 				ImGui.OpenPopupOnItemClick("reset-name", ImGuiPopupFlags.MouseButtonRight);
 				if(ImGui.BeginPopup("reset-name")) {
 					if(ImGui.MenuItem("Reset")) {
-						Program.File.ApplyEdit(layer, new Entity.NameOperation(entity, null));
+						Program.Project.ApplyEdit(layer, new Entity.NameOperation(entity, null));
 					}
 
 					ImGui.EndPopup();
@@ -395,7 +395,7 @@ public class EntitiesPanel : Panel {
 			string type = entity.Type;
 			if(ImGui.InputText("Type", ref type, 512, ImGuiInputTextFlags.AutoSelectAll)) { }
 			if(ImGui.IsItemDeactivatedAfterEdit()) {
-				Program.File.ApplyEdit(layer, new Entity.TypeOperation(entity, type));
+				Program.Project.ApplyEdit(layer, new Entity.TypeOperation(entity, type));
 			}
 			if(fallbackOnTemplate) {
 				ImGui.PopStyleVar(); // ImGuiStyleVar.Alpha
@@ -403,7 +403,7 @@ public class EntitiesPanel : Panel {
 				ImGui.OpenPopupOnItemClick("reset-type", ImGuiPopupFlags.MouseButtonRight);
 				if(ImGui.BeginPopup("reset-type")) {
 					if(ImGui.MenuItem("Reset")) {
-						Program.File.ApplyEdit(layer, new Entity.TypeOperation(entity, null));
+						Program.Project.ApplyEdit(layer, new Entity.TypeOperation(entity, null));
 					}
 					ImGui.EndPopup();
 				}
@@ -414,13 +414,13 @@ public class EntitiesPanel : Panel {
 			Vector2 pos = entity.Position;
 			if(ImGui.DragFloat2("Position", ref pos)) {
 				if(positionEdit == null || positionEdit.GetData<Entity.PositionOperation>().Entity != entity) {
-					positionEdit = Program.File.BeginEdit(new Entity.PositionOperation(entity, pos));
+					positionEdit = Program.Project.BeginEdit(new Entity.PositionOperation(entity, pos));
 				} else {
 					positionEdit.GetData<Entity.PositionOperation>().SetPosition(pos);
 				}
 			}
 			if(ImGui.IsItemDeactivatedAfterEdit() && positionEdit != null) {
-				Program.File.EndEdit(ref positionEdit, !positionEdit.GetData<Entity.PositionOperation>().HasChanges());
+				Program.Project.EndEdit(ref positionEdit, !positionEdit.GetData<Entity.PositionOperation>().HasChanges());
 			}
 		}
 
@@ -434,13 +434,13 @@ public class EntitiesPanel : Panel {
 				if(size.X < 0) size.X = 0;
 				if(size.Y < 0) size.Y = 0;
 				if(sizeEdit == null || sizeEdit.GetData<Entity.SizeOperation>().Entity != entity) {
-					sizeEdit = Program.File.BeginEdit(new Entity.SizeOperation(entity, size));
+					sizeEdit = Program.Project.BeginEdit(new Entity.SizeOperation(entity, size));
 				} else {
 					sizeEdit.GetData<Entity.SizeOperation>().SetSize(size);
 				}
 			}
 			if(ImGui.IsItemDeactivatedAfterEdit() && sizeEdit != null) {
-				Program.File.EndEdit(ref sizeEdit, !sizeEdit.GetData<Entity.SizeOperation>().HasChanges());
+				Program.Project.EndEdit(ref sizeEdit, !sizeEdit.GetData<Entity.SizeOperation>().HasChanges());
 			}
 			if(fallbackOnTemplate) {
 				ImGui.PopStyleVar(); // ImGuiStyleVar.Alpha
@@ -448,7 +448,7 @@ public class EntitiesPanel : Panel {
 				ImGui.OpenPopupOnItemClick("reset-size", ImGuiPopupFlags.MouseButtonRight);
 				if(ImGui.BeginPopup("reset-size")) {
 					if(ImGui.MenuItem("Reset")) {
-						Program.File.ApplyEdit(layer, new Entity.SizeOperation(entity, null));
+						Program.Project.ApplyEdit(layer, new Entity.SizeOperation(entity, null));
 					}
 
 					ImGui.EndPopup();

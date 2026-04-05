@@ -2,7 +2,7 @@
 using ImGuiNET;
 using Silk.NET.Maths;
 
-namespace L2D; 
+namespace E2D; 
 
 public class NewProjectModal {
 
@@ -25,7 +25,7 @@ public class NewProjectModal {
 		bool o = true;
 		if(ImGui.BeginPopupModal("New Project", ref o, ImGuiWindowFlags.AlwaysAutoResize)) {
 			if(ImGui.Button("Choose")) {
-				FileDialog.Save(path, Program.FILE_EXTENSION, result => {
+				FileDialog.Save(path, World.FILE_EXTENSION, result => {
 					if(result != null) path = result;
 				});
 			}

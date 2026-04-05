@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 
-namespace L2D;
+namespace E2D;
 
 public class ReloadFileModal {
 	
@@ -15,7 +15,7 @@ public class ReloadFileModal {
 		open = true;
 	}
 
-	internal void Body() {
+	public void Body() {
 		if(open) {
 			ImGui.OpenPopup("File Changed");
 			open = false;

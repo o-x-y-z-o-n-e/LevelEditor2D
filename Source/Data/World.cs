@@ -1,9 +1,10 @@
-﻿using System.Runtime.InteropServices.ComTypes;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 
-namespace L2D;
+namespace E2D;
 
 public class World {
+	
+	public const string FILE_EXTENSION = "w2d";
 
 	public string Name {
 		get => name;
@@ -19,6 +20,11 @@ public class World {
 		get => tileHeight;
 		set => tileHeight = value;
 	}
+	
+	public string ScenesDirectory {
+		get => scenesDirectory;
+		set => scenesDirectory = value;
+	}
 
 	public int TilesetCount => tilesets.Count;
 	public int SceneCount => scenes.Count;
@@ -30,24 +36,26 @@ public class World {
 	
 	public EntityCollection Templates => templates;
 
-	private File file;
+	private Project project;
 	private string name;
 	private int tileWidth;
 	private int tileHeight;
-	private List<Tileset> tilesets;
+	private string scenesDirectory;
 	private List<Scene> scenes;
+	private List<Tileset> tilesets;
 	private EntityCollection templates;
 	private int maxTilesetSlots;
 	private bool disposed;
 
-	internal World(File file) {
-		this.file = file;
+	internal World(Project project) {
+		this.project = project;
 
 		name = "New World";
 		tileWidth = 16;
 		tileHeight = 16;
-		tilesets = new();
+		scenesDirectory = "scenes";
 		scenes = new();
+		tilesets = new();
 		templates = new(this);
 		maxTilesetSlots = Tilemap.MAX_TILESETS;
 	}
@@ -71,9 +79,7 @@ public class World {
 	}
 
 	public Scene CreateScene(string id, int width, int height, int x, int y, bool blankLayer = true) {
-		foreach(var s in scenes) if(s.ID == id) return null;
-		Scene scene = new Scene(file);
-		scene.ID = id;
+		Scene scene = new Scene(project, id, false);
 		scene.WorldX = x;
 		scene.WorldY = y;
 		scene.Resize(width, height);
@@ -82,13 +88,17 @@ public class World {
 			layer.Name = scene.GetNewDefaultLayerName();
 			scene.Root.AddChild(layer);
 		}
-		scenes.Add(scene);
 		return scene;
 	}
 
 	internal void InsertScene(Scene scene, int index) {
 		if(scene == null || scene.World != this || scenes.Contains(scene)) return;
 		scenes.Insert(index, scene);
+		scene.UpdateFilePath();
+		scene.MarkTilemapsAsDirty();
+		if(!scene.IsEmbedded) {
+			project.DontDeleteFileOnSave(scene.FilePath);
+		}
 	}
 
 	public void SwapScenes(int index1, int index2) {
@@ -115,7 +125,7 @@ public class World {
 		
 		for(int i = 0; i < srcScene.Tilesets.Count; i++) {
 			var src = srcScene.Tilesets[i];
-			var link = new TilesetLink(file, src.Slot);
+			var link = new TilesetLink(project, src.Slot);
 			link.Tileset = src.Tileset;
 			newScene.Tilesets.Add(link);
 		}
@@ -133,11 +143,17 @@ public class World {
 	public void RemoveScene(Scene scene) {
 		if(!scenes.Contains(scene)) return;
 		scenes.Remove(scene);
-		foreach(var layer in scene.GetAllLayers()) {
-			if(layer.Type == LayerType.Tiles) {
-				layer.Tilemap?.ReleaseResources();
-			}
+		scene.ReleaseResources();
+		if(!scene.IsEmbedded) {
+			project.DeleteFileOnSave(scene.FilePath);
 		}
+	}
+
+	public bool HasScene(string id) {
+		foreach(var scene in scenes) {
+			if(scene.ID == id) return true;
+		}
+		return false;
 	}
 
 	internal void AddTileset(Tileset tileset) {
@@ -147,6 +163,13 @@ public class World {
 	
 	public void RemoveTileset(Tileset tileset) {
 		tilesets.Remove(tileset);
+	}
+
+	public bool HasTileset(string id) {
+		foreach(var tileset in tilesets) {
+			if(tileset.ID == id) return true;
+		}
+		return false;
 	}
 
 	internal void Parse(XElement worldElement) {
@@ -160,17 +183,21 @@ public class World {
 		XElement tilesetsElement = worldElement.Element("tilesets");
 		if(tilesetsElement != null) {
 			foreach(var tilesetElement in tilesetsElement.Elements("tileset")) {
-				Tileset tileset = new Tileset(file);
+				string id = tilesetElement.Attribute("id").ParseAsString();
+				if(id == "" || HasTileset(id)) continue; // ignore duplicate or missing tileset IDs
+				Tileset tileset = new Tileset(project);
 				tileset.Parse(tilesetElement);
 				tilesets.Add(tileset);
 			}
 		}
 		XElement scenesElement = worldElement.Element("scenes");
 		if(scenesElement != null) {
+			scenesDirectory = scenesElement.Attribute("directory").ParseAsString(scenesDirectory);
 			foreach(var sceneElement in scenesElement.Elements("scene")) {
-				Scene scene = new Scene(file);
-				scene.Parse(sceneElement);
-				scenes.Add(scene);
+				Scene scene = Scene.Parse(project, sceneElement);
+				if(scene != null) {
+					scenes.Add(scene);
+				}
 			}
 		}
 	}
@@ -192,8 +219,9 @@ public class World {
 		}
 		rootElement.Add(tilesetsParent);
 		XElement scenesParent = new XElement("scenes");
+		scenesParent.Add(new XAttribute("directory", scenesDirectory));
 		foreach(var scene in scenes) {
-			scenesParent.Add(scene.Serialize());
+			scenesParent.Add(Scene.Serialize(scene));
 		}
 		rootElement.Add(scenesParent);
 		return rootElement;
@@ -202,15 +230,7 @@ public class World {
 	public void Dispose() {
 		if(disposed) return;
 		for(int i = 0; i < tilesets.Count; i++) tilesets[i]?.ReleaseResources();
-		
-		for(int s = 0; s < scenes.Count; s++) {
-			foreach(var layer in scenes[s].GetAllLayers()) {
-				if(layer.Type == LayerType.Tiles) {
-					layer.Tilemap?.ReleaseResources();
-				}
-			}
-		}
-		
+		for(int i = 0; i < scenes.Count; i++) scenes[i]?.ReleaseResources();
 		disposed = true;
 	}
 

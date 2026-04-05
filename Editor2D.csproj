@@ -1,25 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <AssemblyName>L2D</AssemblyName>
-        <RootNamespace>L2D</RootNamespace>
+        <AssemblyName>E2D</AssemblyName>
+        <RootNamespace>E2D</RootNamespace>
         <ApplicationIcon>Resources\Icon.ico</ApplicationIcon>
+        <PackageId>E2D</PackageId>
+        <Authors>Jeremy Kiel</Authors>
+        <Company>E2D</Company>
+        <Product>E2D</Product>
     </PropertyGroup>
-
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
       <DefineConstants>TRACE</DefineConstants>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
-
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DefineConstants>TRACE</DefineConstants>
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
-
     <ItemGroup>
       <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
       <PackageReference Include="NativeFileDialogSharp" Version="0.6.0-alpha" />
@@ -34,7 +34,6 @@
       <PackageReference Include="StbImageSharp" Version="2.30.15" />
       <PackageReference Include="StbImageWriteSharp" Version="1.16.7" />
     </ItemGroup>
-
     <ItemGroup>
       <EmbeddedResource Include="Resources\Codicons.ttf" />
       <EmbeddedResource Include="Resources\JetBrainsMono-Bold.ttf" />
@@ -72,5 +71,4 @@
       <EmbeddedResource Include="Resources\Icon.ico" />
       <EmbeddedResource Include="Resources\Icon.png" />
     </ItemGroup>
-
 </Project>

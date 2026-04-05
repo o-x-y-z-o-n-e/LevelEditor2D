@@ -7,11 +7,11 @@ using Serilog;
 using Silk.NET.OpenGL;
 using StbImageSharp;
 
-namespace L2D; 
+namespace E2D; 
 
 public class Tileset {
 
-	public World World => file.World;
+	public World World => project.World;
 
 	// TODO: fix size when not same as world tile size
 	
@@ -69,7 +69,7 @@ public class Tileset {
 	public List<AutomapPattern> AutomapPatterns => automapPatterns;
 	public List<PresetPattern> PresetPatterns => presetPatterns;
 
-	private File file;
+	private Project project;
 	private string id;
 	private string group;
 	private string textureFilePath;
@@ -87,8 +87,8 @@ public class Tileset {
 	private string textureFileFullPath;
 	private FileSystemWatcher textureFileWatcher;
 
-	internal Tileset(File file) {
-		this.file = file;
+	internal Tileset(Project project) {
+		this.project = project;
 		
 		id = "new_tileset";
 		textureFilePath = "";
@@ -103,15 +103,15 @@ public class Tileset {
 	}
 
 	internal void Parse(XElement tilesetElement) {
-		id = tilesetElement.Attribute("id").Value;
-		group = tilesetElement.Attribute("group").Value;
-		textureFilePath =  tilesetElement.Attribute("texture_file").Value;
+		id = tilesetElement.Attribute("id").ParseAsString();
+		group = tilesetElement.Attribute("group").ParseAsString();
+		textureFilePath =  tilesetElement.Attribute("texture_file").ParseAsString();
 		offset.X = tilesetElement.Attribute("px_offset.x").ParseAsInt();
 		offset.Y = tilesetElement.Attribute("px_offset.y").ParseAsInt();
 		spacing.X = tilesetElement.Attribute("px_spacing.x").ParseAsInt();
 		spacing.Y = tilesetElement.Attribute("px_spacing.y").ParseAsInt();
-		size.X = tilesetElement.Attribute("px_size.x").ParseAsInt(file.World.TileWidth);
-		size.Y = tilesetElement.Attribute("px_size.y").ParseAsInt(file.World.TileHeight);
+		size.X = tilesetElement.Attribute("px_size.x").ParseAsInt(project.World.TileWidth);
+		size.Y = tilesetElement.Attribute("px_size.y").ParseAsInt(project.World.TileHeight);
 		foreach(var automapElement in tilesetElement.Elements("automap")) {
 			AutomapPattern automap = new AutomapPattern(this, automapElement.Attribute("name").ParseAsString());
 			string type = automapElement.Attribute("type").ParseAsString();
@@ -217,7 +217,7 @@ public class Tileset {
 
 	internal void SetTexturePath(string path, bool updateResources = true) {
 		textureFilePath = path;
-		textureFileFullPath = file.GetPath(textureFilePath);
+		textureFileFullPath = project.GetPath(textureFilePath);
 		if(updateResources) {
 			UpdateFileWatcher();
 			ReloadTexture();
@@ -226,7 +226,7 @@ public class Tileset {
 
 	private void OnTextureFilePathChanged() {
 		if(textureFilePath == null) textureFilePath = "";
-		textureFileFullPath = file.GetPath(textureFilePath);
+		textureFileFullPath = project.GetPath(textureFilePath);
 		UpdateFileWatcher();
 		ReloadTexture();
 	}
@@ -417,7 +417,7 @@ public class Tileset {
 	}
 
 	public class NameOperation : IFileEditOperation {
-		public object? Context => tileset.file.World;
+		public object? Context => tileset.project.World;
 		private Tileset tileset;
 		private string oldValue;
 		private string newValue;
@@ -438,7 +438,7 @@ public class Tileset {
 	}
 	
 	public class GroupOperation : IFileEditOperation {
-		public object? Context => tileset.file.World;
+		public object? Context => tileset.project.World;
 		private Tileset tileset;
 		private string oldValue;
 		private string newValue;

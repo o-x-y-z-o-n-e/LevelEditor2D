@@ -80,7 +80,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
         {
             Init(gl, view, input);
             
-            iniPath = Path.Combine(L2D.Program.GetAppDataDirectory(), "imgui.ini");
+            iniPath = Path.Combine(E2D.Program.GetAppDataDirectory(), "imgui.ini");
             
             var io = ImGuiNET.ImGui.GetIO();
             io.WantSaveIniSettings = false;
@@ -98,8 +98,7 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
             float fontSize = 18.0F;
 
             {
-                Assembly assembly = typeof(L2D.Program).Assembly;
-                Stream stream = assembly.GetManifestResourceStream("L2D.Resources.JetBrainsMono-Medium.ttf");
+                Stream stream = E2D.Program.GetEmbeddedResourceStream(Assembly.GetExecutingAssembly(), "Resources.JetBrainsMono-Medium.ttf");
                 byte[] buffer = new byte[stream.Length];
                 stream.Read(buffer);
                 stream.Close();
@@ -141,8 +140,8 @@ namespace Silk.NET.OpenGL.Extensions.ImGui {
                 //     &config, 
                 //     rangeHandle.AddrOfPinnedObject()
                 // );
-                Assembly assembly = typeof(L2D.Program).Assembly;
-                Stream stream = assembly.GetManifestResourceStream("L2D.Resources.Codicons.ttf");
+                
+                Stream stream = E2D.Program.GetEmbeddedResourceStream(Assembly.GetExecutingAssembly(), "Resources.Codicons.ttf");
                 byte[] buffer = new byte[stream.Length];
                 stream.Read(buffer);
                 stream.Close();

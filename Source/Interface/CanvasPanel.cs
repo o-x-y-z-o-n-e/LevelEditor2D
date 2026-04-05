@@ -3,7 +3,7 @@ using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D;
+namespace E2D;
 
 public class CanvasPanel : Panel {
 	
@@ -71,18 +71,18 @@ public class CanvasPanel : Panel {
 	}
 
 	protected override void Update() {
-		if(Program.File == null) {
+		if(Program.Project == null) {
 			ImGui.Text("No file loaded...");
 			return;
 		}
-		if(Program.File.World == null) {
+		if(Program.Project.World == null) {
 			ImGui.Text("No world active...");
 			return;
 		}
 		
 		var io = ImGui.GetIO();
 
-		World world = Program.File.World;
+		World world = Program.Project.World;
 
 		Layer selectedLayer = Program.SelectedLayer;
 
@@ -528,7 +528,7 @@ public class CanvasPanel : Panel {
 
 		bool overlaps = false;
 
-		foreach(var scene in Program.File.World.Scenes) {
+		foreach(var scene in Program.Project.World.Scenes) {
 			if(scene == previewSceneExisting) continue;
 			Rectangle area = new(scene.WorldX, scene.WorldY, scene.TileCountX, scene.TileCountY);
 			if(area.IntersectsWith(previewSceneArea)) {

@@ -4,7 +4,7 @@ using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D; 
+namespace E2D; 
 
 public class TileBrushTool : CanvasTool {
 	
@@ -464,10 +464,10 @@ public class TileBrushTool : CanvasTool {
 
 	private void BeginImprint(Layer layer) {
 		if(edit != null) {
-			Program.File.EndEdit(ref edit, discard: true);
+			Program.Project.EndEdit(ref edit, discard: true);
 		}
 		var operation = new TileEditOperation(layer.Tilemap);
-		edit = Program.File.BeginEdit(operation);
+		edit = Program.Project.BeginEdit(operation);
 	}
 
 	private void UpdateImprint(Point offset) {
@@ -490,7 +490,7 @@ public class TileBrushTool : CanvasTool {
 
 	private void EndImprint() {
 		if(edit == null) return;
-		Program.File.EndEdit(ref edit, discard: !edit.GetData<TileEditOperation>().HasChanges());
+		Program.Project.EndEdit(ref edit, discard: !edit.GetData<TileEditOperation>().HasChanges());
 	}
 
 	public void MoveRegion(Rectangle region, Layer layer) {
@@ -511,7 +511,7 @@ public class TileBrushTool : CanvasTool {
 		}
 		
 		if(operation.HasChanges()) {
-			Program.File.ApplyEdit(Scene, operation);
+			Program.Project.ApplyEdit(Scene, operation);
 		}
 		
 		clearAfterPlace = true;

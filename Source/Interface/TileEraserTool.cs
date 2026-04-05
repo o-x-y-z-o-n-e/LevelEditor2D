@@ -3,7 +3,7 @@ using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D; 
+namespace E2D; 
 
 public class TileEraserTool : CanvasTool {
 
@@ -49,10 +49,10 @@ public class TileEraserTool : CanvasTool {
 
 	private void BeginErase(Tilemap tilemap) {
 		if(edit != null) {
-			Program.File.EndEdit(ref edit, discard: true);
+			Program.Project.EndEdit(ref edit, discard: true);
 		}
 		var operation = new TileEditOperation(tilemap);
-		edit = Program.File.BeginEdit(operation);
+		edit = Program.Project.BeginEdit(operation);
 	}
 
 	private void UpdateErase(int w, int h, Point offset) {
@@ -72,7 +72,7 @@ public class TileEraserTool : CanvasTool {
 
 	private void EndErase() {
 		if(edit == null) return;
-		Program.File.EndEdit(ref edit, discard: !edit.GetData<TileEditOperation>().HasChanges());
+		Program.Project.EndEdit(ref edit, discard: !edit.GetData<TileEditOperation>().HasChanges());
 	}
 
 	public void Erase(Rectangle region, Layer layer) {

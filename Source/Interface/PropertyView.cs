@@ -1,7 +1,7 @@
 ﻿using IconFonts;
 using ImGuiNET;
 
-namespace L2D;
+namespace E2D;
 
 public static class PropertyView {
 
@@ -47,7 +47,7 @@ public static class PropertyView {
 		}
 
 		if(delete != null) {
-			Program.File.ApplyEdit(collection, new Property.RemoveOperation(collection, delete));
+			Program.Project.ApplyEdit(collection, new Property.RemoveOperation(collection, delete));
 		}
 		
 		// TODO: reordering incompatible with templates (maybe only allow for non-templated entities?)
@@ -112,16 +112,16 @@ public static class PropertyView {
 						// TODO: update value
 					} else {
 						if(newPropertyType == PropertyType.String) {
-							Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyString));
+							Program.Project.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyString));
 						}
 						if(newPropertyType == PropertyType.Integer) {
-							Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyInteger));
+							Program.Project.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyInteger));
 						}
 						if(newPropertyType == PropertyType.Float) {
-							Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyFloat));
+							Program.Project.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyFloat));
 						}
 						if(newPropertyType == PropertyType.Boolean) {
-							Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyBoolean));
+							Program.Project.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newPropertyBoolean));
 						}
 					}
 				} else {
@@ -132,7 +132,7 @@ public static class PropertyView {
 					if(newPropertyType == PropertyType.Integer) property.Integer = newPropertyInteger;
 					if(newPropertyType == PropertyType.Float) property.Float = newPropertyFloat;
 					if(newPropertyType == PropertyType.Boolean) property.Boolean = newPropertyBoolean;
-					Program.File.ApplyEdit(collection, new Property.AddOperation(collection, property));
+					Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, property));
 				}
 				ImGui.CloseCurrentPopup();
 			}
@@ -167,9 +167,9 @@ public static class PropertyView {
 						newProperty.Name = property.Name;
 						newProperty.Type = property.Type;
 						newProperty.String = str;
-						Program.File.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
+						Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
 					} else {
-						Program.File.ApplyEdit(collection, new Tuple<string, string>(property.String, str),
+						Program.Project.ApplyEdit(collection, new Tuple<string, string>(property.String, str),
 							redo: entry => { property.String = entry.GetData<Tuple<string, string>>().Item2; },
 							undo: entry => { property.String = entry.GetData<Tuple<string, string>>().Item1; }
 						);
@@ -185,9 +185,9 @@ public static class PropertyView {
 						newProperty.Name = property.Name;
 						newProperty.Type = property.Type;
 						newProperty.Integer = i;
-						Program.File.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
+						Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
 					} else {
-						Program.File.ApplyEdit(collection, new Tuple<int, int>(property.Integer, i),
+						Program.Project.ApplyEdit(collection, new Tuple<int, int>(property.Integer, i),
 							redo: entry => { property.Integer = entry.GetData<Tuple<int, int>>().Item2; },
 							undo: entry => { property.Integer = entry.GetData<Tuple<int, int>>().Item1; }
 						);
@@ -203,9 +203,9 @@ public static class PropertyView {
 						newProperty.Name = property.Name;
 						newProperty.Type = property.Type;
 						newProperty.Float = f;
-						Program.File.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
+						Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
 					} else {
-						Program.File.ApplyEdit(collection, new Tuple<float, float>(property.Float, f),
+						Program.Project.ApplyEdit(collection, new Tuple<float, float>(property.Float, f),
 							redo: entry => { property.Float = entry.GetData<Tuple<float, float>>().Item2; },
 							undo: entry => { property.Float = entry.GetData<Tuple<float, float>>().Item1; }
 						);
@@ -229,9 +229,9 @@ public static class PropertyView {
 						newProperty.Name = property.Name;
 						newProperty.Type = property.Type;
 						newProperty.Boolean = b;
-						Program.File.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
+						Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
 					} else {
-						Program.File.ApplyEdit(collection, new Tuple<bool, bool>(property.Boolean, b),
+						Program.Project.ApplyEdit(collection, new Tuple<bool, bool>(property.Boolean, b),
 							redo: entry => { property.Boolean = entry.GetData<Tuple<bool, bool>>().Item2; },
 							undo: entry => { property.Boolean = entry.GetData<Tuple<bool, bool>>().Item1; }
 						);
@@ -312,7 +312,7 @@ public static class PropertyView {
 				if(collection.Contains(name)) {
 					// TODO: delete & replace
 				} else {
-					Program.File.ApplyEdit(collection, new Tuple<string, string>(property.Name, name),
+					Program.Project.ApplyEdit(collection, new Tuple<string, string>(property.Name, name),
 						redo: entry => { property.Name = entry.GetData<Tuple<string, string>>().Item2; },
 						undo: entry => { property.Name = entry.GetData<Tuple<string, string>>().Item1; }
 					);
@@ -339,7 +339,7 @@ public static class PropertyView {
 						newString = property.Boolean.ToString();
 					}
 
-					Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newString));
+					Program.Project.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newString));
 					close = true;
 				}
 
@@ -357,7 +357,7 @@ public static class PropertyView {
 						newInteger = property.Boolean ? 1 : 0;
 					}
 
-					Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newInteger));
+					Program.Project.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newInteger));
 					close = true;
 				}
 
@@ -375,7 +375,7 @@ public static class PropertyView {
 						newFloat = property.Boolean ? 1 : 0;
 					}
 
-					Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newFloat));
+					Program.Project.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newFloat));
 					close = true;
 				}
 
@@ -393,7 +393,7 @@ public static class PropertyView {
 						newBoolean = property.Float != 0.0F;
 					}
 
-					Program.File.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newBoolean));
+					Program.Project.ApplyEdit(collection, new Property.ConvertOperation(collection, property, newBoolean));
 					close = true;
 				}
 

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D;
+namespace E2D;
 
 public class TemplatesPanel : Panel {
 
@@ -46,11 +46,11 @@ public class TemplatesPanel : Panel {
 	}
 
 	protected override void Update() {
-		if(Program.File == null) {
+		if(Program.Project == null) {
 			return;
 		}
 
-		World world = Program.File.World;
+		World world = Program.Project.World;
 
 		ImGui.Columns(2);
 		ListView();
@@ -59,7 +59,7 @@ public class TemplatesPanel : Panel {
 	}
 	
 	private void ListView() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		
 		var style = ImGui.GetStyle();
 
@@ -142,7 +142,7 @@ public class TemplatesPanel : Panel {
 		DeletePopup();
 
 		if(moveOperation != null) {
-			Program.File.ApplyEdit(moveOperation);
+			Program.Project.ApplyEdit(moveOperation);
 		}
 	}
 	
@@ -173,26 +173,26 @@ public class TemplatesPanel : Panel {
 					}
 				}
 				if(!invalidName) {
-					Program.File.ApplyEdit(this, new Entity.NameOperation(selectedTemplate, name));
+					Program.Project.ApplyEdit(this, new Entity.NameOperation(selectedTemplate, name));
 				}
 			}
 			string type = selectedTemplate.Type;
 			if(ImGui.InputText("Type", ref type, Program.IMGUI_STRING_MAX)) {}
 			if(ImGui.IsItemDeactivatedAfterEdit()) {
-				Program.File.ApplyEdit(this, new Entity.TypeOperation(selectedTemplate, type));
+				Program.Project.ApplyEdit(this, new Entity.TypeOperation(selectedTemplate, type));
 			}
 			Vector2 size = selectedTemplate.Size;
 			if(ImGui.DragFloat2("Size", ref size)) {
 				if(size.X < 0) size.X = 0;
 				if(size.Y < 0) size.Y = 0;
 				if(sizeEdit == null || sizeEdit.GetData<Entity.SizeOperation>().Entity != selectedTemplate) {
-					sizeEdit = Program.File.BeginEdit(new Entity.SizeOperation(selectedTemplate, size));
+					sizeEdit = Program.Project.BeginEdit(new Entity.SizeOperation(selectedTemplate, size));
 				} else {
 					sizeEdit.GetData<Entity.SizeOperation>().SetSize(size);
 				}
 			}
 			if(ImGui.IsItemDeactivatedAfterEdit() && sizeEdit != null) {
-				Program.File.EndEdit(ref sizeEdit, !sizeEdit.GetData<Entity.SizeOperation>().HasChanges());
+				Program.Project.EndEdit(ref sizeEdit, !sizeEdit.GetData<Entity.SizeOperation>().HasChanges());
 			}
 			PropertyView.Run(selectedTemplate.Properties);
 		}
@@ -240,7 +240,7 @@ public class TemplatesPanel : Panel {
 	}
 
 	private unsafe Entity Items(ref Entity.MoveOperation moveOperation, bool selectOnly, Action<Entity> contextPopup = null) {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 
 		Entity selected = selectOnly ? null : selectedTemplate;
 		
@@ -437,7 +437,7 @@ public class TemplatesPanel : Panel {
 	}
 
 	private void AddPopup() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		if(addPopup) {
 			addPopup = false;
 			newIdBuffer = "new entity";
@@ -462,7 +462,7 @@ public class TemplatesPanel : Panel {
 			if(ImGui.Button("Confirm")) {
 				Entity template = new Entity(world.Templates);
 				template.SetName(newIdBuffer);
-				Program.File.ApplyEdit(this, new Entity.AddOperation(world.Templates, template));
+				Program.Project.ApplyEdit(this, new Entity.AddOperation(world.Templates, template));
 				selectedTemplate = template;
 				ImGui.CloseCurrentPopup();
 			}
@@ -476,7 +476,7 @@ public class TemplatesPanel : Panel {
 	}
 
 	private void CopyPopup() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		if(copyPopup) {
 			copyPopup = false;
 			newIdBuffer = "new entity";
@@ -503,7 +503,7 @@ public class TemplatesPanel : Panel {
 			if(ImGui.Button("Confirm")) {
 				Entity template = world.Templates.Copy(copyTarget);
 				template.SetName(newIdBuffer);
-				Program.File.ApplyEdit(this, new Entity.AddOperation(world.Templates, template));
+				Program.Project.ApplyEdit(this, new Entity.AddOperation(world.Templates, template));
 				selectedTemplate = template;
 				ImGui.CloseCurrentPopup();
 			}
@@ -519,7 +519,7 @@ public class TemplatesPanel : Panel {
 	}
 
 	private void DeletePopup() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		if(deletePopup) {
 			deletePopup = false;
 			if(deleteTarget != null) {
@@ -529,7 +529,7 @@ public class TemplatesPanel : Panel {
 		if(ImGui.BeginPopup("delete-template")) {
 			ImGui.Text("Delete selected template");
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(this, new Entity.RemoveOperation(world.Templates, deleteTarget));
+				Program.Project.ApplyEdit(this, new Entity.RemoveOperation(world.Templates, deleteTarget));
 				if(deleteTarget == selectedTemplate) {
 					selectedTemplate = null;
 				}
@@ -603,7 +603,7 @@ public class TemplatesPanel : Panel {
 	}
 	
 	private void SearchMatches() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		var regex = new Regex(Regex.Escape(search));
 		searchMatches.Clear();
 		for(int i = 0; i < world.Templates.Count; i++) {

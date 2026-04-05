@@ -6,9 +6,9 @@ using System.Xml;
 using System.Xml.Linq;
 using Serilog;
 
-namespace L2D;
+namespace E2D;
 
-public class File {
+public class Project {
 
 	public World World => world;
 	
@@ -24,34 +24,35 @@ public class File {
 
 	private FileSystemWatcher watcher;
 
-	internal File(string path) {
+	private List<string> filesToDeleteOnSave;
+
+	internal Project(string path) {
 		this.path = Path.GetFullPath(path).Replace('\\', '/');
 		world = null;
 		dirty = false;
 		watcher = new FileSystemWatcher(Path.GetDirectoryName(this.path));
 		watcher.NotifyFilter = NotifyFilters.LastWrite;
-		watcher.Filter = "*.l2d";
+		watcher.Filter = $"*.{World.FILE_EXTENSION}";
 		watcher.EnableRaisingEvents = true;
 		watcher.Changed += OnChanged;
 		editContext = "";
 		editStack = new List<FileEditEntry>();
 		editPointer = 0;
+		filesToDeleteOnSave = new();
 	}
 
 	public bool Read() {
-		FileStream stream = null;
-		Log.Information("Reading file... [{@path}]", path);
+		Log.Information("Reading project file...");
+		Log.Information("{@path}", path);
 		try {
 			ClearEditHistory();
-			stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite);
-			XDocument document = XDocument.Load(stream);
+			string contents = File.ReadAllText(path);
+			XDocument document = XDocument.Parse(contents);
 			UnmarkDirty();
 			Parse(document);
-			stream.Close();
 			return true;
 		} catch(Exception e) {
-			Log.Error(e, "Failed to read project file: {@path}", path);
-			stream?.Close();
+			Log.Error(e, "Failed to read project file!");
 			New();
 			return false;
 		}
@@ -66,7 +67,22 @@ public class File {
 	public bool Write() {
 		XmlWriter writer = null;
 		watcher.EnableRaisingEvents = false;
-		Log.Information("Writing file... [{@path}]", path);
+		if(filesToDeleteOnSave.Count > 0) {
+			Log.Information("Deleting old files...");
+			try {
+				foreach(string filePath in filesToDeleteOnSave) {
+					if(File.Exists(filePath)) {
+						Log.Information(filePath);
+						File.Delete(filePath);
+					}
+				}
+				filesToDeleteOnSave.Clear();
+			} catch(Exception e) {
+				Log.Error(e, "Failed to delete old files");
+			}
+		}
+		Log.Information("Writing project file...");
+		Log.Information("{@path}", path);
 		try {
 			StringBuilder builder = new StringBuilder();
 			XDocument document = new XDocument();
@@ -79,10 +95,10 @@ public class File {
 			writer = XmlTextWriter.Create(builder, settings);
 			document.Save(writer);
 			writer.Close();
-			System.IO.File.WriteAllText(path, builder.ToString());
+			File.WriteAllText(path, builder.ToString());
 			return true;
 		} catch(Exception e) {
-			Log.Error(e, "Failed to write project file: {@path}", path);
+			Log.Error(e, "Failed to write project file!");
 			writer?.Close();
 			return false;
 		} finally {
@@ -97,6 +113,18 @@ public class File {
 
 	private void Serialize(XDocument doc) {
 		doc.Add(world.Serialize());
+	}
+
+	public void DeleteFileOnSave(string filePath) {
+		filesToDeleteOnSave.Add(filePath);
+	}
+
+	public void DontDeleteFileOnSave(string filePath) {
+		filesToDeleteOnSave.RemoveAll(path => path == filePath);
+	}
+	
+	public string GetScenePath(string id) {
+		return GetPath(Path.Combine(world.ScenesDirectory, $"{id}.{Scene.FILE_EXTENSION}"));
 	}
 
 	public string GetPath(string localPath) {

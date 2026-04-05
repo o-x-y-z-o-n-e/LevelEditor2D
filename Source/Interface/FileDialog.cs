@@ -2,7 +2,7 @@
 using NativeFileDialogSharp;
 using Silk.NET.OpenGL.Extensions.ImGui;
 
-namespace L2D;
+namespace E2D;
 
 public class FileDialog {
 

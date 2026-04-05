@@ -17,7 +17,7 @@ using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
 using StbImageSharp;
 
-namespace L2D;
+namespace E2D;
 
 public static class Program {
 
@@ -25,7 +25,7 @@ public static class Program {
 	public const int VERSION_MINOR = 1;
 	public const int VERSION_PATCH = 0;
 
-	public const string TITLE = "Level Editor 2D";
+	public const string TITLE = "Editor 2D";
 
 	public static readonly string[] AUTHORS = new [] {
 		"Jeremy Kiel",
@@ -33,8 +33,6 @@ public static class Program {
 	};
 	
 	public static readonly string VERSION_STRING = $"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}";
-	
-	public const string FILE_EXTENSION = "l2d";
 
 	public const int IMGUI_STRING_MAX = 512;
 
@@ -55,6 +53,7 @@ public static class Program {
 	public static TilePickerPanel TilePickerPanel => tilePickerPanel;
 	public static TilesetsPanel TilesetsPanel => tilesetsPanel;
 	public static TileFillModal TileFillModal => tileFillModal;
+	public static WorldSettingsModal WorldSettingsModal => worldSettingsModal;
 	public static ConfirmModal ConfirmModal => confirmModal;
 	public static ReloadFileModal ReloadFileModal => reloadFileModal;
 	public static NewProjectModal NewProjectModal => newProjectModal;
@@ -83,7 +82,7 @@ public static class Program {
     
 	public static GL GL => gl;
 
-	public static File File => file;
+	public static Project Project => project;
 
 	public static IInputContext Input => input;
 
@@ -97,11 +96,12 @@ public static class Program {
 	private static TileFillModal tileFillModal;
 	private static EntitiesPanel entitiesPanel;
 	private static TemplatesPanel templatesPanel;
+	private static WorldSettingsModal worldSettingsModal;
 	private static ConfirmModal confirmModal;
 	private static ReloadFileModal reloadFileModal;
 	private static NewProjectModal newProjectModal;
 
-	private static File file;
+	private static Project project;
 	private static Scene selectedScene;
 	private static Layer selectedLayer;
 	private static Entity selectedEntity;
@@ -135,7 +135,7 @@ public static class Program {
 		try {
 			WindowOptions options = WindowOptions.Default with {
 				WindowState = WindowState.Maximized,
-				Title = "L2D",
+				Title = TITLE,
 				API = new GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.Default, new APIVersion(4, 1)),
 				IsVisible = false
 			};
@@ -183,6 +183,7 @@ public static class Program {
 			tileFillModal = new TileFillModal();
 			entitiesPanel = new EntitiesPanel();
 			templatesPanel = new TemplatesPanel();
+			worldSettingsModal = new WorldSettingsModal();
 			confirmModal = new ConfirmModal();
 			reloadFileModal = new ReloadFileModal();
 			newProjectModal = new NewProjectModal();
@@ -202,7 +203,7 @@ public static class Program {
 			controller.Render();
 			
 			foreach(string arg in System.Environment.GetCommandLineArgs()) {
-				if(file == null && arg.EndsWith(".l2d")) {
+				if(project == null && arg.EndsWith(".l2d")) {
 					OpenFile(arg);
 				}
 			}
@@ -252,14 +253,13 @@ public static class Program {
 			entitiesPanel.Execute();
 			tilePickerPanel.Execute();
 			
-
-			if(file != null && ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
+			if(project != null && ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
 				if(ImGui.IsKeyPressed(ImGuiKey.S)) {
 					SaveFile();
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.Q)) {
-					if(file.UnsavedChanges) {
+					if(project.UnsavedChanges) {
 						Program.ConfirmModal.Open(
 							"Confirm Quit",
 							"You have unsaved changes.\nAre you sure you want to quit?",
@@ -271,7 +271,7 @@ public static class Program {
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.O)) {
-					if(file.UnsavedChanges) {
+					if(project.UnsavedChanges) {
 						Program.ConfirmModal.Open(
 							"Confirm Open",
 							"You have unsaved changes.\nAre you sure you want to open another file?",
@@ -283,7 +283,7 @@ public static class Program {
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.R)) {
-					if(file.UnsavedChanges) {
+					if(project.UnsavedChanges) {
 						Program.ConfirmModal.Open(
 							"Confirm Reload",
 							"You have unsaved changes.\nAre you sure you want to reload file from disk?",
@@ -295,7 +295,7 @@ public static class Program {
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.N)) {
-					if(file.UnsavedChanges) {
+					if(project.UnsavedChanges) {
 						Program.ConfirmModal.Open(
 							"Confirm New File",
 							"You have unsaved changes.\nAre you sure you want to create a new file?",
@@ -307,36 +307,37 @@ public static class Program {
 				}
 
 				if(ImGui.IsKeyPressed(ImGuiKey.Z)) {
-					if(file.WillUndoChangeContext()) {
+					if(project.WillUndoChangeContext()) {
 						Program.ConfirmModal.Open(
 							"Undo changes",
-							file.GetUndoMessage(),
-							file.Undo
+							project.GetUndoMessage(),
+							project.Undo
 						);
 					} else {
-						file.Undo();
+						project.Undo();
 					}
 				}
 				
 				if(ImGui.IsKeyPressed(ImGuiKey.Y)) {
-					if(file.WillRedoChangeContext()) {
+					if(project.WillRedoChangeContext()) {
 						Program.ConfirmModal.Open(
 							"Redo changes",
-							file.GetRedoMessage(),
-							file.Redo
+							project.GetRedoMessage(),
+							project.Redo
 						);
 					} else {
-						file.Redo();
+						project.Redo();
 					}
 				}
 			}
 
-			confirmModal.Body();
 			tileFillModal.Body();
+			worldSettingsModal.Body();
+			confirmModal.Body();
 			newProjectModal.Body();
 			reloadFileModal.Body();
 
-			if(file == null) {
+			if(project == null) {
 				Launcher();
 			}
 
@@ -364,7 +365,7 @@ public static class Program {
 	}
 
 	private static void Closing() {
-		if(!requestClose && Program.File != null && Program.File.UnsavedChanges) {
+		if(!requestClose && Program.Project != null && Program.Project.UnsavedChanges) {
 			Program.ConfirmModal.Open(
 				"Confirm Quit",
 				"You have unsaved changes.\nAre you sure you want to quit?",
@@ -377,8 +378,8 @@ public static class Program {
 		}
 		Log.Information("Program closing...");
 		try {
-			if(file != null) {
-				UpdateProjectState(file);
+			if(project != null) {
+				UpdateProjectState(project);
 			}
 
 			SaveRecentProjects();
@@ -451,85 +452,85 @@ public static class Program {
 	}
 
 	public static void NewFile(string filePath) {
-		if(file != null) {
-			UpdateProjectState(file);
+		if(project != null) {
+			UpdateProjectState(project);
 		}
 		
 		SetSelectedScene(null);
 		SetSelectedTileset(null);
 		
-		file?.Dispose();
+		project?.Dispose();
 		
-		file = new File(filePath);
-		file.New();
+		project = new Project(filePath);
+		project.New();
 		
 		Program.UpdateWindowTitle();
 
-		UpdateProjectState(file);
+		UpdateProjectState(project);
 	}
 
 	public static void OpenFile(string filePath) {
-		if(file != null) {
-			UpdateProjectState(file);
+		if(project != null) {
+			UpdateProjectState(project);
 		}
 		
 		SetSelectedScene(null);
 		SetSelectedTileset(null);
 		
-		file?.Dispose();
+		project?.Dispose();
 		
-		file = new File(filePath);
+		project = new Project(filePath);
 		
 		Program.UpdateWindowTitle();
 		
-		file.Read();
+		project.Read();
 
-		ApplyProjectState(file);
-		UpdateProjectState(file);
+		ApplyProjectState(project);
+		UpdateProjectState(project);
 	}
 
 	public static void OpenFileDialog() {
-		FileDialog.Open(Path.GetDirectoryName(Program.File.GetPath()), Program.FILE_EXTENSION, result => {
+		FileDialog.Open(Path.GetDirectoryName(Program.Project.GetPath()), World.FILE_EXTENSION, result => {
 			if(result != null) Program.OpenFile(result);
 		});
 	}
 
 	public static void SaveFile(string filePath) {
-		if(file == null) return;
-		file.SetPath(filePath);
-		file.Write();
-		UpdateProjectState(file);
+		if(project == null) return;
+		project.SetPath(filePath);
+		project.Write();
+		UpdateProjectState(project);
 	}
 
 	public static void SaveFileDialog() {
-		if(file == null) return;
-		FileDialog.Save(Path.GetDirectoryName(Program.File.GetPath()), Program.FILE_EXTENSION, result => {
+		if(project == null) return;
+		FileDialog.Save(Path.GetDirectoryName(Program.Project.GetPath()), World.FILE_EXTENSION, result => {
 			if(result != null) Program.SaveFile(result);
 		});
 	}
 
 	public static void SaveFile() {
-		if(file == null) return;
-		file.Write();
-		UpdateProjectState(file);
+		if(project == null) return;
+		project.Write();
+		UpdateProjectState(project);
 	}
 
 	public static void ReloadFile() {
-		if(file == null) return;
-		UpdateProjectState(file);
+		if(project == null) return;
+		UpdateProjectState(project);
 		SetSelectedScene(null);
 		SetSelectedTileset(null);
-		file.Read();
-		ApplyProjectState(file);
+		project.Read();
+		ApplyProjectState(project);
 	}
 
 	internal static void UpdateWindowTitle() {
-		if(file == null) {
+		if(project == null) {
 			window.Title = $"L2D";
-		} else if(file.UnsavedChanges) {
-			window.Title = $"L2D - {file.GetFileName()}*";
+		} else if(project.UnsavedChanges) {
+			window.Title = $"L2D - {project.GetFileName()}*";
 		} else {
-			window.Title = $"L2D - {file.GetFileName()}";
+			window.Title = $"L2D - {project.GetFileName()}";
 		}
 	}
 
@@ -644,7 +645,7 @@ public static class Program {
 			newProjectModal.Body();
 			ImGui.SameLine();
 			if(ImGui.Button("Open")) {
-				FileDialog.Open("", Program.FILE_EXTENSION, result => {
+				FileDialog.Open("", World.FILE_EXTENSION, result => {
 					if(result != null) Program.OpenFile(result);
 				});
 			}
@@ -658,7 +659,7 @@ public static class Program {
 	}
 
 	public static string GetAppDataDirectory() {
-		string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "L2D");
+		string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "E2D");
 		if(!Directory.Exists(appDataDir)) {
 			Directory.CreateDirectory(appDataDir);
 		}
@@ -758,10 +759,10 @@ public static class Program {
 		return null;
 	}
 
-	private static void ApplyProjectState(File file) {
-		var info = GetProjectState(file.GetPath());
+	private static void ApplyProjectState(Project project) {
+		var info = GetProjectState(project.GetPath());
 		if(info != null) {
-			SetSelectedScene(file?.World?.GetScene(info.SelectedScene));
+			SetSelectedScene(project?.World?.GetScene(info.SelectedScene));
 			SetSelectedLayer(selectedScene?.GetLayer(info.SelectedLayer));
 			canvasPanel.Camera = info.CameraPosition;
 			canvasPanel.ZoomFactor = info.CameraZoom;
@@ -770,8 +771,8 @@ public static class Program {
 		}
 	}
 	
-	private static ProjectEditorState UpdateProjectState(File file) {
-		string path = file.GetPath();
+	private static ProjectEditorState UpdateProjectState(Project project) {
+		string path = project.GetPath();
 		ProjectEditorState info = null;
 		foreach(var p in recentProjects) {
 			if(p.Path == path) {

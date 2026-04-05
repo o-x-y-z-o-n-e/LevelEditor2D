@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using System.Xml.Linq;
 
-namespace L2D;
+namespace E2D;
 
 public class Layer {
 

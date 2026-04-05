@@ -5,7 +5,7 @@ using Serilog;
 using Silk.NET.OpenGL;
 using StbImageWriteSharp;
 
-namespace L2D;
+namespace E2D;
 
 public class Tilemap {
 
@@ -184,16 +184,16 @@ public class Tilemap {
 		uint w = (uint)(width * scene.World.TileWidth);
 		uint h = (uint)(height * scene.World.TileHeight);
 
-		if(frameBufferWidth == w && frameBufferHeight == h) return;
+		if(frameBufferHandle > 0 && frameBufferWidth == w && frameBufferHeight == h) return;
 		
 		if(frameBufferHandle != 0) gl.DeleteFramebuffer(frameBufferHandle);
 		if(frameBufferTextureHandle != 0) gl.DeleteTexture(frameBufferTextureHandle);
 		
 		frameBufferHandle = gl.GenFramebuffer();
 		gl.BindFramebuffer(GLEnum.Framebuffer, frameBufferHandle);
-		if(gl.CheckFramebufferStatus(GLEnum.Framebuffer) != GLEnum.FramebufferComplete) {
-			// error
-		}
+		// if(gl.CheckFramebufferStatus(GLEnum.Framebuffer) != GLEnum.FramebufferComplete) {
+		// 	// error
+		// }
 
 		frameBufferWidth = w;
 		frameBufferHeight = h;
@@ -381,6 +381,15 @@ public class Tilemap {
 		if(tileBufferHandle > 0) {
 			Program.GL.DeleteBuffer(tileBufferHandle);
 			tileBufferHandle = 0;
+			tileBuffer = null;
+		}
+		if(vertexBufferHandle > 0) {
+			Program.GL.DeleteBuffer(vertexBufferHandle);
+			vertexBufferHandle = 0;
+		}
+		if(vertexArrayHandle > 0) {
+			Program.GL.DeleteVertexArray(vertexArrayHandle);
+			vertexArrayHandle = 0;
 		}
 	}
 	

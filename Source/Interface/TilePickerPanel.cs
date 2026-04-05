@@ -3,7 +3,7 @@ using System.Numerics;
 using IconFonts;
 using ImGuiNET;
 
-namespace L2D; 
+namespace E2D; 
 
 public class TilePickerPanel : Panel {
 
@@ -21,7 +21,7 @@ public class TilePickerPanel : Panel {
 	}
 
 	protected override void Update() {
-		if(Program.File == null) {
+		if(Program.Project == null) {
 			return;
 		}
 		
@@ -72,13 +72,13 @@ public class TilePickerPanel : Panel {
 		AddButton(region, ref addOperation);
 
 		if(addOperation != null) {
-			Program.File.ApplyEdit(scene, addOperation);
+			Program.Project.ApplyEdit(scene, addOperation);
 		}
 		if(moveOperation != null) {
-			Program.File.ApplyEdit(scene, moveOperation);
+			Program.Project.ApplyEdit(scene, moveOperation);
 		}
 		if(removeOperation != null) {
-			Program.File.ApplyEdit(scene, removeOperation);
+			Program.Project.ApplyEdit(scene, removeOperation);
 		}
 		
 		ImGui.EndChild(); // tileset-list
@@ -201,7 +201,7 @@ public class TilePickerPanel : Panel {
 						if(match) continue;
 						atLeastOneOption = true;
 						if(ImGui.Selectable($"Slot: {s}")) {
-							Program.File.ApplyEdit(scene, new TilesetLink.SlotOperation(scene, link, s));
+							Program.Project.ApplyEdit(scene, new TilesetLink.SlotOperation(scene, link, s));
 						}
 					}
 
@@ -220,7 +220,7 @@ public class TilePickerPanel : Panel {
 				if(tilesetLinkTarget == link) {
 					Program.TilesetsPanel.SelectTilesetModal((selected, tileset) => {
 						if(selected) {
-							Program.File.ApplyEdit(scene, new TilesetLink.TilesetOperation(scene, link, tileset));
+							Program.Project.ApplyEdit(scene, new TilesetLink.TilesetOperation(scene, link, tileset));
 						}
 						tilesetLinkTarget = null;
 					});
@@ -274,7 +274,7 @@ public class TilePickerPanel : Panel {
 		}
 		ImGui.BeginDisabled(nextSlotAvailable > scene.World.MaxTilesetSlots);
 		if(ImGui.Button("Add", new Vector2(region.X, 0))) {
-			addOperation = new TilesetLink.AddOperation(scene, new TilesetLink(scene.File, nextSlotAvailable, null));
+			addOperation = new TilesetLink.AddOperation(scene, new TilesetLink(scene.Project, nextSlotAvailable, null));
 		}
 		ImGui.EndDisabled();
 		if(nextSlotAvailable > scene.World.MaxTilesetSlots) {

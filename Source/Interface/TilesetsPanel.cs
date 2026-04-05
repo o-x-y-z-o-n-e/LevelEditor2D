@@ -10,7 +10,7 @@ using Silk.NET.Input;
 using Silk.NET.Maths;
 using Rectangle = System.Drawing.Rectangle;
 
-namespace L2D;
+namespace E2D;
 
 public class TilesetsPanel : Panel {
 
@@ -120,16 +120,16 @@ public class TilesetsPanel : Panel {
 	}
 
 	protected override void Update() {
-		if(Program.File == null) {
+		if(Program.Project == null) {
 			ImGui.Text("No file loaded...");
 			return;
 		}
-		if(Program.File.World == null) {
+		if(Program.Project.World == null) {
 			ImGui.Text("No world active...");
 			return;
 		}
-		if(worldTilesetCount != Program.File.World.TilesetCount) {
-			worldTilesetCount = Program.File.World.TilesetCount;
+		if(worldTilesetCount != Program.Project.World.TilesetCount) {
+			worldTilesetCount = Program.Project.World.TilesetCount;
 			MatchSearch();
 		}
 		Menu();
@@ -199,7 +199,7 @@ public class TilesetsPanel : Panel {
 	}
 
 	private void MatchSearch() {
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		
 		var regex = new Regex(Regex.Escape(search));
 		
@@ -227,7 +227,7 @@ public class TilesetsPanel : Panel {
 	private Tileset Items(Tileset selected) {
 		ImGui.BeginChild("tileset-select");
 		
-		World world = Program.File.World;
+		World world = Program.Project.World;
 		
 		Action displayItemList = () => {
 			Vector2 itemSize = new Vector2(ImGui.GetContentRegionAvail().X, 24);
@@ -374,7 +374,7 @@ public class TilesetsPanel : Panel {
 	private unsafe void Edit() {
 		ImGui.BeginChild("tileset-edit");
 		
-		World world = Program.File.World;
+		World world = Program.Project.World;
 
 		Tileset tileset = Program.SelectedTileset;
 		
@@ -398,21 +398,21 @@ public class TilesetsPanel : Panel {
 		if(ImGui.InputText("ID", ref id, Program.IMGUI_STRING_MAX)) {}
 		if(ImGui.IsItemDeactivatedAfterEdit()) {
 			bool allowed = id != "";
-			foreach(var ts in Program.File.World.Tilesets) {
+			foreach(var ts in Program.Project.World.Tilesets) {
 				if(ts.ID == id) {
 					allowed = false;
 					break;
 				}
 			}
 			if(allowed) {
-				Program.File.ApplyEdit(this, new Tileset.NameOperation(tileset, id));
+				Program.Project.ApplyEdit(this, new Tileset.NameOperation(tileset, id));
 			}
 		}
 
 		string group = tileset != null ? tileset.Group : "";
 		if(ImGui.InputText("Group", ref group, Program.IMGUI_STRING_MAX)) { }
 		if(ImGui.IsItemDeactivatedAfterEdit()) {
-			Program.File.ApplyEdit(this, new Tileset.GroupOperation(tileset, group));
+			Program.Project.ApplyEdit(this, new Tileset.GroupOperation(tileset, group));
 		}
 		
 		if(ImGui.Button("Reimport")) {
@@ -579,7 +579,7 @@ public class TilesetsPanel : Panel {
 							if(op == null || op.Automap != selectedAutomapPattern || op.TileID != hoveredTile) {
 								bool adding = (bitmask & (1 << ib)) == 0;
 								op = new AutomapPattern.BitmaskOperation(selectedAutomapPattern, hoveredTile, adding);
-								automapBitmaskEdit = Program.File.BeginEdit(op);
+								automapBitmaskEdit = Program.Project.BeginEdit(op);
 							}
 
 							if(op.Adding) {
@@ -593,7 +593,7 @@ public class TilesetsPanel : Panel {
 						}
 					} else {
 						if(automapBitmaskEdit != null) {
-							Program.File.EndEdit(ref automapBitmaskEdit);
+							Program.Project.EndEdit(ref automapBitmaskEdit);
 						}
 					}
 				}
@@ -737,10 +737,10 @@ public class TilesetsPanel : Panel {
 						tiledata = tileset.AddTileData(tileEditIndex);
 					}
 					int c = tiledata.Shapes.Count;
-					var edit = Program.File.BeginEdit(new TileData.ShapeCountOperation(tiledata, c + 1));
+					var edit = Program.Project.BeginEdit(new TileData.ShapeCountOperation(tiledata, c + 1));
 					var op = edit.GetData<TileData.ShapeCountOperation>();
 					op.NewList[c] = new TileShape(c0, c1 - c0);
-					Program.File.EndEdit(ref edit);
+					Program.Project.EndEdit(ref edit);
 				}
 			}
 		}
@@ -773,7 +773,7 @@ public class TilesetsPanel : Panel {
 				if(data == null) {
 					data = tileset.AddTileData(tileEditIndex);
 				}
-				Program.File.ApplyEdit(this, new TileData.ShapeCountOperation(data, count));
+				Program.Project.ApplyEdit(this, new TileData.ShapeCountOperation(data, count));
 			}
 		}
 		
@@ -796,7 +796,7 @@ public class TilesetsPanel : Panel {
 				
 				if(ImGui.DragFloat2("Shape Pos", ref pos, 1.0F)) {
 					if(shapeEdit == null) {
-						shapeEdit = Program.File.BeginEdit(new TileData.ShapeEditOperation(data, i));
+						shapeEdit = Program.Project.BeginEdit(new TileData.ShapeEditOperation(data, i));
 					}
 				}
 				if(ImGui.IsItemDeactivatedAfterEdit()) {
@@ -811,7 +811,7 @@ public class TilesetsPanel : Panel {
 
 				if(ImGui.DragFloat2("Shape Size", ref size, 1.0F)) {
 					if(shapeEdit == null) {
-						shapeEdit = Program.File.BeginEdit(new TileData.ShapeEditOperation(data, i));
+						shapeEdit = Program.Project.BeginEdit(new TileData.ShapeEditOperation(data, i));
 					}
 				}
 				if(ImGui.IsItemDeactivatedAfterEdit()) {
@@ -830,7 +830,7 @@ public class TilesetsPanel : Panel {
 					op.SetSize(size);
 					data.Shapes[i] = op.NewShape;
 					if(end) {
-						Program.File.EndEdit(ref shapeEdit, !op.HasChanges());
+						Program.Project.EndEdit(ref shapeEdit, !op.HasChanges());
 					}
 				}
 
@@ -992,15 +992,15 @@ public class TilesetsPanel : Panel {
 		AutomapDeletePopup(ref removeOperation);
 
 		if(addOperation != null) {
-			Program.File.ApplyEdit(addOperation);
+			Program.Project.ApplyEdit(addOperation);
 		}
 		
 		if(moveOperation != null) {
-			Program.File.ApplyEdit(moveOperation);
+			Program.Project.ApplyEdit(moveOperation);
 		}
 
 		if(removeOperation != null) {
-			Program.File.ApplyEdit(removeOperation);
+			Program.Project.ApplyEdit(removeOperation);
 		}
 		
 		AutomapPreview(listSize, origin);
@@ -1069,16 +1069,16 @@ public class TilesetsPanel : Panel {
 		ImGui.SetNextItemWidth(listSize.X);
 		if(ImGui.InputText("Name", ref nameValue, Program.IMGUI_STRING_MAX)) {}
 		if(ImGui.IsItemDeactivatedAfterEdit()) {
-			Program.File.ApplyEdit(selectedTileset, new AutomapPattern.NameOperation(selectedAutomapPattern, nameValue));
+			Program.Project.ApplyEdit(selectedTileset, new AutomapPattern.NameOperation(selectedAutomapPattern, nameValue));
 		}
 		string maskValueLabel = selectedAutomapPattern?.MaskType.ToString() ?? "";
 		ImGui.SetNextItemWidth(listSize.X);
 		if(ImGui.BeginCombo("Mask Type", maskValueLabel)) {
 			if(ImGui.Selectable("Mask2x2")) {
-				Program.File.ApplyEdit(selectedTileset, new AutomapPattern.MaskTypeOperation(selectedAutomapPattern, AutomapMaskType.Mask2x2));
+				Program.Project.ApplyEdit(selectedTileset, new AutomapPattern.MaskTypeOperation(selectedAutomapPattern, AutomapMaskType.Mask2x2));
 			}
 			if(ImGui.Selectable("Mask3x3")) {
-				Program.File.ApplyEdit(selectedTileset, new AutomapPattern.MaskTypeOperation(selectedAutomapPattern, AutomapMaskType.Mask3x3));
+				Program.Project.ApplyEdit(selectedTileset, new AutomapPattern.MaskTypeOperation(selectedAutomapPattern, AutomapMaskType.Mask3x3));
 			}
 			ImGui.EndCombo();
 		}
@@ -1090,7 +1090,7 @@ public class TilesetsPanel : Panel {
 		ImGui.BeginChild("pattern-preview", new Vector2(ImGui.GetContentRegionAvail().X, listSize.Y), ImGuiChildFlags.Borders, ImGuiWindowFlags.HorizontalScrollbar);
 		
 		if(selectedTileset != null && selectedAutomapPattern != null) {
-			var world = Program.File.World;
+			var world = Program.Project.World;
 			Vector2 size = new Vector2(world.TileWidth, world.TileHeight) * previewScale;
 
 			int w = AUTOMAP_DEMOS[automapDemoIndex].Width;
@@ -1298,7 +1298,7 @@ public class TilesetsPanel : Panel {
 		ImGui.SetNextItemWidth(listSize.X);
 		ImGui.InputText("Name", ref name, Program.IMGUI_STRING_MAX);
 		if(ImGui.IsItemDeactivatedAfterEdit()) {
-			Program.File.ApplyEdit(tileset, new PresetPattern.NameOperation(selectedPresetPattern, name));
+			Program.Project.ApplyEdit(tileset, new PresetPattern.NameOperation(selectedPresetPattern, name));
 		}
 
 		Vector2 buttonSize = new Vector2(listSize.X, ImGui.GetTextLineHeight() + ImGui.GetStyle().FramePadding.Y * 2);
@@ -1318,7 +1318,7 @@ public class TilesetsPanel : Panel {
 		ImGui.BeginChild("preset-preview", new Vector2(ImGui.GetContentRegionAvail().X, listSize.Y), ImGuiChildFlags.Borders, ImGuiWindowFlags.HorizontalScrollbar);
 		
 		if(tileset != null && selectedPresetPattern != null) {
-			var world = Program.File.World;
+			var world = Program.Project.World;
 			Vector2 tileSize = new Vector2(world.TileWidth, world.TileHeight) * previewScale;
 			Vector2 start = ImGui.GetCursorPos();
 			int w = selectedPresetPattern.Width;
@@ -1384,7 +1384,7 @@ public class TilesetsPanel : Panel {
 				}
 
 				if(tileID != selectedPresetPattern.GetTile(i)) {
-					Program.File.ApplyEdit(new PresetPattern.TileOperation(selectedPresetPattern, i, tileID));
+					Program.Project.ApplyEdit(new PresetPattern.TileOperation(selectedPresetPattern, i, tileID));
 				}
 				
 				ImGui.PopID();
@@ -1409,7 +1409,7 @@ public class TilesetsPanel : Panel {
 		PresetResizePopup();
 		
 		if(moveOperation != null) {
-			Program.File.ApplyEdit(moveOperation);
+			Program.Project.ApplyEdit(moveOperation);
 		}
 	}
 
@@ -1428,7 +1428,7 @@ public class TilesetsPanel : Panel {
 			if(presetHeightEdit < 1) presetHeightEdit = 1;
 			if(ImGui.Button("Confirm")) {
 				PresetPattern preset = new PresetPattern(Program.SelectedTileset, presetNameEdit, presetWidthEdit, presetHeightEdit);
-				Program.File.ApplyEdit(Program.SelectedTileset, new PresetPattern.AddOperation(Program.SelectedTileset, preset));
+				Program.Project.ApplyEdit(Program.SelectedTileset, new PresetPattern.AddOperation(Program.SelectedTileset, preset));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.SameLine();
@@ -1456,7 +1456,7 @@ public class TilesetsPanel : Panel {
 				for(int i = 0; i < presetCopyTarget.Width * presetCopyTarget.Height; i++) {
 					preset.SetTile(i, presetCopyTarget.GetTile(i));
 				}
-				Program.File.ApplyEdit(Program.SelectedTileset, new PresetPattern.AddOperation(Program.SelectedTileset, preset));
+				Program.Project.ApplyEdit(Program.SelectedTileset, new PresetPattern.AddOperation(Program.SelectedTileset, preset));
 				selectedPresetPattern = preset;
 				ImGui.CloseCurrentPopup();
 			}
@@ -1480,7 +1480,7 @@ public class TilesetsPanel : Panel {
 		if(ImGui.BeginPopup("delete-preset")) {
 			ImGui.Text("Delete selected preset");
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(Program.SelectedTileset, new PresetPattern.RemoveOperation(Program.SelectedTileset, presetDeleteTarget));
+				Program.Project.ApplyEdit(Program.SelectedTileset, new PresetPattern.RemoveOperation(Program.SelectedTileset, presetDeleteTarget));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.SameLine();
@@ -1510,7 +1510,7 @@ public class TilesetsPanel : Panel {
 			if(presetHeightEdit < 1) presetHeightEdit = 1;
 			ImGui.BeginDisabled(presetWidthEdit == presetResizeTarget.Width && presetHeightEdit == presetResizeTarget.Height);
 			if(ImGui.Button("Confirm")) {
-				Program.File.ApplyEdit(Program.SelectedTileset, new PresetPattern.ResizeOperation(presetResizeTarget, presetWidthEdit, presetHeightEdit));
+				Program.Project.ApplyEdit(Program.SelectedTileset, new PresetPattern.ResizeOperation(presetResizeTarget, presetWidthEdit, presetHeightEdit));
 				ImGui.CloseCurrentPopup();
 			}
 			ImGui.EndDisabled();
@@ -1535,14 +1535,14 @@ public class TilesetsPanel : Panel {
 			if(ImGui.Button("Select File")) {
 				FileDialog.Open(importPath, "png;bmp;jpg;jpeg", result => {
 					if(result != null) {
-						importPath = Program.File.GetRelativePath(result);
+						importPath = Program.Project.GetRelativePath(result);
 					}
 				});
 			}
 			
 			ImGui.InputText("Path", ref importPath, Program.IMGUI_STRING_MAX);
 
-			string fullPath = Program.File.GetPath(importPath);
+			string fullPath = Program.Project.GetPath(importPath);
 			
 			ImGui.SetItemTooltip(fullPath);
 
@@ -1570,7 +1570,7 @@ public class TilesetsPanel : Panel {
 			bool valid = System.IO.File.Exists(fullPath) && importID != "";
 
 			if(!reimport) {
-				foreach(var t in Program.File.World.Tilesets) {
+				foreach(var t in Program.Project.World.Tilesets) {
 					if(t.ID == importID) {
 						valid = false;
 						break;
@@ -1584,7 +1584,7 @@ public class TilesetsPanel : Panel {
 				if(reimport) {
 					tileset = reimportTileset;
 				} else {
-					tileset = new Tileset(Program.File);
+					tileset = new Tileset(Program.Project);
 					tileset.ID = importID;
 					tileset.Group = importGroup;
 				}
@@ -1595,7 +1595,7 @@ public class TilesetsPanel : Panel {
 				tileset.SizeX = importTexels.X;
 				tileset.SizeY = importTexels.Y;
 				tileset.SetTexturePath(importPath, false);
-				Program.File.ApplyEdit(this, new Tileset.AddOperation(Program.File.World, tileset));
+				Program.Project.ApplyEdit(this, new Tileset.AddOperation(Program.Project.World, tileset));
 				MatchSearch();
 				ImGui.CloseCurrentPopup();
 			}
@@ -1616,8 +1616,8 @@ public class TilesetsPanel : Panel {
 		ImGui.SetNextWindowSizeConstraints(new Vector2(400, 300), ImGui.GetIO().DisplaySize);
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F, 0.5F));
 		if(ImGui.BeginPopupModal("Select Tileset", ref open)) {
-			if(worldTilesetCount != Program.File.World.TilesetCount) {
-				worldTilesetCount = Program.File.World.TilesetCount;
+			if(worldTilesetCount != Program.Project.World.TilesetCount) {
+				worldTilesetCount = Program.Project.World.TilesetCount;
 				MatchSearch();
 			}
 			
