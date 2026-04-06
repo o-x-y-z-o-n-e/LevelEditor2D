@@ -526,11 +526,11 @@ public static class Program {
 
 	internal static void UpdateWindowTitle() {
 		if(project == null) {
-			window.Title = $"L2D";
+			window.Title = TITLE;
 		} else if(project.UnsavedChanges) {
-			window.Title = $"L2D - {project.GetFileName()}*";
+			window.Title = $"{TITLE} - {project.GetFileName()}*";
 		} else {
-			window.Title = $"L2D - {project.GetFileName()}";
+			window.Title = $"{TITLE} - {project.GetFileName()}";
 		}
 	}
 
