@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Numerics;
 using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 using Serilog;
 using Silk.NET.OpenGL;
@@ -10,14 +11,26 @@ using StbImageSharp;
 namespace E2D; 
 
 public class Tileset {
+	
+	public const string FILE_EXTENSION = "t2d";
 
 	public World World => project.World;
 
 	// TODO: fix size when not same as world tile size
 	
+	public bool IsEmbedded => embedded;
+	
 	public string ID {
 		get => id;
 		set => id = value;
+	}
+
+	public string FilePath {
+		get => fileRelativePath;
+		set {
+			fileRelativePath = value;
+			UpdateFileWatcher();
+		}
 	}
 	
 	public string Group {
@@ -26,11 +39,8 @@ public class Tileset {
 	}
 
 	public string TextureFilePath {
-		get => textureFilePath;
-		set {
-			textureFilePath = value;
-			OnTextureFilePathChanged();
-		}
+		get => textureFileRelativePath;
+		set => SetTexturePath(value);
 	}
 
 	public int OffsetX {
@@ -70,9 +80,15 @@ public class Tileset {
 	public List<PresetPattern> PresetPatterns => presetPatterns;
 
 	private Project project;
+	private bool embedded;
+	private string fileRelativePath;
+	private string fileAbsolutePath;
+	private FileSystemWatcher fileWatcher;
 	private string id;
 	private string group;
-	private string textureFilePath;
+	private string textureFileRelativePath;
+	private string textureFileAbsolutePath;
+	private FileSystemWatcher textureFileWatcher;
 	private Point offset;
 	private Point spacing;
 	private Point size;
@@ -84,28 +100,62 @@ public class Tileset {
 	private List<AutomapPattern> automapPatterns;
 	private List<PresetPattern> presetPatterns;
 	
-	private string textureFileFullPath;
-	private FileSystemWatcher textureFileWatcher;
-
-	internal Tileset(Project project) {
+	public Tileset(Project project) {
 		this.project = project;
-		
+		embedded = false;
 		id = "new_tileset";
-		textureFilePath = "";
-		textureFileFullPath = "";
+		fileRelativePath = "";
+		fileAbsolutePath = "";
+		fileWatcher = null;
+		textureFileRelativePath = "";
+		textureFileAbsolutePath = "";
+		textureFileWatcher = null;
 		offset = new(0, 0);
 		spacing = new(0, 0);
 		size = new(0, 0);
 		tileData = new();
 		automapPatterns = new();
 		presetPatterns = new();
-		textureFileWatcher = null;
 	}
 
-	internal void Parse(XElement tilesetElement) {
-		id = tilesetElement.Attribute("id").ParseAsString();
-		group = tilesetElement.Attribute("group").ParseAsString();
-		textureFilePath =  tilesetElement.Attribute("texture_file").ParseAsString();
+	public static Tileset Parse(Project project, XElement tilesetElement) {
+		string id = tilesetElement.Attribute("id").ParseAsString();
+		string group = tilesetElement.Attribute("group").ParseAsString();
+		string filePath = tilesetElement.Attribute("file")?.ParseAsString();
+		if(id == "") {
+			Log.Error("Missing tileset id");
+			return null;
+		}
+		if(project.World.HasTileset(id)) {
+			Log.Error($"Duplicate tileset id [{id}]");
+			return null;
+		}
+		if(filePath == null) {
+			Tileset tileset = new Tileset(project);
+			tileset.id = id;
+			tileset.group = group;
+			tileset.embedded = true;
+			tileset.ParseData(tilesetElement);
+			return tileset;
+		} else {
+			string fullPath = project.GetAbsolutePath(filePath);
+			if(!File.Exists(fullPath)) {
+				Log.Error($"File [{fullPath}] does not exist");
+				return null;
+			}
+			Tileset tileset = new Tileset(project);
+			tileset.id = id;
+			tileset.group = group;
+			tileset.embedded = false;
+			tileset.fileRelativePath = filePath;
+			tileset.UpdateFileWatcher();
+			tileset.ReadExternalFile();
+			return tileset;
+		}
+	}
+
+	private void ParseData(XElement tilesetElement) {
+		textureFileRelativePath = tilesetElement.Attribute("texture_file").ParseAsString();
 		offset.X = tilesetElement.Attribute("px_offset.x").ParseAsInt();
 		offset.Y = tilesetElement.Attribute("px_offset.y").ParseAsInt();
 		spacing.X = tilesetElement.Attribute("px_spacing.x").ParseAsInt();
@@ -156,15 +206,79 @@ public class Tileset {
 			tileData.Add(id, data);
 		}
 		
-		OnTextureFilePathChanged();
+		SetTexturePath(textureFileRelativePath);
+	}
+	
+	public void UpdateFileWatcher() {
+		if(embedded) return;
+		fileAbsolutePath = project.GetAbsolutePath(fileRelativePath);
+		string directory = project.GetDirectoryName(fileAbsolutePath);
+		if(!Directory.Exists(directory)) {
+			Directory.CreateDirectory(directory);
+		}
+		if(fileWatcher == null) {
+			fileWatcher = new FileSystemWatcher(directory);
+			fileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+			fileWatcher.Changed += OnFileChanged;
+		} else {
+			fileWatcher.Path = directory;
+		}
+		fileWatcher.Filter = project.GetFileName(fileRelativePath);
+		fileWatcher.EnableRaisingEvents = id != "";
+	}
+	
+	private void OnFileChanged(object sender, FileSystemEventArgs e) {
+		if(e.ChangeType != WatcherChangeTypes.Changed) {
+			return;
+		}
+		string p = e.FullPath.Replace('\\', '/');
+		Program.SendMessage(() => {
+			if(p == fileAbsolutePath) {
+				Log.Information("Detected change in file: {@fileFullPath}", fileAbsolutePath);
+				project.MarkDirty();
+				Program.ConfirmModal.Open(
+					$"Scene [{fileAbsolutePath}] File Changed",
+					$"Detected changes to tileset [{fileAbsolutePath}] file from outside this editor.\nDo you want to reload the file from disk?",
+					ReadExternalFile
+				);
+			}
+		});
 	}
 
-	internal XElement Serialize() {
+	private void ReadExternalFile() {
+		if(!File.Exists(fileAbsolutePath)) {
+			Log.Error($"File [{fileRelativePath}] does not exist");
+			return;
+		}
+		try {
+			string contents = File.ReadAllText(fileAbsolutePath);
+			XDocument doc = XDocument.Parse(contents);
+			ParseData(doc.Root);
+		} catch(Exception e) {
+			Log.Error("Failed to load external tileset file", e);
+		}
+	}
+
+	public static XElement Serialize(Tileset tileset) {
 		var element = new XElement("tileset");
-		element.Add(
+		element.Add(new XAttribute("id", tileset.id));
+		element.Add(new XAttribute("group", tileset.group));
+
+		if(tileset.embedded) {
+			tileset.SerializeData(element);
+		} else {
+			element.Add("file", tileset.fileRelativePath);
+			tileset.WriteExternalFile();
+		}
+        
+		return element;
+	}
+
+	private void SerializeData(XElement tilesetElement) {
+		tilesetElement.Add(
 			new XAttribute("id", id),
 			new XAttribute("group", group),
-			new XAttribute("texture_file", textureFilePath),
+			new XAttribute("texture_file", textureFileRelativePath),
 			new XAttribute("px_offset.x", offset.X),
 			new XAttribute("px_offset.y", offset.Y),
 			new XAttribute("px_spacing.x", spacing.X),
@@ -182,7 +296,7 @@ public class Tileset {
 				tileElement.Add(new XAttribute("mask", pair.Value));
 				automapElement.Add(tileElement);
 			}
-			element.Add(automapElement);
+			tilesetElement.Add(automapElement);
 		}
 		foreach(var preset in presetPatterns) {
 			XElement presetElement = new XElement("preset");
@@ -195,7 +309,7 @@ public class Tileset {
 				sb.Append(',');
 			}
 			presetElement.Add(sb.ToString());
-			element.Add(presetElement);
+			tilesetElement.Add(presetElement);
 		}
 		foreach(var data in tileData) {
 			XElement tileElement = new XElement("tile");
@@ -210,24 +324,44 @@ public class Tileset {
 				);
 				tileElement.Add(s);
 			}
-			element.Add(tileElement);
-		}
-		return element;
-	}
-
-	internal void SetTexturePath(string path, bool updateResources = true) {
-		textureFilePath = path;
-		textureFileFullPath = project.GetPath(textureFilePath);
-		if(updateResources) {
-			UpdateFileWatcher();
-			ReloadTexture();
+			tilesetElement.Add(tileElement);
 		}
 	}
+	
+	private void WriteExternalFile() {
+		XmlWriter writer = null;
+		fileWatcher.EnableRaisingEvents = false;
+		Log.Information("Writing tileset file... [{@filePath}]", fileRelativePath);
+		try {
+			StringBuilder builder = new StringBuilder();
+			XDocument document = new XDocument();
+			document.Add(new XElement("tileset"));
+			SerializeData(document.Root);
+			XmlWriterSettings settings = new XmlWriterSettings();
+			settings.OmitXmlDeclaration = true;
+			settings.CloseOutput = false;
+			settings.Indent = true;
+			writer = XmlTextWriter.Create(builder, settings);
+			document.Save(writer);
+			writer.Close();
+			File.WriteAllText(fileAbsolutePath, builder.ToString());
+		} catch(Exception e) {
+			Log.Error(e, "Failed to write tileset file: {@filePath}", fileRelativePath);
+			writer?.Close();
+		} finally {
+			fileWatcher.EnableRaisingEvents = true;
+		}
+	}
 
-	private void OnTextureFilePathChanged() {
-		if(textureFilePath == null) textureFilePath = "";
-		textureFileFullPath = project.GetPath(textureFilePath);
-		UpdateFileWatcher();
+	public void SetTexturePath(string path) {
+		if(path == null) path = "";
+		textureFileRelativePath = path;
+		if(embedded) {
+			textureFileAbsolutePath = project.GetAbsolutePath(textureFileRelativePath);
+		} else {
+			textureFileAbsolutePath = project.GetAbsolutePath(textureFileRelativePath, fileAbsolutePath);
+		}
+		UpdateTextureFileWatcher();
 		ReloadTexture();
 	}
 
@@ -235,15 +369,15 @@ public class Tileset {
 		Program.SendMessage(ReloadTexture);
 	}
 
-	public void UpdateFileWatcher() {
+	private void UpdateTextureFileWatcher() {
 		if(textureFileWatcher == null) {
 			textureFileWatcher = new FileSystemWatcher();
 			textureFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
 			textureFileWatcher.Changed += OnTextureFileChanged;
 		}
-		textureFileWatcher.Path = Path.GetDirectoryName(textureFileFullPath).Replace('\\', '/');
-		textureFileWatcher.Filter = Path.GetFileName(textureFilePath);
-		textureFileWatcher.EnableRaisingEvents = textureFilePath != "";
+		textureFileWatcher.Path = project.GetDirectoryName(textureFileAbsolutePath);
+		textureFileWatcher.Filter = project.GetFileName(textureFileRelativePath);
+		textureFileWatcher.EnableRaisingEvents = textureFileRelativePath != "";
 	}
 
 	public Texture GetTexturePreview() => texturePreview;
@@ -325,14 +459,14 @@ public class Tileset {
 			textureArray.Dispose();
 		}
 		
-		if(!System.IO.File.Exists(textureFileFullPath)) {
+		if(!File.Exists(textureFileAbsolutePath)) {
 			return;
 		}
 
 		GL gl = Program.GL;
 
 		try {
-			byte[] raw = System.IO.File.ReadAllBytes(textureFileFullPath);
+			byte[] raw = File.ReadAllBytes(textureFileAbsolutePath);
 
 			texturePreview = Texture.LoadFromMemory(raw);
 
@@ -376,20 +510,22 @@ public class Tileset {
 			gl.PixelStore(GLEnum.UnpackSkipPixels, 0);
 			gl.PixelStore(GLEnum.UnpackSkipRows, 0);
 		} catch(IOException e) {
-			
+			// ignore error
 		} catch(UnauthorizedAccessException e) {
-			
+			// ignore error
 		} catch(Exception e) {
-			Log.Error(e, "Failed to load tileset texture: {@textureFileFullPath}", textureFileFullPath);
+			Log.Error(e, "Failed to load tileset texture: {@textureFileFullPath}", textureFileAbsolutePath);
 		}
 	}
 
 	public void ReleaseResources() {
+		fileWatcher?.Dispose();
+		fileWatcher = null;
 		textureFileWatcher?.Dispose();
-		texturePreview?.Dispose();
-		textureArray?.Dispose();
 		textureFileWatcher = null;
+		texturePreview?.Dispose();
 		texturePreview = null;
+		textureArray?.Dispose();
 		textureArray = null;
 	}
 	
@@ -404,7 +540,7 @@ public class Tileset {
 		}
 		public void ApplyNextState(FileEditEntry entry) {
 			world.AddTileset(tileset);
-			tileset.UpdateFileWatcher();
+			tileset.UpdateTextureFileWatcher();
 			tileset.ReloadTexture();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {

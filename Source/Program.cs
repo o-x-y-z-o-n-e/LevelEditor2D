@@ -490,7 +490,7 @@ public static class Program {
 	}
 
 	public static void OpenFileDialog() {
-		FileDialog.Open(Path.GetDirectoryName(Program.Project.GetPath()), World.FILE_EXTENSION, result => {
+		FileDialog.Open(Path.GetDirectoryName(Program.Project.GetAbsolutePath()), World.FILE_EXTENSION, result => {
 			if(result != null) Program.OpenFile(result);
 		});
 	}
@@ -504,7 +504,7 @@ public static class Program {
 
 	public static void SaveFileDialog() {
 		if(project == null) return;
-		FileDialog.Save(Path.GetDirectoryName(Program.Project.GetPath()), World.FILE_EXTENSION, result => {
+		FileDialog.Save(Path.GetDirectoryName(Program.Project.GetAbsolutePath()), World.FILE_EXTENSION, result => {
 			if(result != null) Program.SaveFile(result);
 		});
 	}
@@ -760,7 +760,7 @@ public static class Program {
 	}
 
 	private static void ApplyProjectState(Project project) {
-		var info = GetProjectState(project.GetPath());
+		var info = GetProjectState(project.GetAbsolutePath());
 		if(info != null) {
 			SetSelectedScene(project?.World?.GetScene(info.SelectedScene));
 			SetSelectedLayer(selectedScene?.GetLayer(info.SelectedLayer));
@@ -772,7 +772,7 @@ public static class Program {
 	}
 	
 	private static ProjectEditorState UpdateProjectState(Project project) {
-		string path = project.GetPath();
+		string path = project.GetAbsolutePath();
 		ProjectEditorState info = null;
 		foreach(var p in recentProjects) {
 			if(p.Path == path) {

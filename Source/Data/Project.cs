@@ -124,17 +124,33 @@ public class Project {
 	}
 	
 	public string GetScenePath(string id) {
-		return GetPath(Path.Combine(world.ScenesDirectory, $"{id}.{Scene.FILE_EXTENSION}"));
+		return GetAbsolutePath(Path.Combine(world.ScenesDirectory, $"{id}.{Scene.FILE_EXTENSION}"));
 	}
 
-	public string GetPath(string localPath) {
+	public string GetAbsolutePath() => path;
+
+	public string GetAbsolutePath(string localPath) {
 		return Path.GetFullPath(localPath, Path.GetDirectoryName(path)).Replace('\\', '/');
 	}
-
-	public string GetPath() => path;
+	
+	public string GetAbsolutePath(string localPath, string basePath) {
+		return Path.GetFullPath(localPath, Path.GetDirectoryName(basePath)).Replace('\\', '/');
+	}
 	
 	public string GetRelativePath(string fullPath) {
 		return Path.GetRelativePath(Path.GetDirectoryName(path), fullPath).Replace('\\', '/');
+	}
+	
+	public string GetRelativePath(string fullPath, string relativeTo) {
+		return Path.GetRelativePath(Path.GetDirectoryName(relativeTo), fullPath).Replace('\\', '/');
+	}
+
+	public string GetDirectoryName(string path) {
+		return Path.GetDirectoryName(path).Replace('\\', '/');
+	}
+
+	public string GetFileName(string path) {
+		return Path.GetFileName(path);
 	}
 
 	public void SetPath(string path) {

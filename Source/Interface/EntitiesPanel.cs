@@ -10,6 +10,9 @@ public class EntitiesPanel : Panel {
 	private FileEditEntry positionEdit;
 	private FileEditEntry sizeEdit;
 
+	private bool transferPopup;
+	private Entity transferTarget;
+
 	public EntitiesPanel() {
 		Title = $"{Codicons.SymbolMisc} Entities";
 		positionEdit = null;
@@ -62,6 +65,10 @@ public class EntitiesPanel : Panel {
 				}
 				if(ImGui.MenuItem("Delete")) {
 					deleteTarget = entity;
+				}
+				if(ImGui.MenuItem("Transfer")) {
+					transferPopup = true;
+					transferTarget = entity;
 				}
 				ImGui.EndPopup();
 			}
@@ -120,7 +127,7 @@ public class EntitiesPanel : Panel {
 		ImGui.SetItemTooltip("Locate");
 		
 		ImGui.EndDisabled(); // Program.SelectedEntity == null
-
+		
 		if(Program.SelectedEntity != null) {
 			Inspect(Program.SelectedEntity);
 		} else {
@@ -175,6 +182,8 @@ public class EntitiesPanel : Panel {
 		if(moveOperation != null) {
 			Program.Project.ApplyEdit(this, moveOperation);
 		}
+		
+		TransferPopup();
 	}
 
 	private unsafe void Entities(Layer layer, ref Entity.MoveOperation moveOperation, Action<Entity> contextMenu) {
@@ -259,6 +268,7 @@ public class EntitiesPanel : Panel {
 			ImGui.SetCursorPosX(x);
 			ImGui.Text("(");
 			ImGui.PopStyleColor(); // ImGuiCol.Text
+			
 			if(canvasHighlighted) ImGui.PopStyleColor();
 			
 			ImGui.SetCursorPos(nextCur);
@@ -331,7 +341,22 @@ public class EntitiesPanel : Panel {
 			ImGui.EndDragDropTarget();
 		}
 		ImGui.SetCursorPos(cur);
-	} 
+	}
+
+	private void TransferPopup() {
+		if(transferPopup) {
+			transferPopup = false;
+			if(transferTarget != null) {
+				ImGui.OpenPopup("transfer-entity");
+			}
+		}
+		if(ImGui.BeginPopup("transfer-entity")) {
+			
+			ImGui.EndPopup();
+		} else {
+			transferTarget = null;
+		}
+	}
 
 	private void Inspect(Entity entity) {
 		var style = ImGui.GetStyle();

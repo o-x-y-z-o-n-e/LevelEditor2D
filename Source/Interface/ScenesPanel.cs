@@ -6,7 +6,8 @@ using ImGuiNET;
 namespace E2D;
 
 public class ScenesPanel : Panel {
-	
+
+	private bool sceneAddEmbedded;
 	private string sceneNameEdit;
 	private Vector2Int sceneSizeEdit;
 	private Vector2Int scenePosEdit;
@@ -25,6 +26,7 @@ public class ScenesPanel : Panel {
 	
 	public ScenesPanel() {
 		Title = $"{Codicons.EditorLayout} Scenes";
+		sceneAddEmbedded = false;
 		sceneNameEdit = "";
 		sceneSizeEdit = new(0, 0);
 		scenePosEdit = new(0, 0);
@@ -210,7 +212,17 @@ public class ScenesPanel : Panel {
 				}
 			}
 			ImGui.SetCursorPos(nextCur);
-			
+
+			if(scene.IsEmbedded) {
+				ImGui.PushStyleColor(ImGuiCol.Text, Utilities.GetPackedColor(255, 255, 255, 80));
+				ImGui.SetCursorPos(new Vector2(
+					ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.GetStyle().FramePadding.X - ImGui.CalcTextSize("(Embedded)").X,
+					cur.Y
+				));
+				ImGui.Text("(Embedded)");
+				ImGui.PopStyleColor(); // ImGuiCol.Text
+			}
+
 			ImGui.PopID(); // i
 		}
 		if(count > 0) {
@@ -317,13 +329,38 @@ public class ScenesPanel : Panel {
 					break;
 				}
 			}
+
+			if(ImGui.BeginCombo("Location", sceneAddEmbedded ? "Embedded" : "External")) {
+				if(ImGui.Selectable("Embedded", sceneAddEmbedded)) {
+					sceneAddEmbedded = true;
+				}
+				ImGui.SetItemTooltip($"Scene will be embedded into:\n{world.Project.GetAbsolutePath()}");
+				if(ImGui.Selectable("External", !sceneAddEmbedded)) {
+					sceneAddEmbedded = false;
+				}
+				ImGui.SetItemTooltip($"Scene will be saved to:\n{world.Project.GetScenePath(sceneNameEdit)}");
+				ImGui.EndCombo();
+			}
+			if(sceneAddEmbedded) {
+				ImGui.SetItemTooltip($"Scene will be embedded into:\n{world.Project.GetAbsolutePath()}");
+			} else {
+				ImGui.SetItemTooltip($"Scene will be saved to:\n{world.Project.GetScenePath(sceneNameEdit)}");
+			}
 			
 			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, sceneSizeEdit.X, sceneSizeEdit.Y));
 			scenePreviewShown = true;
 			
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Confirm")) {
-				var newScene = world.CreateScene(sceneNameEdit, sceneSizeEdit.X, sceneSizeEdit.Y, scenePosEdit.X, scenePosEdit.Y);
+				var newScene = world.CreateScene(
+					sceneNameEdit,
+					sceneSizeEdit.X,
+					sceneSizeEdit.Y,
+					scenePosEdit.X,
+					scenePosEdit.Y,
+					sceneAddEmbedded,
+					true
+				);
 				Program.Project.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 				Program.SetSelectedScene(newScene);
 				Program.Focus(this);
@@ -374,12 +411,35 @@ public class ScenesPanel : Panel {
 				}
 			}
 			
+			if(ImGui.BeginCombo("Location", sceneAddEmbedded ? "Embedded" : "External")) {
+				if(ImGui.Selectable("Embedded", sceneAddEmbedded)) {
+					sceneAddEmbedded = true;
+				}
+				ImGui.SetItemTooltip($"Scene will be embedded into:\n{world.Project.GetAbsolutePath()}");
+				if(ImGui.Selectable("External", !sceneAddEmbedded)) {
+					sceneAddEmbedded = false;
+				}
+				ImGui.SetItemTooltip($"Scene will be saved to:\n{world.Project.GetScenePath(sceneNameEdit)}");
+				ImGui.EndCombo();
+			}
+			if(sceneAddEmbedded) {
+				ImGui.SetItemTooltip($"Scene will be embedded into:\n{world.Project.GetAbsolutePath()}");
+			} else {
+				ImGui.SetItemTooltip($"Scene will be saved to:\n{world.Project.GetScenePath(sceneNameEdit)}");
+			}
+			
 			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, copyTarget.TileCountX, copyTarget.TileCountY));
 			scenePreviewShown = true;
 			
 			ImGui.BeginDisabled(!valid);
 			if(ImGui.Button("Confirm")) {
-				Scene newScene = world.CopyScene(copyTarget, sceneNameEdit, scenePosEdit.X, scenePosEdit.Y);
+				Scene newScene = world.CopyScene(
+					copyTarget,
+					sceneNameEdit,
+					scenePosEdit.X,
+					scenePosEdit.Y,
+					sceneAddEmbedded
+				);
 				Program.Project.ApplyEdit(this, new Scene.AddOperation(world, newScene));
 				Program.SetSelectedScene(newScene);
 				Program.Focus(this);

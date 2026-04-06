@@ -29,11 +29,14 @@ public class WorldSettingsModal {
 			worldName = world.Name;
 			tileSize = new(world.TileWidth, world.TileHeight);
 			scenesDirectory = world.ScenesDirectory;
-			tilesetsDirectory = ""; // TODO
+			tilesetsDirectory = world.TilesetsDirectory;
 		}
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F, 0.5F));
 		bool o = true;
 		if(ImGui.BeginPopupModal("World Settings", ref o, ImGuiWindowFlags.AlwaysAutoResize)) {
+			bool changes = false;
+			bool clearUndoRedo = false;
+			
 			ImGui.InputText("Name", ref worldName, Program.IMGUI_STRING_MAX);
 			
 			ImGui.BeginDisabled();
@@ -45,17 +48,30 @@ public class WorldSettingsModal {
 			ImGui.BeginDisabled();
 			ImGui.InputText("Tilesets Directory", ref tilesetsDirectory, Program.IMGUI_STRING_MAX);
 			ImGui.EndDisabled();
+
+			changes |= worldName != world.Name;
+			changes |= tileSize.X != world.TileWidth;
+			changes |= tileSize.Y != world.TileHeight;
+			changes |= scenesDirectory != world.ScenesDirectory;
+			changes |= tilesetsDirectory != world.TilesetsDirectory;
+			
+			clearUndoRedo |= tileSize.X != world.TileWidth;
+			clearUndoRedo |= tileSize.Y != world.TileHeight;
 			
 			ImGui.Spacing();
+			ImGui.BeginDisabled(!changes);
 			if(ImGui.Button("Apply")) {
 				ApplyChanges();
 				ImGui.CloseCurrentPopup();
 			}
+			if(clearUndoRedo) {
+				ImGui.SetItemTooltip("Warning! Applying changes will clear project undo/redo edit history");
+			}
+			ImGui.EndDisabled();
 			ImGui.SameLine();
 			if(ImGui.Button("Cancel")) {
 				ImGui.CloseCurrentPopup();
 			}
-			
 			ImGui.EndPopup();
 		}
 	}
@@ -73,10 +89,19 @@ public class WorldSettingsModal {
 
 		if(scenesDirectory != world.ScenesDirectory) {
 			world.ScenesDirectory = scenesDirectory;
-			// TODO: update scene files
+			foreach(var scene in world.Scenes) {
+				if(!scene.IsEmbedded) {
+					world.Project.DeleteFileOnSave(scene.FileAbsolutePath);
+					scene.UpdateFilePath();
+				}
+			}
+			world.Project.MarkDirty();
 		}
 		
-		// TODO: tilesets
+		if(tilesetsDirectory != world.TilesetsDirectory) {
+			world.TilesetsDirectory = tilesetsDirectory;
+			// TODO: update tileset files
+		}
 	}
 	
 }

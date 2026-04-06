@@ -15,7 +15,7 @@ public class Scene {
 	public World World => project.World;
 	
 	public bool IsEmbedded => embedded;
-	public string FilePath => filePath;
+	public string FileAbsolutePath => fileAbsolutePath;
 
 	public string ID {
 		get => id;
@@ -51,7 +51,8 @@ public class Scene {
 	private Project project;
 	private string id;
 	private bool embedded;
-	private string filePath;
+	private string fileRelativePath;
+	private string fileAbsolutePath;
 	private FileSystemWatcher fileWatcher;
 	private int worldX;
 	private int worldY;
@@ -66,7 +67,8 @@ public class Scene {
 		this.project = project;
 		this.id = id;
 		this.embedded = embedded;
-		filePath = "";
+		fileRelativePath = "";
+		fileAbsolutePath = "";
 		fileWatcher = null;
 		worldX = 0;
 		worldY = 0;
@@ -81,6 +83,7 @@ public class Scene {
 	public static Scene Parse(Project project, XElement sceneElement) {
 		string id = sceneElement.Attribute("id").ParseAsString();
 		bool embedded = sceneElement.Attribute("embedded").ParseAsBool();
+		string filePath = sceneElement.Attribute("file")?.ParseAsString();
 		if(id == "") {
 			Log.Error("Missing scene id");
 			return null;
@@ -165,12 +168,12 @@ public class Scene {
 	}
 	
 	private void ReadExternalFile() {
-		if(!File.Exists(filePath)) {
-			Log.Error($"File [{filePath}] does not exist");
+		if(!File.Exists(fileAbsolutePath)) {
+			Log.Error($"File [{fileAbsolutePath}] does not exist");
 			return;
 		}
 		try {
-			string contents = File.ReadAllText(filePath);
+			string contents = File.ReadAllText(fileAbsolutePath);
 			XDocument doc = XDocument.Parse(contents);
 			ParseData(doc.Root);
 		} catch(Exception e) {
@@ -181,7 +184,7 @@ public class Scene {
 	private void WriteExternalFile() {
 		XmlWriter writer = null;
 		fileWatcher.EnableRaisingEvents = false;
-		Log.Information("Writing scene file... [{@filePath}]", filePath);
+		Log.Information("Writing scene file... [{@filePath}]", fileAbsolutePath);
 		try {
 			StringBuilder builder = new StringBuilder();
 			XDocument document = new XDocument();
@@ -194,9 +197,9 @@ public class Scene {
 			writer = XmlTextWriter.Create(builder, settings);
 			document.Save(writer);
 			writer.Close();
-			File.WriteAllText(filePath, builder.ToString());
+			File.WriteAllText(fileAbsolutePath, builder.ToString());
 		} catch(Exception e) {
-			Log.Error(e, "Failed to write scene file: {@filePath}", filePath);
+			Log.Error(e, "Failed to write scene file: {@filePath}", fileAbsolutePath);
 			writer?.Close();
 		} finally {
 			fileWatcher.EnableRaisingEvents = true;
@@ -211,8 +214,8 @@ public class Scene {
 			}
 		}
 
-		if(!embedded && filePath != "") {
-			project.DeleteFileOnSave(filePath);
+		if(!embedded && fileAbsolutePath != "") {
+			project.DeleteFileOnSave(fileAbsolutePath);
 		}
 		
 		this.id = id;
@@ -224,15 +227,19 @@ public class Scene {
 
 	public void UpdateFilePath() {
 		if(embedded) return;
-		filePath = project.GetScenePath(id);
+		fileAbsolutePath = project.GetScenePath(id);
+		string directory = Path.GetDirectoryName(fileAbsolutePath).Replace('\\', '/');
+		if(!Directory.Exists(directory)) {
+			Directory.CreateDirectory(directory);
+		}
 		if(fileWatcher == null) {
-			fileWatcher = new FileSystemWatcher(Path.GetDirectoryName(filePath));
+			fileWatcher = new FileSystemWatcher(directory);
 			fileWatcher.NotifyFilter = NotifyFilters.LastWrite;
 			fileWatcher.Changed += OnFileChanged;
 		} else {
-			fileWatcher.Path = Path.GetDirectoryName(filePath).Replace('\\', '/');
+			fileWatcher.Path = directory;
 		}
-		fileWatcher.Filter = Path.GetFileName(filePath);
+		fileWatcher.Filter = Path.GetFileName(fileAbsolutePath);
 		fileWatcher.EnableRaisingEvents = id != "";
 	}
 
@@ -254,12 +261,12 @@ public class Scene {
 		}
 		string p = e.FullPath.Replace('\\', '/');
 		Program.SendMessage(() => {
-			if(p == filePath) {
-				Log.Information("Detected change in file: {@filePath}", filePath);
+			if(p == fileAbsolutePath) {
+				Log.Information("Detected change in file: {@filePath}", fileAbsolutePath);
 				project.MarkDirty();
 				Program.ConfirmModal.Open(
-					$"Scene [{filePath}] File Changed",
-					$"Detected changes to scene [{filePath}] file from outside this editor.\nDo you want to reload the file from disk?",
+					$"Scene [{fileAbsolutePath}] File Changed",
+					$"Detected changes to scene [{fileAbsolutePath}] file from outside this editor.\nDo you want to reload the file from disk?",
 					ReadExternalFile
 				);
 			}

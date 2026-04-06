@@ -5,6 +5,8 @@ namespace E2D;
 public class World {
 	
 	public const string FILE_EXTENSION = "w2d";
+	
+	public Project Project => project;
 
 	public string Name {
 		get => name;
@@ -20,10 +22,15 @@ public class World {
 		get => tileHeight;
 		set => tileHeight = value;
 	}
-	
+
 	public string ScenesDirectory {
 		get => scenesDirectory;
 		set => scenesDirectory = value;
+	}
+
+	public string TilesetsDirectory {
+		get => tilesetsDirectory;
+		set => tilesetsDirectory = value;
 	}
 
 	public int TilesetCount => tilesets.Count;
@@ -42,6 +49,7 @@ public class World {
 	private int tileHeight;
 	private string scenesDirectory;
 	private List<Scene> scenes;
+	private string tilesetsDirectory;
 	private List<Tileset> tilesets;
 	private EntityCollection templates;
 	private int maxTilesetSlots;
@@ -53,8 +61,9 @@ public class World {
 		name = "New World";
 		tileWidth = 16;
 		tileHeight = 16;
-		scenesDirectory = "scenes";
+		scenesDirectory = "Scenes";
 		scenes = new();
+		tilesetsDirectory = "Tilesets";
 		tilesets = new();
 		templates = new(this);
 		maxTilesetSlots = Tilemap.MAX_TILESETS;
@@ -78,8 +87,8 @@ public class World {
 		return scenes.IndexOf(scene);
 	}
 
-	public Scene CreateScene(string id, int width, int height, int x, int y, bool blankLayer = true) {
-		Scene scene = new Scene(project, id, false);
+	public Scene CreateScene(string id, int width, int height, int x, int y, bool embedded, bool blankLayer = true) {
+		Scene scene = new Scene(project, id, embedded);
 		scene.WorldX = x;
 		scene.WorldY = y;
 		scene.Resize(width, height);
@@ -97,7 +106,7 @@ public class World {
 		scene.UpdateFilePath();
 		scene.MarkTilemapsAsDirty();
 		if(!scene.IsEmbedded) {
-			project.DontDeleteFileOnSave(scene.FilePath);
+			project.DontDeleteFileOnSave(scene.FileAbsolutePath);
 		}
 	}
 
@@ -112,14 +121,14 @@ public class World {
 		SwapScenes(scenes.IndexOf(scene1), scenes.IndexOf(scene2));
 	}
 
-	public Scene CopyScene(int index, string newID, int x, int y) {
+	public Scene CopyScene(int index, string newID, int x, int y, bool embedded) {
 		if(index < 0 || index >= scenes.Count) return null;
-		return CopyScene(scenes[index], newID, x, y);
+		return CopyScene(scenes[index], newID, x, y, embedded);
 	}
 	
-	public Scene CopyScene(Scene srcScene, string newID, int x, int y) {
+	public Scene CopyScene(Scene srcScene, string newID, int x, int y, bool embedded) {
 		if(!scenes.Contains(srcScene)) return null;
-		Scene newScene = CreateScene(newID, srcScene.TileCountX, srcScene.TileCountY, x, y, false);
+		Scene newScene = CreateScene(newID, srcScene.TileCountX, srcScene.TileCountY, x, y, embedded, false);
 		
 		srcScene.Properties.CopyTo(newScene.Properties);
 		
@@ -145,7 +154,7 @@ public class World {
 		scenes.Remove(scene);
 		scene.ReleaseResources();
 		if(!scene.IsEmbedded) {
-			project.DeleteFileOnSave(scene.FilePath);
+			project.DeleteFileOnSave(scene.FileAbsolutePath);
 		}
 	}
 
@@ -183,11 +192,10 @@ public class World {
 		XElement tilesetsElement = worldElement.Element("tilesets");
 		if(tilesetsElement != null) {
 			foreach(var tilesetElement in tilesetsElement.Elements("tileset")) {
-				string id = tilesetElement.Attribute("id").ParseAsString();
-				if(id == "" || HasTileset(id)) continue; // ignore duplicate or missing tileset IDs
-				Tileset tileset = new Tileset(project);
-				tileset.Parse(tilesetElement);
-				tilesets.Add(tileset);
+				Tileset tileset = Tileset.Parse(project, tilesetElement);
+				if(tileset != null) {
+					tilesets.Add(tileset);
+				}
 			}
 		}
 		XElement scenesElement = worldElement.Element("scenes");
@@ -215,7 +223,7 @@ public class World {
 		rootElement.Add(templatesParent);
 		XElement tilesetsParent = new XElement("tilesets");
 		foreach(var tileset in tilesets) {
-			tilesetsParent.Add(tileset.Serialize());
+			tilesetsParent.Add(Tileset.Serialize(tileset));
 		}
 		rootElement.Add(tilesetsParent);
 		XElement scenesParent = new XElement("scenes");

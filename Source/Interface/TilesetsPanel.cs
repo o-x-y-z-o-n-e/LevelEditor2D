@@ -1542,7 +1542,7 @@ public class TilesetsPanel : Panel {
 			
 			ImGui.InputText("Path", ref importPath, Program.IMGUI_STRING_MAX);
 
-			string fullPath = Program.Project.GetPath(importPath);
+			string fullPath = Program.Project.GetAbsolutePath(importPath);
 			
 			ImGui.SetItemTooltip(fullPath);
 
