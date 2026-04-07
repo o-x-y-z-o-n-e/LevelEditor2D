@@ -198,6 +198,7 @@ public class World {
 		}
 		XElement tilesetsElement = worldElement.Element("tilesets");
 		if(tilesetsElement != null) {
+			tilesetsDirectory = tilesetsElement.Attribute("directory").ParseAsString(tilesetsDirectory);
 			foreach(var tilesetElement in tilesetsElement.Elements("tileset")) {
 				Tileset tileset = Tileset.Parse(project, tilesetElement);
 				if(tileset != null) {
@@ -229,6 +230,7 @@ public class World {
 		templates.SerializeToElement(templatesParent);
 		rootElement.Add(templatesParent);
 		XElement tilesetsParent = new XElement("tilesets");
+		tilesetsParent.Add(new XAttribute("directory", tilesetsDirectory));
 		foreach(var tileset in tilesets) {
 			tilesetsParent.Add(Tileset.Serialize(tileset));
 		}

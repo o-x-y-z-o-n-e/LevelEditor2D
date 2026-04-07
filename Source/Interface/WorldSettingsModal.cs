@@ -102,14 +102,6 @@ public class WorldSettingsModal {
 		
 		if(tilesetsDirectory != world.TilesetsDirectory) {
 			world.TilesetsDirectory = tilesetsDirectory;
-			foreach(var tileset in world.Tilesets) {
-				if(!tileset.IsEmbedded) {
-					// TODO
-					// world.Project.DeleteFileOnSave(tileset.FileAbsolutePath);
-					// tileset.UpdateFileWatcher();
-				}
-			}
-			world.Project.MarkDirty();
 		}
 	}
 	
