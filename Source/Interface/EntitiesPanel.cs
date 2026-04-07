@@ -440,7 +440,7 @@ public class EntitiesPanel : Panel {
 			Vector2 pos = entity.Position;
 			if(ImGui.DragFloat2("Position", ref pos)) {
 				if(positionEdit == null || positionEdit.GetData<Entity.PositionOperation>().Entity != entity) {
-					positionEdit = Program.Project.BeginEdit(new Entity.PositionOperation(entity, pos));
+					positionEdit = Program.Project.BeginEdit(this, new Entity.PositionOperation(entity, pos));
 				} else {
 					positionEdit.GetData<Entity.PositionOperation>().SetPosition(pos);
 				}
@@ -460,7 +460,7 @@ public class EntitiesPanel : Panel {
 				if(size.X < 0) size.X = 0;
 				if(size.Y < 0) size.Y = 0;
 				if(sizeEdit == null || sizeEdit.GetData<Entity.SizeOperation>().Entity != entity) {
-					sizeEdit = Program.Project.BeginEdit(new Entity.SizeOperation(entity, size));
+					sizeEdit = Program.Project.BeginEdit(this, new Entity.SizeOperation(entity, size));
 				} else {
 					sizeEdit.GetData<Entity.SizeOperation>().SetSize(size);
 				}

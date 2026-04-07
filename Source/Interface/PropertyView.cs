@@ -169,7 +169,7 @@ public static class PropertyView {
 						newProperty.String = str;
 						Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
 					} else {
-						Program.Project.ApplyEdit(collection, new Tuple<string, string>(property.String, str),
+						Program.Project.ApplyEdit(collection, collection, new Tuple<string, string>(property.String, str),
 							redo: entry => { property.String = entry.GetData<Tuple<string, string>>().Item2; },
 							undo: entry => { property.String = entry.GetData<Tuple<string, string>>().Item1; }
 						);
@@ -187,7 +187,7 @@ public static class PropertyView {
 						newProperty.Integer = i;
 						Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
 					} else {
-						Program.Project.ApplyEdit(collection, new Tuple<int, int>(property.Integer, i),
+						Program.Project.ApplyEdit(collection, collection, new Tuple<int, int>(property.Integer, i),
 							redo: entry => { property.Integer = entry.GetData<Tuple<int, int>>().Item2; },
 							undo: entry => { property.Integer = entry.GetData<Tuple<int, int>>().Item1; }
 						);
@@ -205,7 +205,7 @@ public static class PropertyView {
 						newProperty.Float = f;
 						Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
 					} else {
-						Program.Project.ApplyEdit(collection, new Tuple<float, float>(property.Float, f),
+						Program.Project.ApplyEdit(collection, collection, new Tuple<float, float>(property.Float, f),
 							redo: entry => { property.Float = entry.GetData<Tuple<float, float>>().Item2; },
 							undo: entry => { property.Float = entry.GetData<Tuple<float, float>>().Item1; }
 						);
@@ -231,7 +231,7 @@ public static class PropertyView {
 						newProperty.Boolean = b;
 						Program.Project.ApplyEdit(collection, new Property.AddOperation(collection, newProperty));
 					} else {
-						Program.Project.ApplyEdit(collection, new Tuple<bool, bool>(property.Boolean, b),
+						Program.Project.ApplyEdit(collection, collection, new Tuple<bool, bool>(property.Boolean, b),
 							redo: entry => { property.Boolean = entry.GetData<Tuple<bool, bool>>().Item2; },
 							undo: entry => { property.Boolean = entry.GetData<Tuple<bool, bool>>().Item1; }
 						);
@@ -312,7 +312,7 @@ public static class PropertyView {
 				if(collection.Contains(name)) {
 					// TODO: delete & replace
 				} else {
-					Program.Project.ApplyEdit(collection, new Tuple<string, string>(property.Name, name),
+					Program.Project.ApplyEdit(collection, collection, new Tuple<string, string>(property.Name, name),
 						redo: entry => { property.Name = entry.GetData<Tuple<string, string>>().Item2; },
 						undo: entry => { property.Name = entry.GetData<Tuple<string, string>>().Item1; }
 					);

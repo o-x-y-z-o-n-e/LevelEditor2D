@@ -134,7 +134,7 @@ public class TemplatesPanel : Panel {
 		DeletePopup();
 
 		if(moveOperation != null) {
-			Program.Project.ApplyEdit(moveOperation);
+			Program.Project.ApplyEdit(this, moveOperation);
 		}
 	}
 	
@@ -178,7 +178,7 @@ public class TemplatesPanel : Panel {
 				if(size.X < 0) size.X = 0;
 				if(size.Y < 0) size.Y = 0;
 				if(sizeEdit == null || sizeEdit.GetData<Entity.SizeOperation>().Entity != Program.SelectedTemplate) {
-					sizeEdit = Program.Project.BeginEdit(new Entity.SizeOperation(Program.SelectedTemplate, size));
+					sizeEdit = Program.Project.BeginEdit(this, new Entity.SizeOperation(Program.SelectedTemplate, size));
 				} else {
 					sizeEdit.GetData<Entity.SizeOperation>().SetSize(size);
 				}

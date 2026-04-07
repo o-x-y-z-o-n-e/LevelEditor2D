@@ -601,7 +601,7 @@ public class TilesetsPanel : Panel {
 							if(op == null || op.Automap != selectedAutomapPattern || op.TileID != hoveredTile) {
 								bool adding = (bitmask & (1 << ib)) == 0;
 								op = new AutomapPattern.BitmaskOperation(selectedAutomapPattern, hoveredTile, adding);
-								automapBitmaskEdit = Program.Project.BeginEdit(op);
+								automapBitmaskEdit = Program.Project.BeginEdit(this, op);
 							}
 
 							if(op.Adding) {
@@ -759,7 +759,7 @@ public class TilesetsPanel : Panel {
 						tiledata = tileset.AddTileData(tileEditIndex);
 					}
 					int c = tiledata.Shapes.Count;
-					var edit = Program.Project.BeginEdit(new TileData.ShapeCountOperation(tiledata, c + 1));
+					var edit = Program.Project.BeginEdit(this, new TileData.ShapeCountOperation(tiledata, c + 1));
 					var op = edit.GetData<TileData.ShapeCountOperation>();
 					op.NewList[c] = new TileShape(c0, c1 - c0);
 					Program.Project.EndEdit(ref edit);
@@ -818,7 +818,7 @@ public class TilesetsPanel : Panel {
 				
 				if(ImGui.DragFloat2("Shape Pos", ref pos, 1.0F)) {
 					if(shapeEdit == null) {
-						shapeEdit = Program.Project.BeginEdit(new TileData.ShapeEditOperation(data, i));
+						shapeEdit = Program.Project.BeginEdit(this, new TileData.ShapeEditOperation(data, i));
 					}
 				}
 				if(ImGui.IsItemDeactivatedAfterEdit()) {
@@ -833,7 +833,7 @@ public class TilesetsPanel : Panel {
 
 				if(ImGui.DragFloat2("Shape Size", ref size, 1.0F)) {
 					if(shapeEdit == null) {
-						shapeEdit = Program.Project.BeginEdit(new TileData.ShapeEditOperation(data, i));
+						shapeEdit = Program.Project.BeginEdit(this, new TileData.ShapeEditOperation(data, i));
 					}
 				}
 				if(ImGui.IsItemDeactivatedAfterEdit()) {
@@ -1014,15 +1014,15 @@ public class TilesetsPanel : Panel {
 		AutomapDeletePopup(ref removeOperation);
 
 		if(addOperation != null) {
-			Program.Project.ApplyEdit(addOperation);
+			Program.Project.ApplyEdit(this, addOperation);
 		}
 		
 		if(moveOperation != null) {
-			Program.Project.ApplyEdit(moveOperation);
+			Program.Project.ApplyEdit(this, moveOperation);
 		}
 
 		if(removeOperation != null) {
-			Program.Project.ApplyEdit(removeOperation);
+			Program.Project.ApplyEdit(this, removeOperation);
 		}
 		
 		AutomapPreview(listSize, origin);
@@ -1406,7 +1406,7 @@ public class TilesetsPanel : Panel {
 				}
 
 				if(tileID != selectedPresetPattern.GetTile(i)) {
-					Program.Project.ApplyEdit(new PresetPattern.TileOperation(selectedPresetPattern, i, tileID));
+					Program.Project.ApplyEdit(this, new PresetPattern.TileOperation(selectedPresetPattern, i, tileID));
 				}
 				
 				ImGui.PopID();
@@ -1431,7 +1431,7 @@ public class TilesetsPanel : Panel {
 		PresetResizePopup();
 		
 		if(moveOperation != null) {
-			Program.Project.ApplyEdit(moveOperation);
+			Program.Project.ApplyEdit(this, moveOperation);
 		}
 	}
 

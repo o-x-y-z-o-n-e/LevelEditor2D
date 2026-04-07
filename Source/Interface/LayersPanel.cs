@@ -622,7 +622,7 @@ public class LayersPanel : Panel {
 		Vector3 col = layer.Color;
 		if(ImGui.ColorEdit3("Color", ref col)) {
 			if(colorEdit == null) {
-				colorEdit = Program.Project.BeginEdit(new Layer.ColorOperation(layer));
+				colorEdit = Program.Project.BeginEdit(this, new Layer.ColorOperation(layer));
 			}
 
 			colorEdit.GetData<Layer.ColorOperation>().NewColor = col;

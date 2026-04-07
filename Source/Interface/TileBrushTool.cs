@@ -467,7 +467,7 @@ public class TileBrushTool : CanvasTool {
 			Program.Project.EndEdit(ref edit, discard: true);
 		}
 		var operation = new TileEditOperation(layer.Tilemap);
-		edit = Program.Project.BeginEdit(operation);
+		edit = Program.Project.BeginEdit(Program.CanvasPanel, operation);
 	}
 
 	private void UpdateImprint(Point offset) {

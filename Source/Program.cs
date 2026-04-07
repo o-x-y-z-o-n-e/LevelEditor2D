@@ -684,10 +684,10 @@ public static class Program {
 		string appDataDir = GetAppDataDirectory();
 		string projectInfoFile = Path.Combine(appDataDir, "projects.dat");
 
-		if(!System.IO.File.Exists(projectInfoFile)) return;
+		if(!File.Exists(projectInfoFile)) return;
 		StreamReader reader = null;
 		try {
-			reader = System.IO.File.OpenText(projectInfoFile);
+			reader = File.OpenText(projectInfoFile);
 
 			ProjectEditorState info = null;
 
@@ -748,7 +748,7 @@ public static class Program {
 		StreamWriter writer = null;
 
 		try {
-			writer = System.IO.File.CreateText(projectInfoFile);
+			writer = File.CreateText(projectInfoFile);
 			foreach(var p in recentProjects) {
 				writer.WriteLine($"<{p.Path}>");
 				writer.WriteLine($"LastOpened={p.LastOpened}");

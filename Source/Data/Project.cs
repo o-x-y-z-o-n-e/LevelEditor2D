@@ -19,6 +19,7 @@ public class Project {
 	private bool dirty;
 	
 	private object? editContext;
+	private object? dataContext;
 	private List<FileEditEntry> editStack;
 	private int editPointer;
 
@@ -35,7 +36,8 @@ public class Project {
 		watcher.Filter = $"*.{World.FILE_EXTENSION}";
 		watcher.EnableRaisingEvents = true;
 		watcher.Changed += OnChanged;
-		editContext = "";
+		editContext = null;
+		dataContext = null;
 		editStack = new List<FileEditEntry>();
 		editPointer = 0;
 		filesToDeleteOnSave = new();
@@ -190,34 +192,24 @@ public class Project {
 		});
 	}
 	
-	public void ApplyEdit(object? context, IFileEditOperation operation) {
+	public void ApplyEdit(object? editContext, IFileEditOperation operation) {
 		if(operation == null) return;
-		var edit = BeginEdit(context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
-		EndEdit(ref edit);
-	}
-	
-	public void ApplyEdit(IFileEditOperation operation) {
-		if(operation == null) return;
-		var edit = BeginEdit(operation.Context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
+		var edit = BeginEdit(editContext, operation.Context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
 		EndEdit(ref edit);
 	}
 
-	public void ApplyEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo, Func<string> redoMessage = null, Func<string> undoMessage = null) {
+	public void ApplyEdit(object? editContext, object? dataContext, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo, Func<string> redoMessage = null, Func<string> undoMessage = null) {
 		if(redo == null || undo == null) throw new Exception("File edit needs an action & a reverse");
-		var edit = BeginEdit(context, data, redo, undo, redoMessage, undoMessage);
+		var edit = BeginEdit(editContext, dataContext, data, redo, undo, redoMessage, undoMessage);
 		EndEdit(ref edit);
 	}
 	
-	public FileEditEntry BeginEdit(object? context, IFileEditOperation operation) {
-		return new FileEditEntry(context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
-	}
-	
-	public FileEditEntry BeginEdit(IFileEditOperation operation) {
-		return new FileEditEntry(operation.Context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
+	public FileEditEntry BeginEdit(object? editContext, IFileEditOperation operation) {
+		return new FileEditEntry(editContext, operation.Context, operation, operation.ApplyNextState, operation.ApplyPrevState, operation.GetNextStateMessage, operation.GetPrevStateMessage);
 	}
 
-	public FileEditEntry BeginEdit(object? context, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo, Func<string> redoMessage = null, Func<string> undoMessage = null) {
-		return new FileEditEntry(context, data, redo, undo, redoMessage, undoMessage);
+	public FileEditEntry BeginEdit(object? editContext, object? dataContext, object? data, Action<FileEditEntry> redo, Action<FileEditEntry> undo, Func<string> redoMessage = null, Func<string> undoMessage = null) {
+		return new FileEditEntry(editContext, dataContext, data, redo, undo, redoMessage, undoMessage);
 	}
 
 	public void EndEdit(ref FileEditEntry edit, bool discard = false) {
@@ -233,7 +225,8 @@ public class Project {
 		}
 		editStack.Add(edit);
 		editPointer++;
-		editContext = edit.Context;
+		editContext = edit.EditContext;
+		dataContext  = edit.DataContext;
 		edit.Action.Invoke(edit);
 		edit = null;
 		MarkDirty();
@@ -243,7 +236,8 @@ public class Project {
 		if(editPointer == 0) return;
 		var entry = editStack[editPointer - 1];
 		editPointer--;
-		editContext = entry.Context;
+		editContext = entry.EditContext;
+		dataContext  = entry.DataContext;
 		entry.Reverse.Invoke(entry);
 		MarkDirty();
 	}
@@ -252,7 +246,8 @@ public class Project {
 		if(editPointer == editStack.Count) return;
 		var entry = editStack[editPointer];
 		editPointer++;
-		editContext = entry.Context;
+		editContext = entry.EditContext;
+		dataContext = entry.DataContext;
 		entry.Action.Invoke(entry);
 		MarkDirty();
 	}
@@ -263,14 +258,6 @@ public class Project {
 
 	public bool CanRedo() {
 		return editPointer < editStack.Count;
-	}
-	
-	public void SetEditContext(object? context) {
-		editContext = context;
-	}
-
-	public object? GetEditContext() {
-		return editContext;
 	}
 
 	public string GetUndoMessage() {
@@ -285,18 +272,21 @@ public class Project {
 
 	public bool WillUndoChangeContext() {
 		if(editPointer == 0) return false;
-		return editContext != editStack[editPointer - 1].Context;
+		var entry = editStack[editPointer - 1];
+		return editContext != entry.EditContext && dataContext != entry.DataContext;
 	}
 	
 	public bool WillRedoChangeContext() {
 		if(editPointer == editStack.Count) return false;
-		return editContext != editStack[editPointer].Context;
+		var entry = editStack[editPointer];
+		return editContext != entry.EditContext && dataContext != entry.DataContext;
 	}
 
 	public void ClearEditHistory() {
 		editStack.Clear();
 		editPointer = 0;
-		editContext = "";
+		editContext = null;
+		dataContext = null;
 	}
 
 }
@@ -311,19 +301,22 @@ public interface IFileEditOperation {
 }
 
 public class FileEditEntry {
-	public object? Context => context;
+	public object? EditContext => editContext;
+	public object? DataContext => dataContext;
 	public Action<FileEditEntry> Action => action;
 	public Action<FileEditEntry> Reverse => reverse;
 	public Func<string> RedoMessage => redoMessage;
 	public Func<string> UndoMessage => undoMessage;
-	private object? context;
+	private object? editContext;
+	private object? dataContext;
 	private object? data;
 	private Action<FileEditEntry> action;
 	private Action<FileEditEntry> reverse;
 	private Func<string> redoMessage;
 	private Func<string> undoMessage;
-	public FileEditEntry(object? context, object? data, Action<FileEditEntry> action, Action<FileEditEntry> reverse, Func<string> redoMessage, Func<string> undoMessage) {
-		this.context = context;
+	public FileEditEntry(object? editContext, object? dataContext, object? data, Action<FileEditEntry> action, Action<FileEditEntry> reverse, Func<string> redoMessage, Func<string> undoMessage) {
+		this.editContext = editContext;
+		this.dataContext = dataContext;
 		this.data = data;
 		this.action = action;
 		this.reverse = reverse;
