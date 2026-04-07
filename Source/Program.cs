@@ -77,6 +77,11 @@ public static class Program {
 		get => selectedTileset;
 		set => SetSelectedTileset(value);
 	}
+	
+	public static Entity SelectedTemplate {
+		get => selectedTemplate;
+		set => SetSelectedTemplate(value);
+	}
 
 	public static Vector2D<int> FramebufferSize => window.FramebufferSize;
     
@@ -106,6 +111,7 @@ public static class Program {
 	private static Layer selectedLayer;
 	private static Entity selectedEntity;
 	private static Tileset selectedTileset;
+	private static Entity selectedTemplate;
 	
 	private static IWindow window;
 	private static ImGuiController controller;
@@ -349,6 +355,7 @@ public static class Program {
 			}
 
 			FileDialog.CompleteThreads();
+			FolderDialog.CompleteThreads();
 
 			controller.Render();
 
@@ -450,6 +457,10 @@ public static class Program {
 	public static void SetSelectedTileset(Tileset tileset) {
 		selectedTileset = tileset;
 	}
+	
+	public static void SetSelectedTemplate(Entity template) {
+		selectedTemplate = template;
+	}
 
 	public static void NewFile(string filePath) {
 		if(project != null) {
@@ -458,6 +469,7 @@ public static class Program {
 		
 		SetSelectedScene(null);
 		SetSelectedTileset(null);
+		SetSelectedTemplate(null);
 		
 		project?.Dispose();
 		
@@ -476,6 +488,7 @@ public static class Program {
 		
 		SetSelectedScene(null);
 		SetSelectedTileset(null);
+		SetSelectedTemplate(null);
 		
 		project?.Dispose();
 		
@@ -520,6 +533,7 @@ public static class Program {
 		UpdateProjectState(project);
 		SetSelectedScene(null);
 		SetSelectedTileset(null);
+		SetSelectedTemplate(null);
 		project.Read();
 		ApplyProjectState(project);
 	}

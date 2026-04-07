@@ -83,3 +83,56 @@ public class FileDialog {
 	}
 	
 }
+
+public class FolderDialog {
+	
+	private bool active;
+	private bool finished;
+	private string defaultPath;
+	private Action<string> callback;
+	private DialogResult result;
+	
+	private static FolderDialog instance = new FolderDialog();
+	
+	public static void Select(string defaultPath, Action<string> onResult) {
+		lock(instance) {
+			if(instance.active) return;
+			instance.active = true;
+			instance.finished = false;
+			instance.defaultPath = defaultPath.Replace('/', Path.PathSeparator);
+			instance.callback = onResult;
+		}
+		ImGuiController.AllowInput = false;
+		Thread myThread = new Thread(new ThreadStart(Internal));
+		myThread.Start();
+	}
+	
+	private static void Internal() {
+		string defaultPath;
+		lock(instance) {
+			defaultPath = instance.defaultPath;
+		}
+		var result = Dialog.FolderPicker();
+		lock(instance) {
+			instance.result = result;
+			instance.active = false;
+			instance.finished = true;
+		}
+	}
+
+	internal static void CompleteThreads() {
+		lock(instance) {
+			if(instance.finished) {
+				instance.finished = false;
+				if(instance.result.IsOk) {
+					string path = instance.result.Path.Replace('\\', '/');
+					instance.callback?.Invoke(path);
+				} else {
+					instance.callback?.Invoke(null);
+				}
+				ImGuiController.AllowInput = true;
+			}
+		}
+	}
+
+}

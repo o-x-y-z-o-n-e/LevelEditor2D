@@ -103,22 +103,18 @@ public class World {
 	internal void InsertScene(Scene scene, int index) {
 		if(scene == null || scene.World != this || scenes.Contains(scene)) return;
 		scenes.Insert(index, scene);
-		scene.UpdateFilePath();
+		scene.UpdateFileWatcher();
 		scene.MarkTilemapsAsDirty();
 		if(!scene.IsEmbedded) {
 			project.DontDeleteFileOnSave(scene.FileAbsolutePath);
 		}
 	}
 
-	public void SwapScenes(int index1, int index2) {
-		if(index1 < 0 || index1 >= scenes.Count || index2 < 0 || index2 >= scenes.Count) return;
-		var t = scenes[index1];
-		scenes[index1] = scenes[index2];
-		scenes[index2] = t;
-	}
-
-	public void SwapScenes(Scene scene1, Scene scene2) {
-		SwapScenes(scenes.IndexOf(scene1), scenes.IndexOf(scene2));
+	public void MoveScene(int oldIndex, int newIndex) {
+		if(oldIndex == newIndex || oldIndex < 0 || oldIndex >= scenes.Count || newIndex < 0 || newIndex >= scenes.Count) return;
+		Scene scene = scenes[oldIndex];
+		scenes.RemoveAt(oldIndex);
+		scenes.Insert(newIndex, scene);
 	}
 
 	public Scene CopyScene(int index, string newID, int x, int y, bool embedded) {
@@ -168,10 +164,21 @@ public class World {
 	internal void AddTileset(Tileset tileset) {
 		if(tilesets.Contains(tileset)) return;
 		tilesets.Add(tileset);
+		tileset.UpdateFileWatcher();
+		tileset.UpdateTextureFileWatcher();
+		tileset.ReloadTexture();
+		if(!tileset.IsEmbedded) {
+			project.DontDeleteFileOnSave(tileset.FileAbsolutePath);
+		}
 	}
 	
 	public void RemoveTileset(Tileset tileset) {
+		if(!tilesets.Contains(tileset)) return;
 		tilesets.Remove(tileset);
+		tileset.ReleaseResources();
+		if(!tileset.IsEmbedded) {
+			project.DeleteFileOnSave(tileset.FileAbsolutePath);
+		}
 	}
 
 	public bool HasTileset(string id) {

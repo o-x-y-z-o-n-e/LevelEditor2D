@@ -7,13 +7,6 @@ namespace E2D;
 
 public class TemplatesPanel : Panel {
 
-	public Entity SelectedTemplate {
-		get => selectedTemplate;
-		set => selectedTemplate = value;
-	}
-	
-	private Entity selectedTemplate;
-
 	private bool addPopup;
 	private bool copyPopup;
 	private Entity copyTarget;
@@ -32,7 +25,6 @@ public class TemplatesPanel : Panel {
 	
 	public TemplatesPanel() {
 		Title = $"{Codicons.Extensions} Templates";
-		selectedTemplate = null;
 		addPopup = false;
 		copyPopup = false;
 		copyTarget = null;
@@ -70,23 +62,23 @@ public class TemplatesPanel : Panel {
 		}
 		ImGui.SetItemTooltip("Create");
 		
-		ImGui.BeginDisabled(selectedTemplate == null);
+		ImGui.BeginDisabled(Program.SelectedTemplate == null);
 		
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.Copy)) {
 			copyPopup = true;
-			copyTarget = selectedTemplate;
+			copyTarget = Program.SelectedTemplate;
 		}
 		ImGui.SetItemTooltip("Copy");
 		
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.Trash)) {
 			deletePopup = true;
-			deleteTarget = selectedTemplate;
+			deleteTarget = Program.SelectedTemplate;
 		}
 		ImGui.SetItemTooltip("Delete");
 
-		int selectedIndex = selectedTemplate  != null ? world.Templates.IndexOf(selectedTemplate) : -1;
+		int selectedIndex = Program.SelectedTemplate != null ? world.Templates.IndexOf(Program.SelectedTemplate) : -1;
 		ImGui.BeginDisabled(selectedIndex == 0);
 		ImGui.SameLine();
 		if(ImGui.Button(Codicons.ChevronUp)) {
@@ -122,7 +114,7 @@ public class TemplatesPanel : Panel {
 		}
 		ImGui.EndDisabled();
 
-		selectedTemplate = Items(ref moveOperation, false, template => {
+		Program.SelectedTemplate = Items(ref moveOperation, false, template => {
 			ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
 			if(ImGui.BeginPopup("context")) {
 				if(ImGui.MenuItem("Copy")) {
@@ -151,42 +143,42 @@ public class TemplatesPanel : Panel {
 		
 		ImGui.BeginChild("preview", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY);
 
-		if(selectedTemplate != null) {
+		if(Program.SelectedTemplate != null) {
 			Vector2 areaMin = ImGui.GetWindowPos() + ImGui.GetStyle().WindowPadding;
 			Vector2 areaMax = areaMin + ImGui.GetContentRegionAvail();
-			DrawPreview(selectedTemplate, areaMin, areaMax);
+			DrawPreview(Program.SelectedTemplate, areaMin, areaMax);
 		}
 
 		ImGui.EndChild();
 		
 		ImGui.BeginChild("edit", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Borders);
-		if(selectedTemplate != null) {
+		if(Program.SelectedTemplate != null) {
 			ImGui.SeparatorText("Entity Options");
-			string name = selectedTemplate.Name;
+			string name = Program.SelectedTemplate.Name;
 			if(ImGui.InputText("Name", ref name, Program.IMGUI_STRING_MAX)) {}
 			if(ImGui.IsItemDeactivatedAfterEdit()) {
 				bool invalidName = name == "";
-				foreach(var t in selectedTemplate.Collection.All) {
+				foreach(var t in Program.SelectedTemplate.Collection.All) {
 					if(t.Name == name) {
 						invalidName = true;
 						break;
 					}
 				}
 				if(!invalidName) {
-					Program.Project.ApplyEdit(this, new Entity.NameOperation(selectedTemplate, name));
+					Program.Project.ApplyEdit(this, new Entity.NameOperation(Program.SelectedTemplate, name));
 				}
 			}
-			string type = selectedTemplate.Type;
+			string type = Program.SelectedTemplate.Type;
 			if(ImGui.InputText("Type", ref type, Program.IMGUI_STRING_MAX)) {}
 			if(ImGui.IsItemDeactivatedAfterEdit()) {
-				Program.Project.ApplyEdit(this, new Entity.TypeOperation(selectedTemplate, type));
+				Program.Project.ApplyEdit(this, new Entity.TypeOperation(Program.SelectedTemplate, type));
 			}
-			Vector2 size = selectedTemplate.Size;
+			Vector2 size = Program.SelectedTemplate.Size;
 			if(ImGui.DragFloat2("Size", ref size)) {
 				if(size.X < 0) size.X = 0;
 				if(size.Y < 0) size.Y = 0;
-				if(sizeEdit == null || sizeEdit.GetData<Entity.SizeOperation>().Entity != selectedTemplate) {
-					sizeEdit = Program.Project.BeginEdit(new Entity.SizeOperation(selectedTemplate, size));
+				if(sizeEdit == null || sizeEdit.GetData<Entity.SizeOperation>().Entity != Program.SelectedTemplate) {
+					sizeEdit = Program.Project.BeginEdit(new Entity.SizeOperation(Program.SelectedTemplate, size));
 				} else {
 					sizeEdit.GetData<Entity.SizeOperation>().SetSize(size);
 				}
@@ -194,7 +186,7 @@ public class TemplatesPanel : Panel {
 			if(ImGui.IsItemDeactivatedAfterEdit() && sizeEdit != null) {
 				Program.Project.EndEdit(ref sizeEdit, !sizeEdit.GetData<Entity.SizeOperation>().HasChanges());
 			}
-			PropertyView.Run(selectedTemplate.Properties);
+			PropertyView.Run(Program.SelectedTemplate.Properties);
 		}
 		ImGui.EndChild();
 	}
@@ -242,7 +234,7 @@ public class TemplatesPanel : Panel {
 	private unsafe Entity Items(ref Entity.MoveOperation moveOperation, bool selectOnly, Action<Entity> contextPopup = null) {
 		World world = Program.Project.World;
 
-		Entity selected = selectOnly ? null : selectedTemplate;
+		Entity selected = selectOnly ? null : Program.SelectedTemplate;
 		
 		ImGui.BeginChild("items", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Borders);
 		
@@ -446,25 +438,27 @@ public class TemplatesPanel : Panel {
 		if(ImGui.BeginPopup("add-template")) {
 			ImGui.Text("Create new template");
 			ImGui.InputText("ID", ref newIdBuffer, Program.IMGUI_STRING_MAX);
-			bool validId = newIdBuffer != "";
-			foreach(var s in world.Templates.All) {
-				if(s.Name == newIdBuffer) {
-					validId = false;
-					break;
-				}
-			}
-			if(!validId) {
-				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.0f, 0.0f, 1.0f));
-				ImGui.Text("Invalid or duplicate id!");
-				ImGui.PopStyleColor();
-			}
-			ImGui.BeginDisabled(!validId);
+			bool emptyName = newIdBuffer == "";
+			bool duplicateName = world.Templates.All.Any(t => t.Name == newIdBuffer);
+			bool invalid = emptyName || duplicateName;
+			ImGui.BeginDisabled(invalid);
 			if(ImGui.Button("Confirm")) {
 				Entity template = new Entity(world.Templates);
 				template.SetName(newIdBuffer);
 				Program.Project.ApplyEdit(this, new Entity.AddOperation(world.Templates, template));
-				selectedTemplate = template;
+				Program.SelectedTemplate = template;
 				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Template name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Template name already exists!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -487,25 +481,27 @@ public class TemplatesPanel : Panel {
 		if(ImGui.BeginPopup("copy-template")) {
 			ImGui.Text("Copy selected template");
 			ImGui.InputText("ID", ref newIdBuffer, Program.IMGUI_STRING_MAX);
-			bool validId = newIdBuffer != "";
-			foreach(var s in world.Templates.All) {
-				if(s.Name == newIdBuffer) {
-					validId = false;
-					break;
-				}
-			}
-			if(!validId) {
-				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.0f, 0.0f, 1.0f));
-				ImGui.Text("Invalid or duplicate id!");
-				ImGui.PopStyleColor();
-			}
-			ImGui.BeginDisabled(!validId);
+			bool emptyName = newIdBuffer == "";
+			bool duplicateName = world.Templates.All.Any(t => t.Name == newIdBuffer);
+			bool invalid = emptyName || duplicateName;
+			ImGui.BeginDisabled(invalid);
 			if(ImGui.Button("Confirm")) {
 				Entity template = world.Templates.Copy(copyTarget);
 				template.SetName(newIdBuffer);
 				Program.Project.ApplyEdit(this, new Entity.AddOperation(world.Templates, template));
-				selectedTemplate = template;
+				Program.SelectedTemplate = template;
 				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Template name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Template name already exists!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -530,8 +526,8 @@ public class TemplatesPanel : Panel {
 			ImGui.Text("Delete selected template");
 			if(ImGui.Button("Confirm")) {
 				Program.Project.ApplyEdit(this, new Entity.RemoveOperation(world.Templates, deleteTarget));
-				if(deleteTarget == selectedTemplate) {
-					selectedTemplate = null;
+				if(deleteTarget == Program.SelectedTemplate) {
+					Program.SelectedTemplate = null;
 				}
 				ImGui.CloseCurrentPopup();
 			}

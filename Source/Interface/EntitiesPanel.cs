@@ -13,6 +13,10 @@ public class EntitiesPanel : Panel {
 	private bool transferPopup;
 	private Entity transferTarget;
 
+	private bool createTemplatePopup;
+	private Entity createTemplateTarget;
+	private string createTemplateName;
+
 	public EntitiesPanel() {
 		Title = $"{Codicons.SymbolMisc} Entities";
 		positionEdit = null;
@@ -184,6 +188,7 @@ public class EntitiesPanel : Panel {
 		}
 		
 		TransferPopup();
+		CreateTemplatePopup();
 	}
 
 	private unsafe void Entities(Layer layer, ref Entity.MoveOperation moveOperation, Action<Entity> contextMenu) {
@@ -343,21 +348,6 @@ public class EntitiesPanel : Panel {
 		ImGui.SetCursorPos(cur);
 	}
 
-	private void TransferPopup() {
-		if(transferPopup) {
-			transferPopup = false;
-			if(transferTarget != null) {
-				ImGui.OpenPopup("transfer-entity");
-			}
-		}
-		if(ImGui.BeginPopup("transfer-entity")) {
-			
-			ImGui.EndPopup();
-		} else {
-			transferTarget = null;
-		}
-	}
-
 	private void Inspect(Entity entity) {
 		var style = ImGui.GetStyle();
 		
@@ -374,10 +364,21 @@ public class EntitiesPanel : Panel {
 			Vector4 v4 = style.Colors[(int)ImGuiCol.FrameBg];
 			if(template == null) v4.W *= style.DisabledAlpha;
 			ImGui.GetWindowDrawList().AddRectFilled(scur, scur + new Vector2(w, h), ImGui.ColorConvertFloat4ToU32(v4), style.FrameRounding);
+			ImGui.Dummy(new Vector2(w, h));
+			if(template == null) {
+				ImGui.OpenPopupOnItemClick("context", ImGuiPopupFlags.MouseButtonRight);
+				if(ImGui.BeginPopup("context")) {
+					if(ImGui.MenuItem("Create Template")) {
+						createTemplatePopup = true;
+						createTemplateTarget = entity;
+					}
+					ImGui.EndPopup();
+				}
+			}
 			ImGui.SetCursorPos(new(cur.X + style.FramePadding.X, cur.Y + style.FramePadding.Y));
 			if(template != null) {
 				if(ImGui.TextLink(template.Name)) {
-					Program.TemplatesPanel.SelectedTemplate = template;
+					Program.SetSelectedTemplate(template);
 					Program.Focus(Program.TemplatesPanel);
 				}
 			}
@@ -394,7 +395,7 @@ public class EntitiesPanel : Panel {
 				ImGui.PushStyleVar(ImGuiStyleVar.Alpha, style.DisabledAlpha);
 			}
 			string name = entity.Name;
-			if(ImGui.InputText("Name", ref name, 512, ImGuiInputTextFlags.AutoSelectAll)) { }
+			if(ImGui.InputText("Name", ref name, Program.IMGUI_STRING_MAX)) { }
 			if(ImGui.IsItemDeactivatedAfterEdit()) {
 				Program.Project.ApplyEdit(layer, new Entity.NameOperation(entity, name));
 			}
@@ -418,7 +419,7 @@ public class EntitiesPanel : Panel {
 				ImGui.PushStyleVar(ImGuiStyleVar.Alpha, style.DisabledAlpha);
 			}
 			string type = entity.Type;
-			if(ImGui.InputText("Type", ref type, 512, ImGuiInputTextFlags.AutoSelectAll)) { }
+			if(ImGui.InputText("Type", ref type, Program.IMGUI_STRING_MAX)) { }
 			if(ImGui.IsItemDeactivatedAfterEdit()) {
 				Program.Project.ApplyEdit(layer, new Entity.TypeOperation(entity, type));
 			}
@@ -482,6 +483,98 @@ public class EntitiesPanel : Panel {
 		}
 
 		PropertyView.Run(entity.Properties, template?.Properties);
+	}
+	
+	private void TransferPopup() {
+		if(transferPopup) {
+			transferPopup = false;
+			if(transferTarget != null) {
+				ImGui.OpenPopup("transfer-entity");
+			}
+		}
+		if(ImGui.BeginPopup("transfer-entity", ImGuiWindowFlags.AlwaysAutoResize)) {
+			ImGui.SeparatorText("Transfer to Layer");
+			ImGui.SetNextWindowSizeConstraints(ImGui.GetContentRegionAvail(), new Vector2(float.MaxValue, float.MaxValue));
+			ImGui.BeginChild("list", Vector2.Zero, ImGuiChildFlags.Borders | ImGuiChildFlags.AutoResizeY | ImGuiChildFlags.AutoResizeX);
+			Layer location = null;
+			foreach(var layer in Program.SelectedScene.Root.Children) {
+				var result = TransferPopupNode(layer, transferTarget);
+				if(result != null) {
+					location = result;
+				}
+			}
+			ImGui.EndChild();
+
+			if(location != null) {
+				Program.Project.ApplyEdit(this, new Entity.TransferOperation(transferTarget, location.Entities));
+				ImGui.CloseCurrentPopup();
+			}
+			
+			ImGui.EndPopup();
+		} else {
+			transferTarget = null;
+		}
+	}
+
+	private Layer TransferPopupNode(Layer layer, Entity target) {
+		Layer result = null;
+		ImGui.BeginDisabled(layer.Type != LayerType.Entities || layer == target.Collection.Layer);
+		if(ImGui.Selectable(layer.Name, false, ImGuiSelectableFlags.SpanAllColumns)) {
+			result = layer;
+		}
+		ImGui.EndDisabled();
+		if(layer.Type == LayerType.Group && layer.ChildrenCount > 0) {
+			ImGui.Indent();
+			foreach(var child in layer.Children) {
+				Layer childResult = TransferPopupNode(child, target);
+				if(result == null) result = childResult;
+			}
+			ImGui.Unindent();
+		}
+		return result;
+	}
+
+	private void CreateTemplatePopup() {
+		World world = Program.Project.World;
+		if(createTemplatePopup) {
+			createTemplatePopup = false;
+			if(createTemplateTarget != null && createTemplateTarget.Template == null) {
+				createTemplateName = createTemplateTarget.Name;
+				ImGui.OpenPopup("create-template");
+			}
+		}
+		if(ImGui.BeginPopup("create-template")) {
+			ImGui.InputText("Name", ref createTemplateName, Program.IMGUI_STRING_MAX);
+			bool emptyName = createTemplateName == "";
+			bool duplicateName = world.Templates.All.Any(s => s.Name == createTemplateName);
+			bool invalid = emptyName || duplicateName;
+			ImGui.BeginDisabled(emptyName || duplicateName);
+			if(ImGui.Button("Create")) {
+				Entity copy = world.Templates.Copy(createTemplateTarget);
+				copy.SetName(createTemplateName);
+				Program.Project.ApplyEdit(this, new Entity.TemplateOperation(world.Templates, copy, createTemplateTarget));
+				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Template name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Template name already exists!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
+			}
+			ImGui.EndDisabled();
+			ImGui.SameLine();
+			if(ImGui.Button("Cancel")) {
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndPopup();
+		} else {
+			createTemplateTarget = null;
+		}
 	}
 
 }

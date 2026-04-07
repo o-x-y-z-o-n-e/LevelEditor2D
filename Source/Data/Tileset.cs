@@ -8,29 +8,33 @@ using Serilog;
 using Silk.NET.OpenGL;
 using StbImageSharp;
 
-namespace E2D; 
+namespace E2D;
 
+// TODO: fix size when not same as world tile size
 public class Tileset {
 	
 	public const string FILE_EXTENSION = "t2d";
 
+	public Project Project => project;
 	public World World => project.World;
-
-	// TODO: fix size when not same as world tile size
 	
 	public bool IsEmbedded => embedded;
 	
+	public string FileRelativePath {
+		get => fileRelativePath;
+		set {
+			if(!embedded) {
+				fileRelativePath = value;
+				UpdateFileWatcher();
+			}
+		}
+	}
+
+	public string FileAbsolutePath => fileAbsolutePath;
+
 	public string ID {
 		get => id;
 		set => id = value;
-	}
-
-	public string FilePath {
-		get => fileRelativePath;
-		set {
-			fileRelativePath = value;
-			UpdateFileWatcher();
-		}
 	}
 	
 	public string Group {
@@ -100,9 +104,9 @@ public class Tileset {
 	private List<AutomapPattern> automapPatterns;
 	private List<PresetPattern> presetPatterns;
 	
-	public Tileset(Project project) {
+	public Tileset(Project project, bool embedded) {
 		this.project = project;
-		embedded = false;
+		this.embedded = embedded;
 		id = "new_tileset";
 		fileRelativePath = "";
 		fileAbsolutePath = "";
@@ -131,22 +135,19 @@ public class Tileset {
 			return null;
 		}
 		if(filePath == null) {
-			Tileset tileset = new Tileset(project);
+			Tileset tileset = new Tileset(project, true);
 			tileset.id = id;
 			tileset.group = group;
-			tileset.embedded = true;
 			tileset.ParseData(tilesetElement);
 			return tileset;
 		} else {
-			string fullPath = project.GetAbsolutePath(filePath);
-			if(!File.Exists(fullPath)) {
-				Log.Error($"File [{fullPath}] does not exist");
+			if(!File.Exists(project.GetAbsolutePath(filePath))) {
+				Log.Error($"File [{filePath}] does not exist");
 				return null;
 			}
-			Tileset tileset = new Tileset(project);
+			Tileset tileset = new Tileset(project, false);
 			tileset.id = id;
 			tileset.group = group;
-			tileset.embedded = false;
 			tileset.fileRelativePath = filePath;
 			tileset.UpdateFileWatcher();
 			tileset.ReadExternalFile();
@@ -267,7 +268,7 @@ public class Tileset {
 		if(tileset.embedded) {
 			tileset.SerializeData(element);
 		} else {
-			element.Add("file", tileset.fileRelativePath);
+			element.Add(new XAttribute("file", tileset.fileRelativePath));
 			tileset.WriteExternalFile();
 		}
         
@@ -276,8 +277,6 @@ public class Tileset {
 
 	private void SerializeData(XElement tilesetElement) {
 		tilesetElement.Add(
-			new XAttribute("id", id),
-			new XAttribute("group", group),
 			new XAttribute("texture_file", textureFileRelativePath),
 			new XAttribute("px_offset.x", offset.X),
 			new XAttribute("px_offset.y", offset.Y),
@@ -331,7 +330,7 @@ public class Tileset {
 	private void WriteExternalFile() {
 		XmlWriter writer = null;
 		fileWatcher.EnableRaisingEvents = false;
-		Log.Information("Writing tileset file... [{@filePath}]", fileRelativePath);
+		Log.Information("Writing tileset file... [{@fileRelativePath}]", fileRelativePath);
 		try {
 			StringBuilder builder = new StringBuilder();
 			XDocument document = new XDocument();
@@ -346,14 +345,14 @@ public class Tileset {
 			writer.Close();
 			File.WriteAllText(fileAbsolutePath, builder.ToString());
 		} catch(Exception e) {
-			Log.Error(e, "Failed to write tileset file: {@filePath}", fileRelativePath);
+			Log.Error(e, "Failed to write tileset file: {@fileRelativePath}", fileRelativePath);
 			writer?.Close();
 		} finally {
 			fileWatcher.EnableRaisingEvents = true;
 		}
 	}
 
-	public void SetTexturePath(string path) {
+	public void SetTexturePath(string path, bool updateResources = true) {
 		if(path == null) path = "";
 		textureFileRelativePath = path;
 		if(embedded) {
@@ -361,15 +360,17 @@ public class Tileset {
 		} else {
 			textureFileAbsolutePath = project.GetAbsolutePath(textureFileRelativePath, fileAbsolutePath);
 		}
-		UpdateTextureFileWatcher();
-		ReloadTexture();
+		if(updateResources) {
+			UpdateTextureFileWatcher();
+			ReloadTexture();
+		}
 	}
 
 	private void OnTextureFileChanged(object sender, FileSystemEventArgs e) {
 		Program.SendMessage(ReloadTexture);
 	}
 
-	private void UpdateTextureFileWatcher() {
+	public void UpdateTextureFileWatcher() {
 		if(textureFileWatcher == null) {
 			textureFileWatcher = new FileSystemWatcher();
 			textureFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
@@ -540,12 +541,9 @@ public class Tileset {
 		}
 		public void ApplyNextState(FileEditEntry entry) {
 			world.AddTileset(tileset);
-			tileset.UpdateTextureFileWatcher();
-			tileset.ReloadTexture();
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
 			world.RemoveTileset(tileset);
-			tileset.ReleaseResources();
 		}
 		public bool HasChanges() => true;
 		public string GetNextStateMessage() => $"Add tileset [{tileset.ID}]";

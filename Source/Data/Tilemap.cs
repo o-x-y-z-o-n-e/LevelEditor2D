@@ -319,7 +319,7 @@ public class Tilemap {
 				}
 			}
 			gl.ActiveTexture(GLEnum.Texture0 + i);
-			if(link != null) {
+			if(link != null && link.Tileset != null && link.Tileset.TextureArray != null) {
 				gl.BindTexture(GLEnum.Texture2DArray, link.Tileset.TextureArray.Handle);
 			} else {
 				gl.BindTexture(GLEnum.Texture2DArray, 0);

@@ -15,6 +15,15 @@ public class Scene {
 	public World World => project.World;
 	
 	public bool IsEmbedded => embedded;
+	
+	public string FileRelativePath {
+		get => fileRelativePath;
+		set {
+			fileRelativePath = value;
+			UpdateFileWatcher();
+		}
+	}
+	
 	public string FileAbsolutePath => fileAbsolutePath;
 
 	public string ID {
@@ -67,7 +76,11 @@ public class Scene {
 		this.project = project;
 		this.id = id;
 		this.embedded = embedded;
-		fileRelativePath = "";
+		if(!embedded) {
+			fileRelativePath = project.GetCombinedPath(project.World.ScenesDirectory, $"{id}.{FILE_EXTENSION}");
+		} else {
+			fileRelativePath = "";
+		}
 		fileAbsolutePath = "";
 		fileWatcher = null;
 		worldX = 0;
@@ -82,7 +95,6 @@ public class Scene {
 
 	public static Scene Parse(Project project, XElement sceneElement) {
 		string id = sceneElement.Attribute("id").ParseAsString();
-		bool embedded = sceneElement.Attribute("embedded").ParseAsBool();
 		string filePath = sceneElement.Attribute("file")?.ParseAsString();
 		if(id == "") {
 			Log.Error("Missing scene id");
@@ -92,18 +104,18 @@ public class Scene {
 			Log.Error($"Duplicate scene id [{id}]");
 			return null;
 		}
-		if(embedded) {
+		if(filePath == null) {
 			Scene scene = new Scene(project, id, true);
 			scene.ParseData(sceneElement);
 			return scene;
 		} else {
-			string path = project.GetScenePath(id);
-			if(!File.Exists(path)) {
-				Log.Error($"File [{path}] does not exist");
+			if(!File.Exists(project.GetAbsolutePath(filePath))) {
+				Log.Error($"File [{filePath}] does not exist");
 				return null;
 			}
 			Scene scene = new Scene(project, id, false);
-			scene.UpdateFilePath();
+			scene.fileRelativePath = filePath;
+			scene.UpdateFileWatcher();
 			scene.ReadExternalFile();
 			return scene;
 		}
@@ -136,11 +148,11 @@ public class Scene {
 	public static XElement Serialize(Scene scene) {
 		var element = new XElement("scene");
 		element.Add(new XAttribute("id", scene.id));
-
+		
 		if(scene.embedded) {
-			element.Add(new XAttribute("embedded", scene.embedded));
 			scene.SerializeData(element);
 		} else {
+			element.Add(new XAttribute("file", scene.fileRelativePath));
 			scene.WriteExternalFile();
 		}
         
@@ -184,7 +196,7 @@ public class Scene {
 	private void WriteExternalFile() {
 		XmlWriter writer = null;
 		fileWatcher.EnableRaisingEvents = false;
-		Log.Information("Writing scene file... [{@filePath}]", fileAbsolutePath);
+		Log.Information("Writing scene file... [{@fileRelativePath}]", fileRelativePath);
 		try {
 			StringBuilder builder = new StringBuilder();
 			XDocument document = new XDocument();
@@ -199,7 +211,7 @@ public class Scene {
 			writer.Close();
 			File.WriteAllText(fileAbsolutePath, builder.ToString());
 		} catch(Exception e) {
-			Log.Error(e, "Failed to write scene file: {@filePath}", fileAbsolutePath);
+			Log.Error(e, "Failed to write scene file: {@fileRelativePath}", fileRelativePath);
 			writer?.Close();
 		} finally {
 			fileWatcher.EnableRaisingEvents = true;
@@ -213,10 +225,6 @@ public class Scene {
 				return;
 			}
 		}
-
-		if(!embedded && fileAbsolutePath != "") {
-			project.DeleteFileOnSave(fileAbsolutePath);
-		}
 		
 		this.id = id;
 		
@@ -227,8 +235,19 @@ public class Scene {
 
 	public void UpdateFilePath() {
 		if(embedded) return;
-		fileAbsolutePath = project.GetScenePath(id);
-		string directory = Path.GetDirectoryName(fileAbsolutePath).Replace('\\', '/');
+		if(File.Exists(fileAbsolutePath)) {
+			project.DeleteFileOnSave(fileAbsolutePath);
+			fileRelativePath = project.GetCombinedPath(project.GetDirectoryName(fileRelativePath), $"{id}.{FILE_EXTENSION}");
+		} else {
+			fileRelativePath = project.GetCombinedPath(project.World.ScenesDirectory, $"{id}.{FILE_EXTENSION}");
+		}
+		UpdateFileWatcher();
+	}
+
+	public void UpdateFileWatcher() {
+		if(embedded) return;
+		fileAbsolutePath = project.GetAbsolutePath(fileRelativePath);
+		string directory = project.GetDirectoryName(fileAbsolutePath);
 		if(!Directory.Exists(directory)) {
 			Directory.CreateDirectory(directory);
 		}
@@ -239,7 +258,7 @@ public class Scene {
 		} else {
 			fileWatcher.Path = directory;
 		}
-		fileWatcher.Filter = Path.GetFileName(fileAbsolutePath);
+		fileWatcher.Filter = project.GetFileName(fileRelativePath);
 		fileWatcher.EnableRaisingEvents = id != "";
 	}
 
@@ -417,14 +436,10 @@ public class Scene {
 			this.newIndex = newIndex;
 		}
 		public void ApplyNextState(FileEditEntry entry) {
-			Scene scene = world.Scenes[oldIndex];
-			world.Scenes.RemoveAt(oldIndex);
-			world.Scenes.Insert(newIndex, scene);
+			world.MoveScene(oldIndex, newIndex);
 		}
 		public void ApplyPrevState(FileEditEntry entry) {
-			Scene scene = world.Scenes[newIndex];
-			world.Scenes.RemoveAt(newIndex);
-			world.Scenes.Insert(oldIndex, scene);
+			world.MoveScene(newIndex, oldIndex);
 		}
 		public bool HasChanges() => oldIndex != newIndex;
 		public string GetNextStateMessage() => $"Move scene order";

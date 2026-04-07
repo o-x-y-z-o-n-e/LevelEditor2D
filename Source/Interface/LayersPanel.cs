@@ -412,13 +412,8 @@ public class LayersPanel : Panel {
 		if(ImGui.BeginPopup("add-layer")) {
 			ImGui.Text("Create new layer");
 			ImGui.InputText("Name", ref layerNameEdit, Program.IMGUI_STRING_MAX);
-			bool invalidName = layerNameEdit == "";
-			foreach(var l in scene.GetAllLayers()) {
-				if(l.Name == layerNameEdit) {
-					invalidName = true;
-					break;
-				}
-			}
+			bool emptyName = layerNameEdit == "";
+			bool duplicateName = scene.GetAllLayers().Any(l => l.Name == layerNameEdit);
 			string layerTypeLabel = layerTypeOption switch {
 				0 => "Tiles",
 				1 => "Entities",
@@ -437,7 +432,8 @@ public class LayersPanel : Panel {
 				}
 				ImGui.EndCombo();
 			}
-			ImGui.BeginDisabled(invalidName);
+			bool invalid = emptyName || duplicateName;
+			ImGui.BeginDisabled(invalid);
 			if(ImGui.Button("Confirm")) {
 				LayerType type = layerTypeOption switch {
 					0 => LayerType.Tiles,
@@ -450,6 +446,17 @@ public class LayersPanel : Panel {
 				Program.SetSelectedLayer(layer);
 				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Layer name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Layer name already exists!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -479,14 +486,10 @@ public class LayersPanel : Panel {
 			ImGui.Text("Copy selected layer");
 			ImGui.SetNextItemWidth(250);
 			ImGui.InputText("New Name", ref layerNameEdit, Program.IMGUI_STRING_MAX);
-			bool invalidName = layerNameEdit == "";
-			foreach(var l in copyTarget.Scene.GetAllLayers()) {
-				if(l.Name == layerNameEdit) {
-					invalidName = true;
-					break;
-				}
-			}
-			ImGui.BeginDisabled(invalidName);
+			bool emptyName = layerNameEdit == "";
+			bool duplicateName = copyTarget.Scene.GetAllLayers().Any(l => l.Name == layerNameEdit);
+			bool invalid = emptyName || duplicateName;
+			ImGui.BeginDisabled(invalid);
 			if(ImGui.Button("Confirm")) {
 				Layer newLayer = new Layer(copyTarget.Scene, copyTarget.Type);
 				newLayer.Name = layerNameEdit;
@@ -495,6 +498,17 @@ public class LayersPanel : Panel {
 				Program.SetSelectedLayer(newLayer);
 				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Layer name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Layer name already exists!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -555,17 +569,24 @@ public class LayersPanel : Panel {
 		if(ImGui.BeginPopup("rename-layer")) {
 			ImGui.Text("Rename selected layer");
 			if(ImGui.InputText("Name", ref layerNameEdit, Program.IMGUI_STRING_MAX)) { }
-			bool invalidName = layerNameEdit == "";
-			foreach(var l in renameTarget.Scene.GetAllLayers()) {
-				if(l.Name == layerNameEdit) {
-					invalidName = true;
-					break;
-				}
-			}
-			ImGui.BeginDisabled(invalidName);
+			bool emptyName = layerNameEdit == "";
+			bool duplicateName = copyTarget.Scene.GetAllLayers().Any(l => l.Name == layerNameEdit);
+			bool invalid = emptyName || duplicateName;
+			ImGui.BeginDisabled(invalid);
 			if(ImGui.Button("Confirm")) {
 				Program.Project.ApplyEdit(this, new Layer.RenameOperation(renameTarget, layerNameEdit));
 				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Layer name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Layer name already exists!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();

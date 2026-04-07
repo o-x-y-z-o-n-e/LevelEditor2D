@@ -103,7 +103,7 @@ public class EntityCollection {
 	}
 
 	public void Add(Entity entity) {
-		if(entity.Collection != this) return;
+		if(entity == null || entity.Collection != this) return;
 		if(entities.Contains(entity)) return;
 		entities.Add(entity);
 	}
@@ -308,6 +308,32 @@ public class Entity {
 		public string GetNextStateMessage() => $"Add entity";
 		public string GetPrevStateMessage() => $"Undo add entity";
 	}
+	
+	public class TemplateOperation : IFileEditOperation {
+		public object? Context => templates;
+		private EntityCollection templates;
+		private Entity source;
+		private Entity template;
+		public TemplateOperation(EntityCollection templates, Entity template, Entity source) {
+			this.templates = templates;
+			this.template = template;
+			this.source = source;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			templates.Add(template);
+			source.template = template.name;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			templates.Remove(template);
+			source.template = null;
+			if(template == Program.SelectedTemplate) {
+				Program.SetSelectedTemplate(null);
+			}
+		}
+		public bool HasChanges() => true;
+		public string GetNextStateMessage() => $"Add entity";
+		public string GetPrevStateMessage() => $"Undo add entity";
+	}
 
 	public class MoveOperation : IFileEditOperation {
 		public object? Context => collection;
@@ -332,6 +358,33 @@ public class Entity {
 		public bool HasChanges() => oldIndex != newIndex;
 		public string GetNextStateMessage() => $"Reorder entities";
 		public string GetPrevStateMessage() => $"Undo reorder entities";
+	}
+
+	public class TransferOperation : IFileEditOperation {
+		public object? Context => oldCollection;
+		private Entity entity;
+		private int oldIndex;
+		private EntityCollection oldCollection;
+		private EntityCollection newCollection;
+		public TransferOperation(Entity entity, EntityCollection location) {
+			this.entity = entity;
+			this.oldIndex = entity.collection.IndexOf(entity);
+			this.oldCollection = entity.collection;
+			this.newCollection = location;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			oldCollection.Remove(entity);
+			entity.collection = newCollection;
+			newCollection.Add(entity);
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			newCollection.Remove(entity);
+			entity.collection = oldCollection;
+			oldCollection.Insert(entity, oldIndex);
+		}
+		public bool HasChanges() => oldCollection != newCollection;
+		public string GetNextStateMessage() => $"Transfer entity";
+		public string GetPrevStateMessage() => $"Undo transfer entity";
 	}
 	
 	public class RemoveOperation : IFileEditOperation {

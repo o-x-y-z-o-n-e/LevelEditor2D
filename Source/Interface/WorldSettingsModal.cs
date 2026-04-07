@@ -37,17 +37,19 @@ public class WorldSettingsModal {
 			bool changes = false;
 			bool clearUndoRedo = false;
 			
-			ImGui.InputText("Name", ref worldName, Program.IMGUI_STRING_MAX);
+			ImGui.InputText("World Name", ref worldName, Program.IMGUI_STRING_MAX);
 			
 			ImGui.BeginDisabled();
 			ImGui.InputInt2("Tile Size", ref tileSize.X);
 			ImGui.EndDisabled();
 			
 			ImGui.InputText("Scenes Directory", ref scenesDirectory, Program.IMGUI_STRING_MAX);
+			ImGui.SetItemTooltip("Default location where external scene files are saved");
 
 			ImGui.BeginDisabled();
 			ImGui.InputText("Tilesets Directory", ref tilesetsDirectory, Program.IMGUI_STRING_MAX);
 			ImGui.EndDisabled();
+			ImGui.SetItemTooltip("Default location where external tileset files are saved");
 
 			changes |= worldName != world.Name;
 			changes |= tileSize.X != world.TileWidth;
@@ -100,7 +102,14 @@ public class WorldSettingsModal {
 		
 		if(tilesetsDirectory != world.TilesetsDirectory) {
 			world.TilesetsDirectory = tilesetsDirectory;
-			// TODO: update tileset files
+			foreach(var tileset in world.Tilesets) {
+				if(!tileset.IsEmbedded) {
+					// TODO
+					// world.Project.DeleteFileOnSave(tileset.FileAbsolutePath);
+					// tileset.UpdateFileWatcher();
+				}
+			}
+			world.Project.MarkDirty();
 		}
 	}
 	

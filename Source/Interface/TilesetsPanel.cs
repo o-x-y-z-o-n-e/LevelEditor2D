@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using IconFonts;
 using ImGuiNET;
+using Serilog;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Rectangle = System.Drawing.Rectangle;
@@ -45,7 +46,9 @@ public class TilesetsPanel : Panel {
 	private bool importOpenModal;
 	private string importID;
 	private string importGroup;
-	private string importPath;
+	private string importSaveDirectory;
+	private bool importEmbeddedOption;
+	private string importTexturePath;
 	private Vector2D<int> importOffset;
 	private Vector2D<int> importSpacing;
 	private Vector2D<int> importTexels;
@@ -94,7 +97,9 @@ public class TilesetsPanel : Panel {
 		colliderHighlightIndex = -1;
 		importID = "";
 		importGroup = "";
-		importPath = "";
+		importSaveDirectory = "";
+		importEmbeddedOption = false;
+		importTexturePath = "";
 		importOffset = new(0);
 		importSpacing = new(0);
 		importTexels = new(16);
@@ -108,7 +113,6 @@ public class TilesetsPanel : Panel {
 		automapDeleteTarget = null;
 		automapMaskTypeOption = AutomapMaskType.Mask2x2;
 		automapDemoIndex = 0;
-
 		presetNameEdit = "";
 		presetWidthEdit = 3;
 		presetHeightEdit = 3;
@@ -153,7 +157,12 @@ public class TilesetsPanel : Panel {
 		if(ImGui.Button("Import")) {
 			reimport = false;
 			importID = "";
-			importPath = "";
+			importTexturePath = "";
+			if(importEmbeddedOption) {
+				importSaveDirectory = "N/A";
+			} else {
+				importSaveDirectory = Program.Project.World.TilesetsDirectory;
+			}
 			importOpenModal = true;
 		}
 
@@ -419,7 +428,20 @@ public class TilesetsPanel : Panel {
 			reimport = true;
 			reimportTileset = tileset;
 			importOpenModal = true;
-			importPath = tileset.TextureFilePath;
+			importEmbeddedOption = tileset.IsEmbedded;
+			if(tileset.IsEmbedded) {
+				importSaveDirectory = "N/A";
+				importTexturePath = tileset.TextureFilePath;
+			} else {
+				importSaveDirectory = Program.Project.GetDirectoryName(tileset.FileRelativePath);
+				importTexturePath = Program.Project.GetRelativePath(
+					Program.Project.GetAbsolutePath(
+						tileset.TextureFilePath,
+						tileset.FileAbsolutePath
+					),
+					Program.Project.GetAbsolutePath()
+				);
+			}
 			importID = tileset.ID;
 			importGroup = tileset.Group;
 			importOffset = new(tileset.OffsetX, tileset.OffsetY);
@@ -1525,29 +1547,82 @@ public class TilesetsPanel : Panel {
 	}
 
 	public void ImportTilesetModal() {
+		Project project = Program.Project;
 		bool open = true;
-		ImGui.SetNextWindowSizeConstraints(new Vector2(400, 300), ImGui.GetIO().DisplaySize);
+		// ImGui.SetNextWindowSizeConstraints(new Vector2(400, 300), ImGui.GetIO().DisplaySize);
 		ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize / 2.0F, ImGuiCond.Always, new Vector2(0.5F, 0.5F));
-		if(ImGui.BeginPopupModal("Import Tileset", ref open)) {
+		if(ImGui.BeginPopupModal("Import Tileset", ref open, ImGuiWindowFlags.AlwaysAutoResize)) {
 			Vector2 area = ImGui.GetContentRegionAvail();
 			var style = ImGui.GetStyle();
+			
+			ImGui.BeginDisabled(reimport);
 
-			if(ImGui.Button("Select File")) {
-				FileDialog.Open(importPath, "png;bmp;jpg;jpeg", result => {
+			ImGui.InputText("ID", ref importID, Program.IMGUI_STRING_MAX);
+			
+			ImGui.InputText("Group", ref importGroup, Program.IMGUI_STRING_MAX);
+
+			string saveRelativePath = project.GetCombinedPath(importSaveDirectory, $"{importID}.{Tileset.FILE_EXTENSION}");
+			string saveExternalLocation = project.GetAbsolutePath(saveRelativePath);
+			if(ImGui.BeginCombo("Location Mode", importEmbeddedOption ? "Embedded" : "External")) {
+				if(ImGui.Selectable("Embedded", importEmbeddedOption)) {
+					importEmbeddedOption = true;
+					importSaveDirectory = "N/A";
+				}
+				ImGui.SetItemTooltip($"Tileset will be embedded into:\n{project.GetAbsolutePath()}");
+				if(ImGui.Selectable("External", !importEmbeddedOption)) {
+					importEmbeddedOption = false;
+					importSaveDirectory = project.World.TilesetsDirectory;
+				}
+				ImGui.SetItemTooltip($"Tileset will be saved to:\n{saveExternalLocation}");
+				ImGui.EndCombo();
+			}
+
+			if(!reimport) {
+				if(importEmbeddedOption) {
+					ImGui.SetItemTooltip($"Tileset will be embedded into:\n{project.GetAbsolutePath()}");
+				} else {
+					ImGui.SetItemTooltip($"Tileset will be saved to:\n{saveExternalLocation}");
+				}
+			}
+
+			ImGui.BeginDisabled(importEmbeddedOption);
+			ImGui.InputText("##location-path", ref importSaveDirectory, Program.IMGUI_STRING_MAX);
+			if(!importEmbeddedOption) ImGui.SetItemTooltip(project.GetAbsolutePath(importSaveDirectory));
+			ImGui.SameLine();
+			ImGui.SetCursorPosX(ImGui.GetCursorPosX() - ImGui.GetStyle().ItemInnerSpacing.X);
+			if(ImGui.Button("Select Location")) {
+				FolderDialog.Select(importSaveDirectory, result => {
 					if(result != null) {
-						importPath = Program.Project.GetRelativePath(result);
+						importSaveDirectory = project.GetRelativePath(result);
+						if(importSaveDirectory == ".") {
+							importSaveDirectory = "";
+						}
 					}
 				});
 			}
+			ImGui.EndDisabled(); // importEmbeddedOption
 			
-			ImGui.InputText("Path", ref importPath, Program.IMGUI_STRING_MAX);
+			ImGui.EndDisabled(); // reimport
+			
+			ImGui.Spacing();
+			ImGui.Spacing();
+			
+			string textureAbsolutePath = project.GetAbsolutePath(importTexturePath);
 
-			string fullPath = Program.Project.GetAbsolutePath(importPath);
-			
-			ImGui.SetItemTooltip(fullPath);
+			ImGui.InputText("##texture-path", ref importTexturePath, Program.IMGUI_STRING_MAX);
+			ImGui.SetItemTooltip(textureAbsolutePath);
+			ImGui.SameLine();
+			ImGui.SetCursorPosX(ImGui.GetCursorPosX() - ImGui.GetStyle().ItemInnerSpacing.X);
+			if(ImGui.Button("Select Texture")) {
+				FileDialog.Open(importTexturePath, "png;bmp;jpg;jpeg", result => {
+					if(result != null) {
+						importTexturePath = project.GetRelativePath(result);
+					}
+				});
+			}
 
 			ImGui.BeginDisabled();
-			ImGui.Text("Under construction");
+			// ImGui.Text("Under construction");
 			ImGui.InputInt2("Offset", ref importOffset.X);
 			ImGui.InputInt2("Spacing", ref importSpacing.X);
 			ImGui.InputInt2("Texels", ref importTexels.X);
@@ -1555,50 +1630,87 @@ public class TilesetsPanel : Panel {
 			
 			ImGui.Spacing();
 			ImGui.Spacing();
-			
-			ImGui.BeginDisabled(reimport);
 
-			ImGui.InputText("ID", ref importID, Program.IMGUI_STRING_MAX);
+			bool valid = importID != "";
+			bool duplicateID = false;
+			bool textureDoesNotExist = !File.Exists(textureAbsolutePath);
 			
-			ImGui.InputText("Group", ref importGroup, Program.IMGUI_STRING_MAX);
-			
-			ImGui.EndDisabled();
-			
-			ImGui.Spacing();
-			ImGui.Spacing();
-
-			bool valid = System.IO.File.Exists(fullPath) && importID != "";
-
 			if(!reimport) {
 				foreach(var t in Program.Project.World.Tilesets) {
 					if(t.ID == importID) {
-						valid = false;
+						duplicateID = true;
 						break;
 					}
 				}
 			}
+			
+			valid &= !textureDoesNotExist;
+			valid &= !duplicateID;
+
+			string importLabel = "Save As";
+			if(reimport) {
+				importLabel = "Apply";
+			} else if(importID != "") {
+				if(importEmbeddedOption) {
+					importLabel = $"Save As: {importID}";
+				} else {
+					importLabel = $"Save As: {saveRelativePath}";
+				}
+			}
+
+			if(duplicateID) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				ImGui.Text($"ID [{importID}] already exists in world!");
+				ImGui.PopStyleColor();
+			}
+
+			if(textureDoesNotExist && importTexturePath != "") {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				ImGui.Text($"Texture [{importTexturePath}] does not exist!");
+				ImGui.PopStyleColor();
+			}
 
 			ImGui.BeginDisabled(!valid);
-			if(ImGui.Button("Import")) {
+			ImGui.PushID("import-button");
+			if(ImGui.Button(importLabel)) {
 				Tileset tileset = null;
+				if(!importEmbeddedOption) {
+					importTexturePath = project.GetRelativePath(textureAbsolutePath, project.GetAbsolutePath(saveRelativePath));
+				}
 				if(reimport) {
 					tileset = reimportTileset;
+					tileset.OffsetX = importOffset.X;
+					tileset.OffsetY = importOffset.Y;
+					tileset.SpacingX = importSpacing.X;
+					tileset.SpacingY = importSpacing.Y;
+					tileset.SizeX = importTexels.X;
+					tileset.SizeY = importTexels.Y;
+					tileset.SetTexturePath(importTexturePath, true);
+					project.MarkDirty();
+					project.ClearEditHistory();
 				} else {
-					tileset = new Tileset(Program.Project);
+					tileset = new Tileset(project, importEmbeddedOption);
 					tileset.ID = importID;
 					tileset.Group = importGroup;
+					tileset.OffsetX = importOffset.X;
+					tileset.OffsetY = importOffset.Y;
+					tileset.SpacingX = importSpacing.X;
+					tileset.SpacingY = importSpacing.Y;
+					tileset.SizeX = importTexels.X;
+					tileset.SizeY = importTexels.Y;
+					if(!importEmbeddedOption) {
+						tileset.FileRelativePath = saveRelativePath;
+					}
+					tileset.SetTexturePath(importTexturePath, false); // file watcher & texture will be updated from add operation
+					project.ApplyEdit(this, new Tileset.AddOperation(project.World, tileset));
 				}
-				tileset.OffsetX = importOffset.X;
-				tileset.OffsetY = importOffset.Y;
-				tileset.SpacingX = importSpacing.X;
-				tileset.SpacingY = importSpacing.Y;
-				tileset.SizeX = importTexels.X;
-				tileset.SizeY = importTexels.Y;
-				tileset.SetTexturePath(importPath, false);
-				Program.Project.ApplyEdit(this, new Tileset.AddOperation(Program.Project.World, tileset));
 				MatchSearch();
 				ImGui.CloseCurrentPopup();
 			}
+			if(reimport) {
+				ImGui.SetItemTooltip("Warning! This action will clear the project's current undo/redo history");
+			}
+			ImGui.PopID();
 			ImGui.EndDisabled();
 			ImGui.SameLine();
 			if(ImGui.Button("Cancel")) {

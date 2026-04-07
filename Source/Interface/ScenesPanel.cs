@@ -317,19 +317,21 @@ public class ScenesPanel : Panel {
 				if(sceneSizeEdit.Y < 1) sceneSizeEdit.Y = 1;
 			}
 
-			bool valid = sceneNameEdit != "" && sceneSizeEdit.X > 0 && sceneSizeEdit.Y > 0;
-			foreach(var s in world.Scenes) {
-				if(s.ID == sceneNameEdit) {
-					valid = false;
-					break;
-				}
+			bool emptyName = sceneNameEdit == "";
+			bool duplicateName = world.Scenes.Any(s => s.ID == sceneNameEdit);
+			bool intersects = world.Scenes.Any(s => {
 				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				if(r.IntersectsWith(new(scenePosEdit.X, scenePosEdit.Y, sceneSizeEdit.X, sceneSizeEdit.Y))) {
-					valid = false;
-					break;
-				}
-			}
+				return r.IntersectsWith(new(
+					scenePosEdit.X,
+					scenePosEdit.Y,
+					copyTarget.TileCountX,
+					copyTarget.TileCountY
+				));
+			});
 
+			string externalSaveLocation = world.Project.GetAbsolutePath(
+				world.Project.GetCombinedPath(world.ScenesDirectory, $"{sceneNameEdit}.{Scene.FILE_EXTENSION}")
+			);
 			if(ImGui.BeginCombo("Location", sceneAddEmbedded ? "Embedded" : "External")) {
 				if(ImGui.Selectable("Embedded", sceneAddEmbedded)) {
 					sceneAddEmbedded = true;
@@ -338,19 +340,20 @@ public class ScenesPanel : Panel {
 				if(ImGui.Selectable("External", !sceneAddEmbedded)) {
 					sceneAddEmbedded = false;
 				}
-				ImGui.SetItemTooltip($"Scene will be saved to:\n{world.Project.GetScenePath(sceneNameEdit)}");
+				ImGui.SetItemTooltip($"Scene will be saved to:\n{externalSaveLocation}");
 				ImGui.EndCombo();
 			}
 			if(sceneAddEmbedded) {
 				ImGui.SetItemTooltip($"Scene will be embedded into:\n{world.Project.GetAbsolutePath()}");
 			} else {
-				ImGui.SetItemTooltip($"Scene will be saved to:\n{world.Project.GetScenePath(sceneNameEdit)}");
+				ImGui.SetItemTooltip($"Scene will be saved to:\n{externalSaveLocation}");
 			}
 			
 			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, sceneSizeEdit.X, sceneSizeEdit.Y));
 			scenePreviewShown = true;
 			
-			ImGui.BeginDisabled(!valid);
+			bool invalid = emptyName || duplicateName || intersects;
+			ImGui.BeginDisabled(invalid);
 			if(ImGui.Button("Confirm")) {
 				var newScene = world.CreateScene(
 					sceneNameEdit,
@@ -365,6 +368,20 @@ public class ScenesPanel : Panel {
 				Program.SetSelectedScene(newScene);
 				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Scene name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Scene name already exists!");
+				}
+				if(intersects) {
+					ImGui.Text($"Scene dimensions intersect with another scene!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 			
@@ -397,20 +414,22 @@ public class ScenesPanel : Panel {
 			
 			ImGui.InputText("New ID", ref sceneNameEdit, Program.IMGUI_STRING_MAX);
 			ImGui.DragInt2("Position", ref scenePosEdit.X, 1);
-			
-			bool valid = sceneNameEdit != "";
-			foreach(var s in world.Scenes) {
-				if(s.ID == sceneNameEdit) {
-					valid = false;
-					break;
-				}
+
+			bool emptyName = sceneNameEdit == "";
+			bool duplicateName = world.Scenes.Any(s => s.ID == sceneNameEdit);
+			bool intersects = world.Scenes.Any(s => {
 				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				if(r.IntersectsWith(new(scenePosEdit.X, scenePosEdit.Y, copyTarget.TileCountX, copyTarget.TileCountY))) {
-					valid = false;
-					break;
-				}
-			}
+				return r.IntersectsWith(new(
+					scenePosEdit.X,
+					scenePosEdit.Y,
+					copyTarget.TileCountX,
+					copyTarget.TileCountY
+				));
+			});
 			
+			string externalSaveLocation = world.Project.GetAbsolutePath(
+				world.Project.GetCombinedPath(world.ScenesDirectory, $"{sceneNameEdit}.{Scene.FILE_EXTENSION}")
+			);
 			if(ImGui.BeginCombo("Location", sceneAddEmbedded ? "Embedded" : "External")) {
 				if(ImGui.Selectable("Embedded", sceneAddEmbedded)) {
 					sceneAddEmbedded = true;
@@ -419,19 +438,20 @@ public class ScenesPanel : Panel {
 				if(ImGui.Selectable("External", !sceneAddEmbedded)) {
 					sceneAddEmbedded = false;
 				}
-				ImGui.SetItemTooltip($"Scene will be saved to:\n{world.Project.GetScenePath(sceneNameEdit)}");
+				ImGui.SetItemTooltip($"Scene will be saved to:\n{externalSaveLocation}");
 				ImGui.EndCombo();
 			}
 			if(sceneAddEmbedded) {
 				ImGui.SetItemTooltip($"Scene will be embedded into:\n{world.Project.GetAbsolutePath()}");
 			} else {
-				ImGui.SetItemTooltip($"Scene will be saved to:\n{world.Project.GetScenePath(sceneNameEdit)}");
+				ImGui.SetItemTooltip($"Scene will be saved to:\n{externalSaveLocation}");
 			}
 			
 			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, copyTarget.TileCountX, copyTarget.TileCountY));
 			scenePreviewShown = true;
-			
-			ImGui.BeginDisabled(!valid);
+
+			bool invalid = emptyName || duplicateName || intersects;
+			ImGui.BeginDisabled(invalid);
 			if(ImGui.Button("Confirm")) {
 				Scene newScene = world.CopyScene(
 					copyTarget,
@@ -444,6 +464,20 @@ public class ScenesPanel : Panel {
 				Program.SetSelectedScene(newScene);
 				Program.Focus(this);
 				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Scene name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Scene name already exists!");
+				}
+				if(intersects) {
+					ImGui.Text($"Scene dimensions intersect with another scene!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 			
@@ -497,6 +531,7 @@ public class ScenesPanel : Panel {
 	}
 
 	private void RenamePopup() {
+		World world = Program.Project.World;
 		if(renamePopup) {
 			renamePopup = false;
 			if(renameTarget != null) {
@@ -507,17 +542,24 @@ public class ScenesPanel : Panel {
 		if(ImGui.BeginPopup("rename-scene")) {
 			ImGui.Text("Rename selected scene");
 			if(ImGui.InputText("Name", ref sceneNameEdit, Program.IMGUI_STRING_MAX)) { }
-			bool invalidName = sceneNameEdit == "";
-			foreach(var l in renameTarget.World.Scenes) {
-				if(l.ID == sceneNameEdit) {
-					invalidName = true;
-					break;
-				}
-			}
-			ImGui.BeginDisabled(invalidName);
+			bool emptyName = sceneNameEdit == "";
+			bool duplicateName = world.Scenes.Any(s => s.ID == sceneNameEdit);
+			bool invalid = emptyName || duplicateName;
+			ImGui.BeginDisabled(invalid);
 			if(ImGui.Button("Confirm")) {
 				Program.Project.ApplyEdit(this, new Scene.RenameOperation(renameTarget, sceneNameEdit));
 				ImGui.CloseCurrentPopup();
+			}
+			if(invalid && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				if(emptyName) {
+					ImGui.Text($"Scene name is empty!");
+				}
+				if(duplicateName) {
+					ImGui.Text($"Scene name already exists!");
+				}
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 			ImGui.SameLine();
@@ -546,20 +588,26 @@ public class ScenesPanel : Panel {
 			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, positionTarget.TileCountX, positionTarget.TileCountY), positionTarget);
 			scenePreviewShown = true;
 
-			bool valid = true;
-			foreach(var s in world.Scenes) {
-				if(s == positionTarget) continue;
+			bool intersects = world.Scenes.Any(s => {
 				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				if(r.IntersectsWith(new(scenePosEdit.X, scenePosEdit.Y, positionTarget.TileCountX, positionTarget.TileCountY))) {
-					valid = false;
-					break;
-				}
-			}
+				return r.IntersectsWith(new(
+					scenePosEdit.X,
+					scenePosEdit.Y,
+					copyTarget.TileCountX,
+					copyTarget.TileCountY
+				));
+			});
 				
-			ImGui.BeginDisabled(!valid);
+			ImGui.BeginDisabled(intersects);
 			if(ImGui.Button("Confirm")) {
 				Program.Project.ApplyEdit(this, new Scene.RepositionOperation(positionTarget, new(scenePosEdit.X, scenePosEdit.Y)));
 				ImGui.CloseCurrentPopup();
+			}
+			if(intersects && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				ImGui.Text($"Scene dimensions intersect with another scene!");
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 				
@@ -593,20 +641,26 @@ public class ScenesPanel : Panel {
 			Program.CanvasPanel.EnableScenePreview(new(resizeTarget.WorldX, resizeTarget.WorldY, sceneSizeEdit.X, sceneSizeEdit.Y), resizeTarget);
 			scenePreviewShown = true;
 				
-			bool valid = true;
-			foreach(var s in world.Scenes) {
-				if(s == resizeTarget) continue;
+			bool intersects = world.Scenes.Any(s => {
 				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				if(r.IntersectsWith(new(resizeTarget.WorldX, resizeTarget.WorldY, sceneSizeEdit.X, sceneSizeEdit.Y))) {
-					valid = false;
-					break;
-				}
-			}
+				return r.IntersectsWith(new(
+					scenePosEdit.X,
+					scenePosEdit.Y,
+					copyTarget.TileCountX,
+					copyTarget.TileCountY
+				));
+			});
 				
-			ImGui.BeginDisabled(!valid);
+			ImGui.BeginDisabled(intersects);
 			if(ImGui.Button("Confirm")) {
 				Program.Project.ApplyEdit(this, new Scene.ResizeOperation(resizeTarget, new(sceneSizeEdit.X, sceneSizeEdit.Y)));
 				ImGui.CloseCurrentPopup();
+			}
+			if(intersects && ImGui.BeginItemTooltip()) {
+				ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
+				ImGui.Text($"Scene dimensions intersect with another scene!");
+				ImGui.PopStyleColor();
+				ImGui.EndTooltip();
 			}
 			ImGui.EndDisabled();
 				

@@ -42,8 +42,7 @@ public class Project {
 	}
 
 	public bool Read() {
-		Log.Information("Reading project file...");
-		Log.Information("{@path}", path);
+		Log.Information("Reading project file... [{@path}]", path);
 		try {
 			ClearEditHistory();
 			string contents = File.ReadAllText(path);
@@ -81,8 +80,7 @@ public class Project {
 				Log.Error(e, "Failed to delete old files");
 			}
 		}
-		Log.Information("Writing project file...");
-		Log.Information("{@path}", path);
+		Log.Information("Writing project file... [{@path}]", path);
 		try {
 			StringBuilder builder = new StringBuilder();
 			XDocument document = new XDocument();
@@ -122,10 +120,6 @@ public class Project {
 	public void DontDeleteFileOnSave(string filePath) {
 		filesToDeleteOnSave.RemoveAll(path => path == filePath);
 	}
-	
-	public string GetScenePath(string id) {
-		return GetAbsolutePath(Path.Combine(world.ScenesDirectory, $"{id}.{Scene.FILE_EXTENSION}"));
-	}
 
 	public string GetAbsolutePath() => path;
 
@@ -143,6 +137,10 @@ public class Project {
 	
 	public string GetRelativePath(string fullPath, string relativeTo) {
 		return Path.GetRelativePath(Path.GetDirectoryName(relativeTo), fullPath).Replace('\\', '/');
+	}
+	
+	public string GetCombinedPath(params string[] paths) {
+		return Path.Combine(paths).Replace('\\', '/');
 	}
 
 	public string GetDirectoryName(string path) {
