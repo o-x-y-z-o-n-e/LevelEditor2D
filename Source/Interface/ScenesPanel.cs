@@ -317,17 +317,11 @@ public class ScenesPanel : Panel {
 				if(sceneSizeEdit.Y < 1) sceneSizeEdit.Y = 1;
 			}
 
+			Rectangle region = new(scenePosEdit.X, scenePosEdit.Y, sceneSizeEdit.X, sceneSizeEdit.Y);
+
 			bool emptyName = sceneNameEdit == "";
 			bool duplicateName = world.Scenes.Any(s => s.ID == sceneNameEdit);
-			bool intersects = world.Scenes.Any(s => {
-				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				return r.IntersectsWith(new(
-					scenePosEdit.X,
-					scenePosEdit.Y,
-					copyTarget.TileCountX,
-					copyTarget.TileCountY
-				));
-			});
+			bool intersects = world.Scenes.Any(s => region.IntersectsWith(new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY)));
 
 			string externalSaveLocation = world.Project.GetAbsolutePath(
 				world.Project.GetCombinedPath(world.ScenesDirectory, $"{sceneNameEdit}.{Scene.FILE_EXTENSION}")
@@ -349,7 +343,7 @@ public class ScenesPanel : Panel {
 				ImGui.SetItemTooltip($"Scene will be saved to:\n{externalSaveLocation}");
 			}
 			
-			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, sceneSizeEdit.X, sceneSizeEdit.Y));
+			Program.CanvasPanel.EnableScenePreview(region);
 			scenePreviewShown = true;
 			
 			bool invalid = emptyName || duplicateName || intersects;
@@ -404,7 +398,7 @@ public class ScenesPanel : Panel {
 		if(copyPopup) {
 			copyPopup = false;
 			sceneNameEdit = "";
-			scenePosEdit = new(0, 0);
+			scenePosEdit = new(copyTarget.WorldX, copyTarget.WorldY);
 			if(copyTarget != null) {
 				ImGui.OpenPopup("copy-scene");
 			}
@@ -415,17 +409,11 @@ public class ScenesPanel : Panel {
 			ImGui.InputText("New ID", ref sceneNameEdit, Program.IMGUI_STRING_MAX);
 			ImGui.DragInt2("Position", ref scenePosEdit.X, 1);
 
+			Rectangle region = new(scenePosEdit.X, scenePosEdit.Y, copyTarget.TileCountX, copyTarget.TileCountY);
+
 			bool emptyName = sceneNameEdit == "";
 			bool duplicateName = world.Scenes.Any(s => s.ID == sceneNameEdit);
-			bool intersects = world.Scenes.Any(s => {
-				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				return r.IntersectsWith(new(
-					scenePosEdit.X,
-					scenePosEdit.Y,
-					copyTarget.TileCountX,
-					copyTarget.TileCountY
-				));
-			});
+			bool intersects = world.Scenes.Any(s => region.IntersectsWith(new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY)));
 			
 			string externalSaveLocation = world.Project.GetAbsolutePath(
 				world.Project.GetCombinedPath(world.ScenesDirectory, $"{sceneNameEdit}.{Scene.FILE_EXTENSION}")
@@ -447,7 +435,7 @@ public class ScenesPanel : Panel {
 				ImGui.SetItemTooltip($"Scene will be saved to:\n{externalSaveLocation}");
 			}
 			
-			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, copyTarget.TileCountX, copyTarget.TileCountY));
+			Program.CanvasPanel.EnableScenePreview(region);
 			scenePreviewShown = true;
 
 			bool invalid = emptyName || duplicateName || intersects;
@@ -584,19 +572,13 @@ public class ScenesPanel : Panel {
 		if(ImGui.BeginPopup("position-scene")) {
 			ImGui.Text("Position scene");
 			ImGui.DragInt2("##New Position", ref scenePosEdit.X, 1);
+			
+			Rectangle region = new(scenePosEdit.X, scenePosEdit.Y, positionTarget.TileCountX, positionTarget.TileCountY);
 				
-			Program.CanvasPanel.EnableScenePreview(new(scenePosEdit.X, scenePosEdit.Y, positionTarget.TileCountX, positionTarget.TileCountY), positionTarget);
+			Program.CanvasPanel.EnableScenePreview(region, positionTarget);
 			scenePreviewShown = true;
 
-			bool intersects = world.Scenes.Any(s => {
-				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				return r.IntersectsWith(new(
-					scenePosEdit.X,
-					scenePosEdit.Y,
-					copyTarget.TileCountX,
-					copyTarget.TileCountY
-				));
-			});
+			bool intersects = world.Scenes.Any(s => s != positionTarget && region.IntersectsWith(new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY)));
 				
 			ImGui.BeginDisabled(intersects);
 			if(ImGui.Button("Confirm")) {
@@ -637,19 +619,13 @@ public class ScenesPanel : Panel {
 				if(sceneSizeEdit.X < 1) sceneSizeEdit.X = 1;
 				if(sceneSizeEdit.Y < 1) sceneSizeEdit.Y = 1;
 			}
+
+			Rectangle region = new(resizeTarget.WorldX, resizeTarget.WorldY, sceneSizeEdit.X, sceneSizeEdit.Y);
 				
-			Program.CanvasPanel.EnableScenePreview(new(resizeTarget.WorldX, resizeTarget.WorldY, sceneSizeEdit.X, sceneSizeEdit.Y), resizeTarget);
+			Program.CanvasPanel.EnableScenePreview(region, resizeTarget);
 			scenePreviewShown = true;
 				
-			bool intersects = world.Scenes.Any(s => {
-				Rectangle r = new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY);
-				return r.IntersectsWith(new(
-					scenePosEdit.X,
-					scenePosEdit.Y,
-					copyTarget.TileCountX,
-					copyTarget.TileCountY
-				));
-			});
+			bool intersects = world.Scenes.Any(s => s != resizeTarget && region.IntersectsWith(new(s.WorldX, s.WorldY, s.TileCountX, s.TileCountY)));
 				
 			ImGui.BeginDisabled(intersects);
 			if(ImGui.Button("Confirm")) {
