@@ -38,7 +38,7 @@ public class TilesetsPanel : Panel {
 	
 	// Temp editing data, controlled by Edit()
 	// private static string idEditBuffer;
-	private static int tileEditIndex;
+	private static int tileEditID;
 	private Tileset lastSelectedTileset;
 	private int previewScale;
 	private bool showColliders;
@@ -81,6 +81,8 @@ public class TilesetsPanel : Panel {
 	private PresetPattern presetResizeTarget;
 
 	private FileEditEntry shapeEdit;
+	private FileEditEntry colorEdit;
+	private bool colorPickerMode;
 	
 	public TilesetsPanel() {
 		Title = $"{Codicons.Table} Tilesets";
@@ -104,6 +106,7 @@ public class TilesetsPanel : Panel {
 		importSpacing = new(0);
 		importTexels = new(16);
 		shapeEdit = null;
+		colorEdit = null;
 		editMode = EditMode.TileColliders;
 		selectedAutomapPattern = null;
 		automapNameEdit = "";
@@ -257,8 +260,8 @@ public class TilesetsPanel : Panel {
 				}
 				
 				if(ImGui.BeginItemTooltip()) {
-					if(tileset.TexturePreview != null) {
-						ImGui.Image((IntPtr)tileset.TexturePreview.Handle, new Vector2(tileset.TexturePreview.Width, tileset.TexturePreview.Height));
+					if(tileset.TextureAtlas != null) {
+						ImGui.Image((IntPtr)tileset.TextureAtlas.Handle, new Vector2(tileset.TextureAtlas.Width, tileset.TextureAtlas.Height));
 					} else {
 						ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0, 0, 1));
 						ImGui.Text("Preview image could not be loaded!");
@@ -398,9 +401,11 @@ public class TilesetsPanel : Panel {
 		ImGui.Columns(2);
 
 		if(tileset != lastSelectedTileset) {
-			tileEditIndex = 0;
+			tileEditID = 0;
 			selectedAutomapPattern = null;
 			selectedPresetPattern = null;
+			shapeEdit = null;
+			colorEdit = null;
 		}
 
 		string id = tileset != null ? tileset.ID : "";
@@ -474,6 +479,8 @@ public class TilesetsPanel : Panel {
 			ImGuiWindowFlags.AlwaysHorizontalScrollbar | ImGuiWindowFlags.AlwaysVerticalScrollbar
 		);
 		
+		TileIdShift();
+		
 		if(ImGui.IsWindowHovered() && ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
 			ImGui.SetScrollY(ImGui.GetScrollY() - ImGui.GetIO().MouseDelta.Y);
 			ImGui.SetScrollX(ImGui.GetScrollX() - ImGui.GetIO().MouseDelta.X);
@@ -499,7 +506,7 @@ public class TilesetsPanel : Panel {
 				for(int y = 0; y < countY; y++) {
 					for(int x = 0; x < countX; x++) {
 						int tileID = (y * countX + x) + 1;
-						bool selected = editMode == EditMode.TileColliders && tileEditIndex == tileID;
+						bool selected = editMode == EditMode.TileColliders && tileEditID == tileID;
 						
 						ImGui.SetCursorPos(origin + new Vector2(world.TileWidth * x, world.TileHeight * y) * previewScale);
 						ImGui.PushID(tileID);
@@ -548,7 +555,7 @@ public class TilesetsPanel : Panel {
 						
 						if(ImGui.InvisibleButton("##tile", s)) {
 							if(editMode == EditMode.TileColliders) {
-								tileEditIndex = tileID;
+								tileEditID = tileID;
 								selected = true;
 							}
 						}
@@ -559,7 +566,7 @@ public class TilesetsPanel : Panel {
 								var rect = tileset.GetTileRegion(tileID - 1);
 								Vector2 uvMin = new Vector2(rect.Left / (float)tileset.GetTextureWidth(), rect.Top / (float)tileset.GetTextureHeight());
 								Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(), rect.Bottom / (float)tileset.GetTextureHeight());
-								ImGui.Image((IntPtr)tileset.TexturePreview.Handle, new Vector2(world.TileWidth, world.TileHeight) * previewScale, uvMin, uvMax);
+								ImGui.Image((IntPtr)tileset.TextureAtlas.Handle, new Vector2(world.TileWidth, world.TileHeight) * previewScale, uvMin, uvMax);
 								ImGui.SetDragDropPayload("PRESET_TILE_ID", (IntPtr)(&tileID), sizeof(int));
 								ImGui.EndDragDropSource();
 							}
@@ -625,11 +632,11 @@ public class TilesetsPanel : Panel {
 						Vector2 c = ImGui.GetContentRegionAvail();
 						Vector2 s = new Vector2(float.Max(size.X, c.X), float.Max(size.Y, c.Y));
 						if(ImGui.InvisibleButton("##clear", s)) {
-							tileEditIndex = 0;
+							tileEditID = 0;
 						}
 					}
 					if(ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Right)) {
-						tileEditIndex = 0;
+						tileEditID = 0;
 					}
 				}
 				
@@ -671,8 +678,27 @@ public class TilesetsPanel : Panel {
 		lastSelectedTileset = tileset;
 	}
 
+	private void TileIdShift() {
+		if(!ImGui.IsWindowFocused()) return;
+		int tileCount = Program.SelectedTileset?.GetTileCount() ?? 0;
+		int tileColumns = Program.SelectedTileset?.GetTileCountX() ?? 0;
+		if(ImGui.IsKeyPressed(ImGuiKey.RightArrow) || ImGui.IsKeyPressed(ImGuiKey.D)) {
+			tileEditID = int.Min(tileEditID + 1, tileCount);
+		}
+		if(ImGui.IsKeyPressed(ImGuiKey.UpArrow) || ImGui.IsKeyPressed(ImGuiKey.W)) {
+			tileEditID = int.Max(tileEditID - tileColumns, 0);
+		}
+		if(ImGui.IsKeyPressed(ImGuiKey.LeftArrow) || ImGui.IsKeyPressed(ImGuiKey.A)) {
+			tileEditID = int.Max(tileEditID - 1, 0);
+		}
+		if(ImGui.IsKeyPressed(ImGuiKey.DownArrow) || ImGui.IsKeyPressed(ImGuiKey.S)) {
+			tileEditID = int.Min(tileEditID + (tileEditID > 0 ? tileColumns : 1), tileCount);
+		}
+	}
+
 	private void TileColliderEdit() {
 		Tileset tileset = Program.SelectedTileset;
+		int tileCount = tileset != null ? tileset.GetTileCount() : 0;
 
 		ImGui.BeginDisabled(tileset == null);
 
@@ -703,19 +729,21 @@ public class TilesetsPanel : Panel {
 			tileSize.X = tileSize.Y;
 		}
 
-		if(tileset != null && tileEditIndex > 0) {
+		TileIdShift();
+
+		if(tileset != null && tileEditID > 0) {
 			Vector2 p0 = contentPos + (contentSize / 2.0F) - (tileSize / 2.0F);
 			Vector2 p1 = p0 + tileSize;
 			Texture previewTexture = tileset.GetTexturePreview();
 			if(previewTexture != null) {
-				Rectangle rect = tileset.GetTileRegion(tileEditIndex - 1);
+				Rectangle rect = tileset.GetTileRegion(tileEditID - 1);
 				Vector2 tilesetSize = new(tileset.GetTextureWidth(),  tileset.GetTextureHeight());
 				Vector2 uv0 = new(rect.Left / tilesetSize.X, rect.Top / tilesetSize.Y);
 				Vector2 uv1 = new(rect.Right / tilesetSize.X, rect.Bottom / tilesetSize.Y);
 				drawList.AddImage((IntPtr)previewTexture.Handle, p0, p1, uv0, uv1);
 				drawList.AddRect(p0-new Vector2(1), p1+new Vector2(1), Utilities.GetPackedColor(255, 255, 255, 255));
 			}
-			var tiledata = tileset.GetTileData(tileEditIndex);
+			var tiledata = tileset.GetTileData(tileEditID);
 			if(tiledata != null) {
 				for(int i = 0; i < tiledata.Shapes.Count; i++) {
 					var shape = tiledata.Shapes[i];
@@ -732,7 +760,8 @@ public class TilesetsPanel : Panel {
 					}
 				}
 			}
-			if(ImGui.IsWindowFocused()) {
+			bool endColorPicker = false;
+			if(ImGui.IsWindowHovered()) {
 				Vector2 pos = ImGui.GetMousePos();
 				bool drag = ImGui.IsMouseDragging(ImGuiMouseButton.Left, -1.0F);
 				
@@ -756,7 +785,7 @@ public class TilesetsPanel : Panel {
 				} else if(colliderDrag) {
 					colliderDrag = false;
 					if(tiledata == null) {
-						tiledata = tileset.AddTileData(tileEditIndex);
+						tiledata = tileset.AddTileData(tileEditID);
 					}
 					int c = tiledata.Shapes.Count;
 					var edit = Program.Project.BeginEdit(this, new TileData.ShapeCountOperation(tiledata, c + 1));
@@ -764,6 +793,47 @@ public class TilesetsPanel : Panel {
 					op.NewList[c] = new TileShape(c0, c1 - c0);
 					Program.Project.EndEdit(ref edit);
 				}
+				
+				if(ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
+					if(pos.X >= p0.X && pos.X <= p1.X && pos.Y >= p0.Y && pos.Y <= p1.Y) {
+						int px = (int)float.Floor(Utilities.Map(pos.X, p0.X, p1.X, 0.0F, tileset.SizeX));
+						int py = (int)float.Floor(Utilities.Map(pos.Y, p0.Y, p1.Y, 0.0F, tileset.SizeY));
+						Vector4 colorPicked = tileset.GetTilePixel(tileEditID, px, py);
+						if(tiledata == null) {
+							tiledata = tileset.AddTileData(tileEditID);
+						}
+						if(colorEdit == null || colorEdit.GetData<TileData.ColorOperation>().TileData != tiledata) {
+							if(colorEdit != null) Program.Project.EndEdit(ref colorEdit);
+							colorEdit = Program.Project.BeginEdit(this, new TileData.ColorOperation(tiledata, colorPicked));
+							colorPickerMode = true;
+						}
+						colorEdit.GetData<TileData.ColorOperation>().SetColor(colorPicked);
+						tiledata.PrimaryColor = colorPicked;
+						if(ImGui.BeginTooltip()) {
+							byte r = (byte)(float.Clamp(colorPicked.X, 0.0F, 1.0F) * byte.MaxValue);
+							byte g = (byte)(float.Clamp(colorPicked.Y, 0.0F, 1.0F) * byte.MaxValue);
+							byte b = (byte)(float.Clamp(colorPicked.Z, 0.0F, 1.0F) * byte.MaxValue);
+							byte a = (byte)(float.Clamp(colorPicked.W, 0.0F, 1.0F) * byte.MaxValue);
+							string text = $"#{r:X2}{g:X2}{b:X2}{a:X2}\nR:{r}, G:{g}, B:{b}, A:{a}\n({colorPicked.X:F3}, {colorPicked.Y:F3}, {colorPicked.Z:F3}, {colorPicked.W:F3})";
+							Vector2 sz = new Vector2(ImGui.GetFontSize() * 3 + ImGui.GetStyle().FramePadding.Y * 2);
+							ImGui.ColorButton("##preview", colorPicked, ImGuiColorEditFlags.DefaultOptions, sz);
+							ImGui.SameLine();
+							ImGui.Text(text);
+							ImGui.SetMouseCursor((ImGuiMouseCursor)10);
+							ImGui.EndTooltip();
+						}
+					} else {
+						endColorPicker = true;
+					}
+				} else if(ImGui.IsMouseReleased(ImGuiMouseButton.Middle)) {
+					endColorPicker = true;
+				}
+			} else {
+				endColorPicker = true;
+			}
+			if(endColorPicker && colorPickerMode && colorEdit != null) {
+				Program.Project.EndEdit(ref colorEdit);
+				colorPickerMode = false;
 			}
 		}
 
@@ -777,23 +847,53 @@ public class TilesetsPanel : Panel {
 		
 		ImGui.Separator();
 		
-		int tileCount = tileset != null ? tileset.GetTileCount() : 0;
-		ImGui.DragInt("Tile ID", ref tileEditIndex, 0.02F, 0, tileCount+1);
+		ImGui.DragInt("Tile ID", ref tileEditID, 0.02F, 0, tileCount);
+
+		TileIdShift();
 		
-		ImGui.BeginDisabled(tileEditIndex == 0);
+		ImGui.BeginDisabled(tileEditID == 0);
 		
 		int count = 0;
 		TileData data = null;
 		if(tileset != null) {
-			data = tileset.GetTileData(tileEditIndex);
+			data = tileset.GetTileData(tileEditID);
 			if(data != null) count = data.Shapes.Count;
 		}
+		Vector4 color = tileset?.GetTileColor(tileEditID) ?? Vector4.One;
+		if(ImGui.ColorEdit4("Primary Color", ref color, ImGuiColorEditFlags.AlphaBar)) {
+			if(data == null) {
+				data = tileset.AddTileData(tileEditID);
+			}
+			if(colorEdit == null || colorEdit.GetData<TileData.ColorOperation>().TileData != data) {
+				if(colorEdit != null) Program.Project.EndEdit(ref colorEdit);
+				colorEdit = Program.Project.BeginEdit(this, new TileData.ColorOperation(data, color));
+				colorPickerMode = false; // used for tile preivew middle... 
+			}
+			colorEdit.GetData<TileData.ColorOperation>().SetColor(color);
+			data.PrimaryColor = color;
+		}
+		if(ImGui.IsItemDeactivatedAfterEdit()) {
+			if(colorEdit != null) {
+				Program.Project.EndEdit(ref colorEdit);
+			}
+		}
+		ImGui.PushID("Primary Color");
+		if(ImGui.BeginPopup("context")) {
+			ImGui.BeginDisabled(data == null || data.PrimaryColor == null);
+			if(ImGui.Button("Reset", new Vector2(-1, 0))) {
+				Program.Project.ApplyEdit(this, new TileData.ColorOperation(data, null));
+				ImGui.CloseCurrentPopup();
+			}
+			ImGui.EndDisabled();
+			ImGui.EndPopup();
+		}
+		ImGui.PopID();
 
 		if(ImGui.InputInt("Shape Count", ref count, 1, 1)) {
 			if(ImGui.IsItemDeactivatedAfterEdit() || ImGui.IsItemClicked()) {
 				if(count < 0) count = 0;
 				if(data == null) {
-					data = tileset.AddTileData(tileEditIndex);
+					data = tileset.AddTileData(tileEditID);
 				}
 				Program.Project.ApplyEdit(this, new TileData.ShapeCountOperation(data, count));
 			}
@@ -1148,7 +1248,7 @@ public class TilesetsPanel : Panel {
 					var rect = selectedTileset.GetTileRegion(matchedTile - 1);
 					Vector2 uvMin = new Vector2(rect.Left / (float)selectedTileset.GetTextureWidth(), rect.Top / (float)selectedTileset.GetTextureHeight());
 					Vector2 uvMax = new Vector2(rect.Right / (float)selectedTileset.GetTextureWidth(), rect.Bottom / (float)selectedTileset.GetTextureHeight());
-					ImGui.GetWindowDrawList().AddImage(new IntPtr(selectedTileset.TexturePreview.Handle), t0, t1, uvMin, uvMax);
+					ImGui.GetWindowDrawList().AddImage(new IntPtr(selectedTileset.TextureAtlas.Handle), t0, t1, uvMin, uvMax);
 				} else {
 					ImGui.GetWindowDrawList().AddRect(t0, t1, Utilities.GetPackedColor(255, 255, 255, 255));
 				}
@@ -1371,7 +1471,7 @@ public class TilesetsPanel : Panel {
 						var rect = tileset.GetTileRegion(tileID - 1);
 						Vector2 uvMin = new Vector2(rect.Left / (float)tileset.GetTextureWidth(), rect.Top / (float)tileset.GetTextureHeight());
 						Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(), rect.Bottom / (float)tileset.GetTextureHeight());
-						ImGui.Image((IntPtr)tileset.TexturePreview.Handle, new Vector2(world.TileWidth, world.TileHeight) * previewScale, uvMin, uvMax);
+						ImGui.Image((IntPtr)tileset.TextureAtlas.Handle, new Vector2(world.TileWidth, world.TileHeight) * previewScale, uvMin, uvMax);
 						ImGui.SetDragDropPayload("PRESET_TILE_ID", (IntPtr)(&tileID), sizeof(int));
 						ImGui.EndDragDropSource();
 					}
@@ -1396,7 +1496,7 @@ public class TilesetsPanel : Panel {
 					var rect = tileset.GetTileRegion(tileID - 1);
 					Vector2 uvMin = new Vector2(rect.Left / (float)tileset.GetTextureWidth(), rect.Top / (float)tileset.GetTextureHeight());
 					Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(), rect.Bottom / (float)tileset.GetTextureHeight());
-					ImGui.GetWindowDrawList().AddImage(new IntPtr(tileset.TexturePreview.Handle), t0, t1, uvMin, uvMax);
+					ImGui.GetWindowDrawList().AddImage(new IntPtr(tileset.TextureAtlas.Handle), t0, t1, uvMin, uvMax);
 				} else {
 					ImGui.SetItemTooltip("Drag tile here to set");
 				}

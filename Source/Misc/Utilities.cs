@@ -59,10 +59,37 @@ public static class Utilities {
 		if(attr == null) return value;
 		string str = attr.Value.ToLower();
 		string[] comps = str.Split(',');
+		float input;
+		if(comps.Length < 1) return value;
+		if(!float.TryParse(comps[0], out input)) return value;
+		value.X = float.Clamp(input / 255.0F, 0.0F, 1.0F);
+		if(comps.Length < 2) return value;
+		if(!float.TryParse(comps[1], out input)) return value;
+		value.Y = float.Clamp(input / 255.0F, 0.0F, 1.0F);
 		if(comps.Length < 3) return value;
-		if(!float.TryParse(comps[0], out value.X)) return value; value.X = float.Clamp(value.X / 255.0F, 0.0F, 1.0F);
-		if(!float.TryParse(comps[1], out value.Y)) return value; value.Y = float.Clamp(value.Y / 255.0F, 0.0F, 1.0F);
-		if(!float.TryParse(comps[2], out value.Z)) return value; value.Z = float.Clamp(value.Z / 255.0F, 0.0F, 1.0F);
+		if(!float.TryParse(comps[2], out input)) return value;
+		value.Z = float.Clamp(input / 255.0F, 0.0F, 1.0F);
+		return value;
+	}
+	
+	public static Vector4 ParseAsColor(this XAttribute? attr, Vector4 defaultValue = default) {
+		Vector4 value = defaultValue;
+		if(attr == null) return value;
+		string str = attr.Value.ToLower();
+		string[] comps = str.Split(',');
+		float input;
+		if(comps.Length < 1) return value;
+		if(!float.TryParse(comps[0], out input)) return value;
+		value.X = float.Clamp(input / 255.0F, 0.0F, 1.0F);
+		if(comps.Length < 2) return value;
+		if(!float.TryParse(comps[1], out input)) return value;
+		value.Y = float.Clamp(input / 255.0F, 0.0F, 1.0F);
+		if(comps.Length < 3) return value;
+		if(!float.TryParse(comps[2], out input)) return value;
+		value.Z = float.Clamp(input / 255.0F, 0.0F, 1.0F);
+		if(comps.Length < 4) return value;
+		if(!float.TryParse(comps[3], out input)) return value;
+		value.W = float.Clamp(input / 255.0F, 0.0F, 1.0F);
 		return value;
 	}
 
@@ -89,6 +116,14 @@ public static class Utilities {
 		color.Y = float.Clamp(color.Y * 255.0F, 0.0F, 255.0F);
 		color.Z = float.Clamp(color.Z * 255.0F, 0.0F, 255.0F);
 		return $"{color.X:F0},{color.Y:F0},{color.Z:F0}";
+	}
+
+	public static string SerializeColor(Vector4 color) {
+		color.X = float.Clamp(color.X * 255.0F, 0.0F, 255.0F);
+		color.Y = float.Clamp(color.Y * 255.0F, 0.0F, 255.0F);
+		color.Z = float.Clamp(color.Z * 255.0F, 0.0F, 255.0F);
+		color.W = float.Clamp(color.W * 255.0F, 0.0F, 255.0F);
+		return $"{color.X:F0},{color.Y:F0},{color.Z:F0},{color.W:F0}";
 	}
 
 	public static void OpenWebLink(string url) {

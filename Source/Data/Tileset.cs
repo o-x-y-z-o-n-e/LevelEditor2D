@@ -77,7 +77,7 @@ public class Tileset {
 		set => size.Y = value;
 	}
 	
-	public Texture TexturePreview => texturePreview;
+	public Texture TextureAtlas => textureAtlas;
 	public TextureArray TextureArray => textureArray;
 	
 	public List<AutomapPattern> AutomapPatterns => automapPatterns;
@@ -97,9 +97,11 @@ public class Tileset {
 	private Point spacing;
 	private Point size;
 	private SortedList<int, TileData> tileData;
+	private SortedList<int, Vector4> tileDefaultColors;
 	private bool disposed;
-	private Texture texturePreview;
+	private Texture textureAtlas;
 	private TextureArray textureArray;
+	private byte[] texturePixelData;
 	
 	private List<AutomapPattern> automapPatterns;
 	private List<PresetPattern> presetPatterns;
@@ -114,10 +116,14 @@ public class Tileset {
 		textureFileRelativePath = "";
 		textureFileAbsolutePath = "";
 		textureFileWatcher = null;
+		textureAtlas = null;
+		textureArray = null;
+		texturePixelData = null;
 		offset = new(0, 0);
 		spacing = new(0, 0);
 		size = new(0, 0);
 		tileData = new();
+		tileDefaultColors = new();
 		automapPatterns = new();
 		presetPatterns = new();
 	}
@@ -195,6 +201,10 @@ public class Tileset {
 		foreach(var tileElement in tilesetElement.Elements("tile")) {
 			int id = tileElement.Attribute("num").ParseAsInt();
 			var data = new TileData(this, id);
+			XAttribute colorAttribute = tileElement.Attribute("color");
+			if(colorAttribute != null) {
+				data.PrimaryColor = colorAttribute.ParseAsColor(Vector4.One);
+			}
 			foreach(var shapeElement in tileElement.Elements("shape")) {
 				Vector2 p = new(0);
 				Vector2 s = new(0);
@@ -311,8 +321,12 @@ public class Tileset {
 			tilesetElement.Add(presetElement);
 		}
 		foreach(var data in tileData) {
+			if(data.Value.PrimaryColor == null && data.Value.Shapes.Count == 0) continue;
 			XElement tileElement = new XElement("tile");
 			tileElement.Add(new XAttribute("num", data.Key));
+			if(data.Value.PrimaryColor != null) {
+				tileElement.Add(new XAttribute("color", Utilities.SerializeColor(data.Value.PrimaryColor.Value)));
+			}
 			foreach(var shape in data.Value.Shapes) {
 				XElement s = new XElement("shape");
 				s.Add(
@@ -381,30 +395,30 @@ public class Tileset {
 		textureFileWatcher.EnableRaisingEvents = textureFileRelativePath != "";
 	}
 
-	public Texture GetTexturePreview() => texturePreview;
+	public Texture GetTexturePreview() => textureAtlas;
 
 	public TextureArray GetTextureArray() => textureArray;
 
 	public int GetTextureWidth() {
-		if(texturePreview == null) return 0;
-		return texturePreview.Width;
+		if(textureAtlas == null) return 0;
+		return textureAtlas.Width;
 	}
 	
 	public int GetTextureHeight() {
-		if(texturePreview == null) return 0;
-		return texturePreview.Height;
+		if(textureAtlas == null) return 0;
+		return textureAtlas.Height;
 	}
 
 	public int GetTileCount() => GetTileCountX() * GetTileCountY();
 
 	public int GetTileCountX() {
-		if(texturePreview == null || size.X + spacing.X == 0) return 0;
-		return (texturePreview.Width - offset.X + spacing.X) / (size.X + spacing.X);
+		if(textureAtlas == null || size.X + spacing.X == 0) return 0;
+		return (textureAtlas.Width - offset.X + spacing.X) / (size.X + spacing.X);
 	}
 
 	public int GetTileCountY() {
-		if(texturePreview == null || size.Y + spacing.Y == 0) return 0;
-		return (texturePreview.Height - offset.Y + spacing.Y) / (size.Y + spacing.Y);
+		if(textureAtlas == null || size.Y + spacing.Y == 0) return 0;
+		return (textureAtlas.Height - offset.Y + spacing.Y) / (size.Y + spacing.Y);
 	}
 
 	public Rectangle GetTileRegion(int tileIndex) {
@@ -424,6 +438,19 @@ public class Tileset {
 		);
 	}
 
+	public Vector4 GetTileColor(int id) {
+		if(tileData.TryGetValue(id, out var data)) {
+			if(data.PrimaryColor != null) {
+				return data.PrimaryColor.Value;
+			}
+		}
+		if(tileDefaultColors.TryGetValue(id, out var color)) {
+			return color;
+		} else {
+			return Vector4.One;
+		}
+	}
+
 	public TileData GetTileData(int id) {
 		if(!tileData.ContainsKey(id)) return null;
 		return tileData[id];
@@ -435,6 +462,30 @@ public class Tileset {
 		var data = new TileData(this, id);
 		tileData.Add(id, data);
 		return data;
+	}
+
+	public Vector4 GetTilePixel(int id, int x, int y) {
+		GetTilePixel(id, x, y, out byte r, out byte g, out byte b, out byte a);
+		return new Vector4(r / 255.0F, g / 255.0F, b / 255.0F, a / 255.0F);
+	}
+
+	public void GetTilePixel(int id, int x, int y, out byte r, out byte g, out byte b, out byte a) {
+		if(id < 1 || id > GetTileCount()) {
+			r = 0; g = 0; b = 0; a = 0;
+			return;
+		}
+		int tileCountX = GetTileCountX();
+		int tx = (id - 1) % tileCountX;
+		int ty = (id - 1) / tileCountX;
+		int ox = tx * size.X;
+		int oy = ty * size.Y;
+		int px = int.Clamp(x, 0, size.X);
+		int py = int.Clamp(y, 0, size.Y);
+		int offset = (ox + px) * 4 + (oy + py) * 4 * textureAtlas.Width;
+		r = texturePixelData[offset + 0];
+		g = texturePixelData[offset + 1];
+		b = texturePixelData[offset + 2];
+		a = texturePixelData[offset + 3];
 	}
 
 	public AutomapPattern CreateAutomapPattern(string name = "New Automap Pattern") {
@@ -453,8 +504,8 @@ public class Tileset {
 	}
 
 	public void ReloadTexture() {
-		if(texturePreview != null) {
-			texturePreview.Dispose();
+		if(textureAtlas != null) {
+			textureAtlas.Dispose();
 		}
 		if(textureArray != null) {
 			textureArray.Dispose();
@@ -469,13 +520,15 @@ public class Tileset {
 		try {
 			byte[] raw = File.ReadAllBytes(textureFileAbsolutePath);
 
-			texturePreview = Texture.LoadFromMemory(raw);
+			textureAtlas = Texture.LoadFromMemory(raw);
 
 			ImageResult image = ImageResult.FromMemory(raw, ColorComponents.RedGreenBlueAlpha);
 
 			int tileCountX = GetTileCountX();
 			int tileCountY = GetTileCountY();
 			int tileCount = tileCountX * tileCountY;
+
+			texturePixelData = image.Data;
 
 			textureArray = new TextureArray();
 
@@ -510,6 +563,48 @@ public class Tileset {
 			gl.PixelStore(GLEnum.UnpackRowLength, 0);
 			gl.PixelStore(GLEnum.UnpackSkipPixels, 0);
 			gl.PixelStore(GLEnum.UnpackSkipRows, 0);
+
+			tileDefaultColors.Clear();
+			Dictionary<int, int> colorCount = new Dictionary<int, int>();
+			for(int y = 0; y < tileCountY; y++) {
+				for(int x = 0; x < tileCountX; x++) {
+					int tileID = 1 + y * tileCountX + x;
+					if(tileDefaultColors.ContainsKey(tileID)) continue;
+					colorCount.Clear();
+					int ox = x * size.X;
+					int oy = y * size.Y;
+					for(int ty = 0; ty < size.X; ty++) {
+						for(int tx = 0; tx < size.Y; tx++) {
+							int offset = (ox + tx) * 4 + (oy + ty) * 4 * image.Width;
+							byte r = image.Data[offset + 0];
+							byte g = image.Data[offset + 1];
+							byte b = image.Data[offset + 2];
+							byte a = image.Data[offset + 3];
+							int packed = Color.FromArgb(a, r, g, b).ToArgb();
+							if(colorCount.TryGetValue(packed, out int count)) {
+								colorCount[packed] = count + 1;
+							} else {
+								colorCount.Add(packed, 1);
+							}
+						}
+					}
+					int maxCount = 0;
+					Color maxColor = Color.Transparent;
+					foreach(var entry in colorCount) {
+						if(entry.Value > maxCount) {
+							maxCount = entry.Value;
+							maxColor = Color.FromArgb(entry.Key);
+						}
+					}
+
+					Vector4 c = new Vector4();
+					c.X = (float)maxColor.R / (float)byte.MaxValue;
+					c.Y = (float)maxColor.G / (float)byte.MaxValue;
+					c.Z = (float)maxColor.B / (float)byte.MaxValue;
+					c.W = (float)maxColor.A / (float)byte.MaxValue;
+					tileDefaultColors.Add(tileID, c);
+				}
+			}
 		} catch(IOException e) {
 			// ignore error
 		} catch(UnauthorizedAccessException e) {
@@ -524,8 +619,8 @@ public class Tileset {
 		fileWatcher = null;
 		textureFileWatcher?.Dispose();
 		textureFileWatcher = null;
-		texturePreview?.Dispose();
-		texturePreview = null;
+		textureAtlas?.Dispose();
+		textureAtlas = null;
 		textureArray?.Dispose();
 		textureArray = null;
 	}
@@ -595,17 +690,23 @@ public class Tileset {
 }
 
 public class TileData {
-	public int Tile => tile;
+	public int TileID => tileID;
+	public Vector4? PrimaryColor {
+		get => primaryColor;
+		set => primaryColor = value;
+	}
 	public List<TileShape> Shapes {
 		get => shapes;
 		set => shapes = value;
 	}
 	private Tileset tileset;
-	private int tile;
+	private int tileID;
+	private Vector4? primaryColor;
 	private List<TileShape> shapes;
-	public TileData(Tileset tileset, int tile) {
+	public TileData(Tileset tileset, int tileID) {
 		this.tileset = tileset;
-		this.tile = tile;
+		this.tileID = tileID;
+		this.primaryColor = null;
 		this.shapes = new List<TileShape>();
 	}
 	public class ShapeCountOperation : IFileEditOperation {
@@ -635,8 +736,8 @@ public class TileData {
 			data.Shapes = oldList;
 		}
 		public bool HasChanges() => oldList.Count != newList.Count;
-		public string GetNextStateMessage() => $"Set shape count for tile [{data.tile}]";
-		public string GetPrevStateMessage() => $"Undo shape count for tile [{data.tile}]";
+		public string GetNextStateMessage() => $"Set shape count for tile [{data.tileID}]";
+		public string GetPrevStateMessage() => $"Undo shape count for tile [{data.tileID}]";
 	}
 	public class ShapeEditOperation : IFileEditOperation {
 		public object? Context => data.tileset;
@@ -664,8 +765,33 @@ public class TileData {
 			data.Shapes[index] = oldShape;
 		}
 		public bool HasChanges() => oldShape != newShape;
-		public string GetNextStateMessage() => $"Set shape edit for tile [{data.tile}]";
-		public string GetPrevStateMessage() => $"Undo shape edit for tile [{data.tile}]";
+		public string GetNextStateMessage() => $"Set shape edit for tile [{data.tileID}]";
+		public string GetPrevStateMessage() => $"Undo shape edit for tile [{data.tileID}]";
+	}
+	public class ColorOperation : IFileEditOperation {
+		public object? Context => data.tileset;
+		public TileData TileData => data;
+		public Vector4? NewColor => newColor;
+		private TileData data;
+		private Vector4? oldColor;
+		private Vector4? newColor;
+		public ColorOperation(TileData data, Vector4? newColor) {
+			this.data = data;
+			this.oldColor = data.PrimaryColor;
+			this.newColor = newColor;
+		}
+		public void SetColor(Vector4? color) {
+			newColor = color;
+		}
+		public void ApplyNextState(FileEditEntry entry) {
+			data.PrimaryColor = newColor;
+		}
+		public void ApplyPrevState(FileEditEntry entry) {
+			data.PrimaryColor = oldColor;
+		}
+		public bool HasChanges() => oldColor.HasValue != newColor.HasValue || oldColor.Value != newColor.Value;
+		public string GetNextStateMessage() => $"Set primary color for tile [{data.tileID}]";
+		public string GetPrevStateMessage() => $"Undo primary color for tile [{data.tileID}]";
 	}
 }
 

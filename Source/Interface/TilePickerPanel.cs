@@ -522,7 +522,7 @@ public class TilePickerPanel : Panel {
 						Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(),
 							rect.Bottom / (float)tileset.GetTextureHeight());
 						ImGui.GetWindowDrawList()
-							.AddImage(new IntPtr(tileset.TexturePreview.Handle), t0, t1, uvMin, uvMax);
+							.AddImage(new IntPtr(tileset.TextureAtlas.Handle), t0, t1, uvMin, uvMax);
 					}
 				}
 
@@ -642,7 +642,7 @@ public class TilePickerPanel : Panel {
 								rect.Top / (float)tileset.GetTextureHeight());
 							Vector2 uvMax = new Vector2(rect.Right / (float)tileset.GetTextureWidth(),
 								rect.Bottom / (float)tileset.GetTextureHeight());
-							ImGui.GetWindowDrawList().AddImage(new IntPtr(tileset.TexturePreview.Handle), t0, t1, uvMin,
+							ImGui.GetWindowDrawList().AddImage(new IntPtr(tileset.TextureAtlas.Handle), t0, t1, uvMin,
 								uvMax);
 						}
 					}
