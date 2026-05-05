@@ -19,6 +19,7 @@ public class MenuBar {
 			LayerMenu();
 			EditMenu();
 			HelpMenu();
+			PerformanceCounter();
 			ImGui.EndMainMenuBar();
 		}
 		ImGui.PopStyleVar();
@@ -178,6 +179,12 @@ public class MenuBar {
 			ImGui.EndDisabled();
 			ImGui.EndMenu(); // Help
 		}
+	}
+
+	private void PerformanceCounter() {
+		string str = $"{Program.FrameRate:F2} fps";
+		ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(str).X);
+		ImGui.Text(str);
 	}
 
 	private void ExperimentalButtons() {

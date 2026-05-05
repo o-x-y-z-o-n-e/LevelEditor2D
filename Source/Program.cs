@@ -42,6 +42,7 @@ public static class Program {
 	}
 
 	public static float DeltaTime => deltaTime;
+	public static int FrameRate => frameRate;
 	
 	public static MenuBar MenuBar => menuBar;
 	
@@ -119,6 +120,9 @@ public static class Program {
 	private static IInputContext input;
 	private static bool requestClose;
 	private static float deltaTime;
+	private static float frameTimer;
+	private static int frameRate;
+	private static int frameCounter;
 	private static bool firstLoop;
 	private static Texture icon;
 	private static Queue<Panel> focusPanelQueue;
@@ -220,21 +224,29 @@ public static class Program {
 		}
 	}
 
-	private static void Update(double deltaTime) {
+	private static void Update(double dt) {
 		if(window.IsClosing) {
 			window.IsClosing = false;
 		}
 	}
 
-	private static void Render(double deltaTime) {
+	private static void Render(double dt) {
 		try {
-			controller.Update((float)deltaTime);
+			controller.Update((float)dt);
 			gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
 			gl.Viewport(window.FramebufferSize);
 			gl.ClearColor(Color.FromArgb(255, 0, 0, 0));
 			gl.Clear((uint) ClearBufferMask.ColorBufferBit);
 
-			Program.deltaTime = (float)deltaTime;
+			deltaTime = (float)dt;
+			
+			frameCounter++;
+			frameTimer += deltaTime;
+			if(frameTimer >= 1.0F) {
+				frameTimer -= 1.0F;
+				frameRate = frameCounter;
+				frameCounter = 0;
+			}
 
 			ImGui.DockSpaceOverViewport();
 			
@@ -260,6 +272,10 @@ public static class Program {
 			tilePickerPanel.Execute();
 			
 			if(project != null && ImGui.IsKeyDown(ImGuiKey.LeftCtrl)) {
+				if(ImGui.IsKeyPressed(ImGuiKey.Backspace)) {
+					project.ClearEditHistory();
+				}
+
 				if(ImGui.IsKeyPressed(ImGuiKey.S)) {
 					SaveFile();
 				}
